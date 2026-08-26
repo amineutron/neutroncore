@@ -1,0 +1,25 @@
+# dependances / build
+node_modules/
+dist/
+*.tsbuildinfo
+.ruff_cache/
+# config locale (IPs, tailnet)
+.env.local
+.env
+# fichiers Android generes par build-apk.sh depuis les templates .in
+android/app/src/main/AndroidManifest.xml
+android/app/src/main/res/xml/network_security_config.xml
+# sortie de `cap sync` (copie de dist/ + config generee)
+android/app/src/main/assets/
+android/app/build/
+android/build/
+android/.gradle/
+android/.idea/
+android/local.properties
+android/*.keystore
+android/*.jks
+# donnees runtime ntfy (users, jetons, messages) : jamais versionnees
+ntfy/data/
+ntfy/cache/
+ntfy/server.yml
+ntfy/docker-compose.yml

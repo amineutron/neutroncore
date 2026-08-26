@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- amineutron — reactor swirl, version fond transparent (pour usage sur fond sombre) -->
+  <defs>
+    <linearGradient id="swirl" gradientUnits="userSpaceOnUse" x1="150" y1="190" x2="320" y2="365">
+      <stop offset="0%" stop-color="#eb6f92"/><stop offset="100%" stop-color="#f6c177"/>
+    </linearGradient>
+    <radialGradient id="core">
+      <stop offset="0%" stop-color="#fffaf0"/><stop offset="60%" stop-color="#fbe2b3"/><stop offset="100%" stop-color="#f6c177"/>
+    </radialGradient>
+    <filter id="glow" x="-120%" y="-120%" width="340%" height="340%"><feGaussianBlur stdDeviation="18"/></filter>
+    <filter id="glowS" x="-150%" y="-150%" width="400%" height="400%"><feGaussianBlur stdDeviation="9"/></filter>
+  </defs>
+  <circle cx="256" cy="256" r="200" fill="none" stroke="#f6c177" stroke-width="6" opacity="0.9"/>
+  <circle cx="256" cy="256" r="172" fill="none" stroke="#f6c177" stroke-width="20"
+          stroke-dasharray="11 13" opacity="0.6" transform="rotate(-90 256 256)"/>
+  <path d="M 152.1 196 A 120 120 0 1 1 316 359.9" fill="none" stroke="url(#swirl)" stroke-width="18" stroke-linecap="round"/>
+  <circle cx="316" cy="359.9" r="22" fill="#f6c177" opacity="0.75" filter="url(#glowS)"/>
+  <circle cx="316" cy="359.9" r="16" fill="#fff3dd"/>
+  <circle cx="256" cy="256" r="62" fill="#f6c177" opacity="0.5" filter="url(#glow)"/>
+  <circle cx="256" cy="256" r="42" fill="url(#core)"/>
+</svg>

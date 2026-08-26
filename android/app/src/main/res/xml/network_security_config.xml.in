@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- GENERE par build-apk.sh depuis le .in et .env.local : ne pas editer -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- PC via Tailscale (trafic deja chiffre par le tunnel) -->
+        <domain includeSubdomains="false">@NEUTRONCORE_TAILSCALE_IP@</domain>
+        <domain includeSubdomains="true">@NEUTRONCORE_TAILNET@</domain>
+        <!-- reseau local, si le telephone est sur le wifi de la maison -->
+        <domain includeSubdomains="false">@MEDIA_HOST@</domain>
+    </domain-config>
+</network-security-config>

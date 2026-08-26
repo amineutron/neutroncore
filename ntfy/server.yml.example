@@ -1,0 +1,12 @@
+# Config ntfy neutroncore (copier en server.yml, remplacer 100.64.0.1 par l IP Tailscale du PC) (montée en lecture seule dans le conteneur)
+base-url: "http://100.64.0.1:8377"
+listen-http: ":80"
+cache-file: "/var/cache/ntfy/cache.db"
+cache-duration: "24h"
+auth-file: "/var/lib/ntfy/user.db"
+auth-default-access: "deny-all"
+behind-proxy: false
+attachment-cache-dir: "/var/cache/ntfy/attachments"
+enable-login: true
+# le téléphone garde une connexion ouverte (livraison instantanée)
+keepalive-interval: "45s"

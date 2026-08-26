@@ -1,0 +1,9 @@
+{
+  "name": "neutroncore.app",
+  "short_name": "neutroncore",
+  "start_url": "/app/",
+  "display": "standalone",
+  "background_color": "#0e0a10",
+  "theme_color": "#0e0a10",
+  "icons": [{ "src": "/app/icon-512.png", "sizes": "512x512", "type": "image/png" }]
+}

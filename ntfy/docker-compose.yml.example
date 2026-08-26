@@ -1,0 +1,18 @@
+# ntfy — serveur de notifications push auto-hébergé pour neutroncore (téléphone).
+# Écoute UNIQUEMENT sur l'IP Tailscale du PC : joignable depuis le téléphone via
+# le tailnet, jamais depuis le LAN/Internet. Accès refusé par défaut
+# (auth-default-access: deny-all) : un seul utilisateur + jeton (voir README).
+services:
+  ntfy:
+    image: binwiederhier/ntfy:latest
+    container_name: ntfy
+    command: serve
+    restart: unless-stopped
+    ports:
+      - "100.64.0.1:8377:80"
+    volumes:
+      - ./server.yml:/etc/ntfy/server.yml:ro
+      - ./data:/var/lib/ntfy
+      - ./cache:/var/cache/ntfy
+    environment:
+      TZ: Europe/Paris
