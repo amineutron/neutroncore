@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { apiGet, apiPost, withConfirm } from '../lib/api'
 import { usePoll, fmtAgo } from '../lib/poll'
 import { Btn, Card, Chip, PageTitle } from '../components/ui'
-import { Roadmap } from '../components/Roadmap'
+import { Projects } from '../components/Projects'
 
 type Project = { name: string; path: string; branch: string; dirty: number; has_remote: boolean; ahead: number; behind: number; last_commit: number | null }
 type Updates = { status: string; checked_at?: number; images: { image: string; state: string }[]; updates?: number }
@@ -46,7 +46,7 @@ export function Projets() {
   return (
     <>
       <PageTitle help="projets" title="projets & mises à jour" desc="L'état de ~/dev en une page : git, images Docker, dérives." />
-      <Roadmap />
+      <Projects />
       <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
         <Btn sm onClick={gitFetch} disabled={fetching}>{fetching ? 'fetch…' : 'git fetch (tous)'}</Btn>
         <Btn sm onClick={checkUpdates} disabled={checking}>{checking ? 'vérification…' : 'vérifier les images docker'}</Btn>

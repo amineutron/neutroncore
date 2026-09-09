@@ -892,3 +892,50 @@ input[type=range].bri::-webkit-slider-thumb{-webkit-appearance:none;appearance:n
 .tv-wide{margin-bottom:14px}
 .tv-wide .home-sess{margin-bottom:0}
 .btn.on-home{border-color:color-mix(in srgb,var(--gold) 55%,var(--line2));color:var(--gold)}
+
+/* ---- projets suivis : accordéon, ligne de temps, événements, mascotte ---- */
+.tl-actions{float:right;display:inline-flex;gap:6px}
+.tl-project{border-top:1px solid var(--line);padding:10px 0 6px}
+.tl-project:first-of-type{border-top:none}
+.tl-project header{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;flex-wrap:wrap}
+.tl-project header:focus-visible{outline:1px solid var(--gold);outline-offset:3px;border-radius:4px}
+.tl-caret{font-family:var(--mono);color:var(--faint);width:12px}
+.tl-name{font-weight:600;flex:1 1 auto;min-width:0}
+.tl-count{color:var(--muted);font-size:12px}
+.tl{position:relative;margin:26px 0 6px;padding-top:0}
+.tl-track{position:relative}
+.tl .bar{height:6px;transition:height .35s ease}
+.tl.thick .bar{height:14px}
+.tl .bar i{transition:width .8s ease}
+.tl .ev{position:absolute;top:50%;width:9px;height:9px;border-radius:50%;transform:translate(-50%,-50%);border:2px solid var(--surface);box-sizing:content-box;cursor:pointer;z-index:2;transition:transform .2s}
+.tl.thick .ev{width:12px;height:12px}
+.tl .ev:hover{transform:translate(-50%,-50%) scale(1.35)}
+.tl .ev.rose{background:var(--rose);box-shadow:0 0 8px #eb6f9266}
+.tl .ev.rose.hollow{background:var(--surface);border-color:var(--rose)}
+.tl .ev.gold{background:var(--gold);box-shadow:0 0 8px #f6c17766}
+.tl .ev.crit{background:var(--crit);box-shadow:0 0 8px #ff5c7466}
+.tl .ev.pulse{animation:evpulse 1.6s ease-in-out infinite}
+@keyframes evpulse{0%,100%{box-shadow:0 0 0 0 #eb6f9266}50%{box-shadow:0 0 0 7px #eb6f9200}}
+.tl-mascot{position:absolute;bottom:100%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:2px;transition:left .8s ease;z-index:3;pointer-events:none;margin-bottom:-2px}
+.tl-mascot .bubble{font-family:var(--mono);font-size:9px;letter-spacing:.06em;padding:1px 6px;border-radius:99px;border:1px solid var(--line2);color:var(--muted);background:var(--surface);white-space:nowrap;opacity:0;transform:translateY(4px);transition:opacity .3s,transform .3s}
+.tl.thick .tl-mascot .bubble,.tl-mascot.waiting .bubble,.tl-mascot.blocked .bubble,.tl-mascot.done .bubble{opacity:1;transform:none}
+.tl-mascot .bubble.gold{color:var(--gold);border-color:#f6c17744}.tl-mascot .bubble.rose{color:var(--rose);border-color:#eb6f9244}
+.tl-mascot .bubble.ok{color:var(--ok);border-color:#82d69c33}.tl-mascot .bubble.warn{color:var(--warn);border-color:#f0b45e33}.tl-mascot .bubble.crit{color:var(--crit);border-color:#ff5c7433}
+.tl-mascot.waiting{animation:bounce 1.4s ease-in-out infinite}
+.tl-mascot.working{animation:sway 2.4s ease-in-out infinite}
+.tl-mascot.done{animation:hop .9s ease-in-out 3}
+@keyframes bounce{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,-4px)}}
+@keyframes sway{0%,100%{transform:translate(-50%,0) rotate(-3deg)}50%{transform:translate(-50%,0) rotate(3deg)}}
+@keyframes hop{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,-8px)}}
+.tl-details{animation:fade .25s ease}
+.tl-run{font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;margin:10px 0 0;white-space:pre-wrap;overflow-x:auto}
+.tl-phases{display:grid;gap:6px;margin-top:12px}
+.tl-phase{display:grid;grid-template-columns:minmax(0,1fr) 130px auto;gap:10px;align-items:center}
+.tl-phase-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.tl-phase-n{font-size:12px;white-space:nowrap;color:var(--muted)}
+.tl-phase-n .rose{color:var(--rose)}.tl-phase-n .crit{color:var(--crit)}
+.tl-list{margin:4px 0 0;padding-left:18px;font-size:13px}
+.tl-list li{margin:3px 0}
+.tl-list .chip{margin-left:6px}
+.tl-more{display:grid;gap:12px;margin-top:12px}
+@media(max-width:640px){.tl-phase{grid-template-columns:minmax(0,1fr) 90px auto}.tl-actions{float:none;display:flex;margin-top:6px}}
