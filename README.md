@@ -34,6 +34,8 @@
 
 ## Architecture
 
+Vue détaillée dans [ARCHITECTURE.md](ARCHITECTURE.md).
+
 ```
 telephone (APK Capacitor)  --Tailscale-->  lyra-control-api (:9876)  -->  Lyra, MCP, systemd, stack media...
 navigateur (PWA)           --------------->      sert dist/ sur /app/
