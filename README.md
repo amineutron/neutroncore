@@ -16,6 +16,12 @@
 
 **English summary.** neutroncore is the PWA hub of a self-hosted homelab: services, background tasks, media library, home automation, tracked projects and Claude Code sessions, driven by the Lyra assistant. React 19 + Vite + TypeScript, no UI library, served by the (not yet published) lyra-control-api backend. See [ARCHITECTURE.md](ARCHITECTURE.md).
 
+## Demo
+
+![Captures reelles de l'application : accueil, projets suivis, taches de fond, ambiance, lanceur](docs/assets/demo.gif)
+
+Captures reelles de l'application servie par `lyra-control-api`, prises par [`docs/demo/record.py`](docs/demo/record.py) (Chrome sans fenetre via Playwright, assemblage Pillow). La cle API est lue dans `~/.lyra-control.env` et n'apparait jamais a l'ecran.
+
 ## Ce que ca fait
 
 | Ecran | Contenu |
