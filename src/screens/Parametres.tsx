@@ -391,7 +391,7 @@ export function Parametres() {
 
       <Card title="à propos" style={{ marginTop: 14 }}>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Chip tone="gold">neutroncore.app</Chip>
+          <Chip tone="gold">neutroncore</Chip>
           <Chip>backend lyra-control-api :9876</Chip>
           <Chip>PWA installable</Chip>
           <Chip>{THEMES.find((t) => t.id === s.theme)?.dark ? 'thème sombre' : 'thème clair'}</Chip>

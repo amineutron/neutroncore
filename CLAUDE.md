@@ -1,4 +1,4 @@
-# CLAUDE.md — neutroncore.app
+# CLAUDE.md — neutroncore
 
 Hub central de l'ecosysteme amineutron : films/series, demandes, telechargements,
 sous-titres, taches de fond (tracking + Lyra), projets & mises a jour, ambiance
@@ -55,7 +55,7 @@ systemctl --user restart lyra-control-api.service
   `qbt-password` (config.py le lit deja via $CREDENTIALS_DIRECTORY) — voir
   la commande dans le rapport de session ou README.
 - La maquette design de reference est publiee en artifact Claude
-  (« neutroncore.app — maquette ») ; source dans le scratchpad de session.
+  (« neutroncore — maquette ») ; source dans le scratchpad de session.
 
 ## App bureau (2026-08-12)
 

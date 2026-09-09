@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# neutroncore.app — fenetre bureau flottante (chrome --app)
+# neutroncore — fenetre bureau flottante (chrome --app)
 # NB: Chrome sous Wayland ignore --class ; la classe reelle derivee de l'URL est
 # "chrome-127.0.0.1__app_-Default".
 URL="http://127.0.0.1:9876/app/"

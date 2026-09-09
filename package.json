@@ -1,6 +1,14 @@
 {
   "name": "neutroncore",
   "version": "0.1.0",
+  "description": "neutroncore: self-hosted homelab hub PWA and Android shell driven by Lyra",
+  "license": "MIT",
+  "author": "amineutron",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/amineutron/neutroncore.git"
+  },
+  "homepage": "https://github.com/amineutron/neutroncore",
   "private": true,
   "type": "module",
   "scripts": {
