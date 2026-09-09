@@ -65,6 +65,7 @@ export const HELP: Record<string, HelpTopic> = {
     title: 'projets & mises à jour',
     intro: "L'état de tes dépôts et ce qui attend d'être mis à jour.",
     points: [
+      ['feuille de route', "L'avancement du plan GitHub : une barre par paquet, ce qui attend une action de toi, les prochaines étapes. La vérité est sur GitHub (issues du dépôt de suivi), lue par project-tracker toutes les 10 minutes."],
       ['git', 'Branche courante, fichiers modifiés, commits en avance ou en retard.'],
       ['dépendances', 'Paquets npm et pip dépassés, par projet.'],
       ['système', 'Mises à jour dnf, séparées entre sûres et risquées (redémarrage).'],

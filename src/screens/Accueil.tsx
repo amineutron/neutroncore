@@ -2,6 +2,7 @@ import { useContext } from 'react'
 import { apiGet } from '../lib/api'
 import { usePoll } from '../lib/poll'
 import { NavContext } from '../App'
+import { useRoadmap } from '../components/Roadmap'
 import { getSettings } from '../lib/settings'
 import { MascotChain } from '../components/Mascot'
 import { HomeSessions } from '../components/HomeSessions'
@@ -13,6 +14,7 @@ type Service = { name: string; display_name: string; status: string }
 
 export function Accueil() {
   const navigate = useContext(NavContext)
+  const roadmap = useRoadmap()
   const alerts = usePoll<{ alerts: Alert[] }>(() => apiGet('/system/alerts'), 60000)
   const services = usePoll<{ services: Service[] }>(() => apiGet('/services'), 30000)
   const qbit = usePoll<{ dl_speed_fmt: string; connection_status: string }>(() => apiGet('/qbit/stats'), 10000)
@@ -93,6 +95,11 @@ export function Accueil() {
           <div className="ey">services</div>
           <div className="v num">{svcList.filter((s) => s.status === 'up').length}<small> / {svcList.length} up</small></div>
           <div className="d">{svcList.filter((s) => s.status === 'down').length} down</div>
+        </div>
+        <div className="tile" onClick={() => navigate('projets')}>
+          <div className="ey">feuille de route</div>
+          <div className="v num">{roadmap.data ? `${roadmap.data.totals.percent} %` : '…'}<small> {roadmap.data ? `${roadmap.data.totals.done}/${roadmap.data.totals.total}` : ''}</small></div>
+          <div className="d">{roadmap.data && roadmap.data.totals.waiting > 0 ? `${roadmap.data.totals.waiting} en attente de toi` : 'profil GitHub'}</div>
         </div>
       </div>
 
