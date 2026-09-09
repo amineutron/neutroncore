@@ -14,6 +14,8 @@
   <img src="docs/screenshots/accueil.jpg" width="900" alt="Accueil : etat du reacteur, alertes, sessions Claude Code">
 </p>
 
+**English summary.** neutroncore is the PWA hub of a self-hosted homelab: services, background tasks, media library, home automation, tracked projects and Claude Code sessions, driven by the Lyra assistant. React 19 + Vite + TypeScript, no UI library, served by the (not yet published) lyra-control-api backend. See [ARCHITECTURE.md](ARCHITECTURE.md).
+
 ## Ce que ca fait
 
 | Ecran | Contenu |
@@ -89,3 +91,16 @@ lus par le backend depuis `~/.lyra-control.env` et `systemd-creds`. Les IP/tailn
 ## Licence
 
 MIT
+
+## Part of the Lyra ecosystem
+
+| Dépôt | Rôle |
+|---|---|
+| [lyra](https://github.com/amineutron/lyra) | assistant DevOps vocal, local par défaut (AGPL-3.0) |
+| [fedora-agents](https://github.com/amineutron/fedora-agents) | MCP : machines virtuelles KVM et sauvegardes |
+| [mcp-tracking](https://github.com/amineutron/mcp-tracking) | MCP + API + tableau de bord des tâches longues |
+| [neutroncore](https://github.com/amineutron/neutroncore) | hub PWA du homelab |
+| [hue-mcp](https://github.com/amineutron/hue-mcp) | MCP Philips Hue (fork de ThomasRohde/hue-mcp) |
+| [pylips-mcp](https://github.com/amineutron/pylips-mcp) | MCP TV Philips |
+| [denon-mcp](https://github.com/amineutron/denon-mcp) | MCP ampli Denon |
+| [catt-mcp](https://github.com/amineutron/catt-mcp) | MCP Chromecast et DLNA |
