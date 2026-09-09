@@ -66,7 +66,7 @@ function eventClass(t: TimelineItem): string | null {
 function Timeline({ p, thick }: { p: Project; thick: boolean }) {
   const mood = MOOD[p.stage]
   const total = Math.max(p.timeline.length, 1)
-  const showMascot = getSettings().mascots
+  const showMascot = getSettings().mascots && p.totals.total > 0
   return (
     <div className={`tl ${thick ? 'thick' : ''} ${p.stage}`}>
       {showMascot && (
@@ -120,6 +120,7 @@ function Details({ p }: { p: Project }) {
   return (
     <div className="tl-details">
       {p.objective && <p className="muted" style={{ margin: '8px 0 10px' }}>{p.objective}</p>}
+      {p.totals.total === 0 && <p className="muted" style={{ margin: '0 0 10px', fontSize: 13 }}>Aucune action suivie pour l'instant : les issues et jalons de ce dépôt apparaîtront ici dès qu'ils existeront.</p>}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
         <a className="btn sm solid" href={p.readme} target="_blank" rel="noreferrer">README du projet</a>
         <a className="btn sm" href={`https://github.com/${p.issues_repo}/issues`} target="_blank" rel="noreferrer">issues</a>
@@ -205,7 +206,7 @@ export function Projects() {
               <span className="tl-caret">{isOpen ? '▾' : '▸'}</span>
               <span className="tl-name">{p.name}</span>
               {stateChip(p)}
-              <span className="num tl-count">{p.totals.done} / {p.totals.total}</span>
+              <span className="num tl-count">{p.totals.total > 0 ? `${p.totals.done} / ${p.totals.total}` : 'rien à suivre'}</span>
               {p.totals.waiting > 0 && <Chip tone="rose">{p.totals.waiting} attend toi</Chip>}
               {p.totals.blocked > 0 && <Chip tone="crit">{p.totals.blocked} bloqué</Chip>}
             </header>
