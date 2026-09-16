@@ -20,6 +20,21 @@ export const HELP: Record<string, HelpTopic> = {
     ],
     tip: "Le bouton télé en haut passe l'app en affichage dense, lisible depuis le lit.",
   },
+  agenda: {
+    title: 'agenda',
+    intro: 'Les rendez-vous du homelab et les tiens : sauvegardes planifiées, rappels, événements perso.',
+    points: [
+      ['couleurs', 'Or = aujourd\'hui, vert = fait, rouge = en échec ou manqué, gris = passé sans résultat.'],
+      ['automatiques', 'Borg, Timeshift et le disque tournant : leur état vient du journal systemd, pas d\'une supposition.'],
+      ['fiche', 'Cliquer un événement ouvre le détail, avec un lien vers le journal de la sauvegarde.'],
+      ['vues', 'Semaine, mois ou liste : ton choix est retenu. Dans le mois, cliquer un jour le déplie sous sa semaine, avec ses propres filtres.'],
+      ['échecs', 'Relancer la sauvegarde (elle passe « réparé » si ça marche), ignorer l\'échec (réversible) ou ignorer tous les anciens. Un échec ignoré ou relancé quitte « à traiter ».'],
+      ['disque tournant', 'Bouton « lancer la sauvegarde » quand le disque USB est branché : progression et journal en direct, l\'agenda se met à jour à la fin.'],
+      ['rappels', 'Un événement marqué « rappel » apparaît dans « à traiter » le jour même tant qu\'il n\'est pas fait.'],
+      ['barre du haut', 'Le calendrier Quickshell affiche les événements du jour, lus depuis la même API.'],
+    ],
+    tip: 'Les filtres par catégorie se combinent : garde seulement « sauvegardes » pour un suivi 3-2-1.',
+  },
   films: {
     title: 'films & séries',
     intro: 'La bibliothèque Radarr et Sonarr, avec les sorties à venir.',

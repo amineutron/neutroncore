@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { LOG_TARGET } from '../lib/nav'
 import { apiGet } from '../lib/api'
 import { usePoll, fmtBytes } from '../lib/poll'
 import { Bar, Card, Chip, PageTitle } from '../components/ui'
@@ -10,7 +11,19 @@ type Resources = {
   disks: { path: string; used_pct: number; free: number }[]
 }
 type Service = { name: string; display_name: string; status: string; type: string; extra: Record<string, string> }
-type Backups = { borg: { last_run: string | null; state: string }; timeshift: { last_run: string | null; state: string } }
+type BackupUnit = { state: 'ok' | 'failed' | 'running' | 'never' | 'missing'; last_run: string | null; result: string | null }
+type Backups = { borg: BackupUnit; rotation: BackupUnit & { age_days: number | null }; timeshift: BackupUnit }
+
+// Libelle court de l'etat d'une sauvegarde : l'echec prime sur la date
+const backupLabel = (u: BackupUnit | undefined, age?: number | null): string => {
+  if (!u) return '…'
+  if (u.state === 'failed') return 'échec'
+  if (u.state === 'running') return 'en cours'
+  if (u.state === 'missing') return 'non installé'
+  if (u.state === 'never') return 'jamais lancé'
+  if (age != null) return age === 0 ? "aujourd'hui" : `il y a ${age} j`
+  return u.last_run ? u.last_run.split(' ').slice(1, 3).join(' ') : 'ok'
+}
 
 const MEDIA_HOST = import.meta.env.VITE_MEDIA_HOST ?? 'media-server.lan'
 
@@ -30,6 +43,10 @@ const LINKS = [
 const LOG_UNITS = [
   { unit: 'all', label: 'tous les logs' },
   { unit: 'borg-backup.service', label: 'backup borg' },
+  { unit: 'borg-backup.log', label: 'borg hebdo (détail)' },
+  { unit: 'borg-rotation.service', label: 'borg tournant' },
+  { unit: 'borg-rotation.log', label: 'borg tournant (détail)' },
+  { unit: 'timeshift-backup.service', label: 'timeshift' },
   { unit: 'virtqemud.service', label: 'vms (qemu)' },
   { unit: 'subtitle-ai.service', label: 'sous-titres ia' },
   { unit: 'dv-webhook.service', label: 'conversion dv' },
@@ -41,7 +58,16 @@ export function Outils() {
   const res = usePoll<Resources>(() => apiGet('/system/resources'), 10000)
   const services = usePoll<{ services: Service[] }>(() => apiGet('/services'), 30000)
   const backups = usePoll<Backups>(() => apiGet('/system/backups'), 300000)
-  const [logUnit, setLogUnit] = useState(LOG_UNITS[0].unit)
+  // journal présélectionné depuis un autre écran (fiche d'un événement de l'agenda)
+  const [logUnit, setLogUnit] = useState(() => {
+    const wanted = sessionStorage.getItem(LOG_TARGET)
+    return LOG_UNITS.some((u) => u.unit === wanted) ? wanted! : LOG_UNITS[0].unit
+  })
+  useEffect(() => {
+    if (!sessionStorage.getItem(LOG_TARGET)) return
+    sessionStorage.removeItem(LOG_TARGET)
+    document.getElementById('journaux')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [])
   const journal = usePoll<{ lines: string[]; error?: string }>(
     () => apiGet(`/system/journal?unit=${logUnit}&lines=40`), 30000,
   )
@@ -108,30 +134,27 @@ export function Outils() {
           </table>
           <p style={{ fontSize: 11.5, color: 'var(--faint)', marginTop: 8 }}>Démarrage/arrêt : via Lyra (panneau de gauche).</p>
         </Card>
-        <Card title="backups">
+        <Card title="backups" lite="clic : journaux">
           <table>
             <tbody>
-              <tr>
-                <td><b style={{ fontSize: 12.5 }}>Borg</b><br /><span style={{ fontSize: 11, color: 'var(--muted)' }}>/mnt/backup_cold · dim. 02:00</span></td>
-                <td style={{ textAlign: 'right' }}>
-                  <Chip tone={backups.data?.borg.state === 'failed' ? 'crit' : 'ok'}>
-                    {backups.data?.borg.last_run ? backups.data.borg.last_run.split(' ').slice(1, 3).join(' ') : 'planifié'}
-                  </Chip>
-                </td>
-              </tr>
-              <tr>
-                <td><b style={{ fontSize: 12.5 }}>Timeshift</b><br /><span style={{ fontSize: 11, color: 'var(--muted)' }}>/backups/fast · 03:00</span></td>
-                <td style={{ textAlign: 'right' }}>
-                  <Chip tone={backups.data?.timeshift.state === 'failed' ? 'crit' : 'ok'}>
-                    {backups.data?.timeshift.last_run ? backups.data.timeshift.last_run.split(' ').slice(1, 3).join(' ') : 'planifié'}
-                  </Chip>
-                </td>
-              </tr>
+              {[
+                { name: 'Borg hebdo', where: '/mnt/backup_cold · dim. 02:00', unit: backups.data?.borg, log: 'borg-backup.log' },
+                { name: 'Borg tournant', where: 'disque usb · au branchement', unit: backups.data?.rotation, age: backups.data?.rotation.age_days, log: 'borg-rotation.log' },
+                { name: 'Timeshift', where: '/backups/fast · 03:00', unit: backups.data?.timeshift, log: 'timeshift-backup.service' },
+              ].map((b) => (
+                <tr key={b.name} onClick={() => setLogUnit(b.log)} style={{ cursor: 'pointer' }}>
+                  <td><b style={{ fontSize: 12.5 }}>{b.name}</b><br /><span style={{ fontSize: 11, color: 'var(--muted)' }}>{b.where}</span></td>
+                  <td style={{ textAlign: 'right' }}>
+                    <Chip tone={b.unit?.state === 'failed' ? 'crit' : b.unit?.state === 'ok' ? 'ok' : undefined}>{backupLabel(b.unit, b.age)}</Chip>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </Card>
       </div>
 
+      <div id="journaux" />
       <Card title="derniers journaux" lite={logUnit} style={{ marginBottom: 14 }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
           {LOG_UNITS.map((u) => (

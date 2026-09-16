@@ -18,14 +18,16 @@ import { usePoll } from './lib/poll'
 import { Outils } from './screens/Outils'
 import { Tests } from './screens/Tests'
 import { TvDashboard } from './screens/TvDashboard'
+import { Agenda } from './screens/Agenda'
+import { LOG_TARGET } from './lib/nav'
 
-export type ScreenId = 'accueil' | 'films' | 'demandes' | 'dl' | 'taches' | 'projets' | 'ambiance' | 'lanceur' | 'outils' | 'tests' | 'parametres'
+export type ScreenId = 'accueil' | 'agenda' | 'films' | 'demandes' | 'dl' | 'taches' | 'projets' | 'ambiance' | 'lanceur' | 'outils' | 'tests' | 'parametres'
 
 // Permet aux écrans (tuiles de l'accueil...) de naviguer vers un autre onglet
 export const NavContext = createContext<(s: ScreenId) => void>(() => {})
 
 const NAV: { group: string; items: { id: ScreenId; label: string }[] }[] = [
-  { group: 'pilotage', items: [{ id: 'accueil', label: 'accueil' }, { id: 'taches', label: 'tâches' }, { id: 'projets', label: 'projets' }] },
+  { group: 'pilotage', items: [{ id: 'accueil', label: 'accueil' }, { id: 'agenda', label: 'agenda' }, { id: 'taches', label: 'tâches' }, { id: 'projets', label: 'projets' }] },
   { group: 'média', items: [{ id: 'films', label: 'films & séries' }, { id: 'demandes', label: 'demandes' }, { id: 'dl', label: 'téléchargements' }] },
   { group: 'maison', items: [{ id: 'ambiance', label: 'ambiance' }, { id: 'lanceur', label: 'lanceur' }] },
   { group: 'système', items: [{ id: 'outils', label: 'outils & vms' }, { id: 'tests', label: 'tests' }, { id: 'parametres', label: 'paramètres' }] },
@@ -61,7 +63,7 @@ export const BUILD_ID =
     ?.src.match(/index-([\w-]+)\.js/)?.[1] ?? 'dev'
 
 const SCREENS: Record<ScreenId, () => React.JSX.Element> = {
-  accueil: Accueil, films: Media, demandes: Demandes, dl: Downloads, taches: Taches,
+  accueil: Accueil, agenda: Agenda, films: Media, demandes: Demandes, dl: Downloads, taches: Taches,
   projets: Projets, ambiance: Ambiance, lanceur: Lanceur, outils: Outils, tests: Tests, parametres: Parametres,
 }
 
@@ -110,7 +112,11 @@ function Setup({ onDone }: { onDone: () => void }) {
 export default function App() {
   const [ready, setReady] = useState(() => Boolean(getApiKey()))
   const [screen, setScreen] = useState<ScreenId>(() => {
-    const q = new URLSearchParams(window.location.search).get('screen') as ScreenId | null
+    const params = new URLSearchParams(window.location.search)
+    // lien profond vers un journal (bouton « journal » d'un échec dans la barre Quickshell)
+    const log = params.get('log')
+    if (log) sessionStorage.setItem(LOG_TARGET, log)
+    const q = params.get('screen') as ScreenId | null
     return q && NAV.some((g) => g.items.some((i) => i.id === q)) ? q : ((getSettings().startScreen as ScreenId) || 'accueil')
   })
   // lien profond (notification ntfy sur le telephone) : l'app Android recoit l'URL via appUrlOpen

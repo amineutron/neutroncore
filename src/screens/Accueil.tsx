@@ -1,7 +1,7 @@
 import { useContext } from 'react'
 import { apiGet } from '../lib/api'
 import { usePoll } from '../lib/poll'
-import { NavContext } from '../App'
+import { NavContext, type ScreenId } from '../App'
 import { mainProject, useProjects } from '../components/Projects'
 import { getSettings } from '../lib/settings'
 import { MascotChain } from '../components/Mascot'
@@ -9,7 +9,7 @@ import { HomeSessions } from '../components/HomeSessions'
 import { Reactor, type SubSystem } from '../components/Reactor'
 import { Btn, Dot, PageTitle, Eyebrow, serviceTone } from '../components/ui'
 
-type Alert = { level: 'warn' | 'crit'; title: string; detail: string }
+type Alert = { level: 'warn' | 'crit'; title: string; detail: string; action?: ScreenId }
 type Service = { name: string; display_name: string; status: string }
 
 export function Accueil() {
@@ -54,7 +54,9 @@ export function Accueil() {
               </div>
             )}
             {alertList.map((a) => (
-              <div key={a.title} className={`alert ${a.level === 'crit' ? 'crit' : ''}`}>
+              <div key={a.title} className={`alert ${a.level === 'crit' ? 'crit' : ''}`}
+                onClick={a.action ? () => navigate(a.action as ScreenId) : undefined}
+                style={a.action ? { cursor: 'pointer' } : undefined}>
                 <Dot s={a.level} />
                 <div className="t"><b>{a.title}</b><span>{a.detail}</span></div>
               </div>
