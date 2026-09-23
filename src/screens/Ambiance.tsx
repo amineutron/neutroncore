@@ -86,18 +86,24 @@ export function Ambiance() {
     Object.values(lights.data?.lights ?? {}).filter((l) => l.on).map((l) => l.color || '#f6c177'),
   )].slice(0, 5)
 
+  const LABELS: Record<string, string> = {
+    tvp: 'télé', tvm: 'muet télé', 'dv-': 'ampli vol −', 'dv+': 'ampli vol +', dm: 'muet ampli', beat: 'huebeat',
+  }
   async function run(label: string, fn: () => Promise<{ success?: boolean } | unknown>, refresh?: () => void) {
+    const nom = LABELS[label] ?? label
     setBusy(label)
+    setToast(`… ${nom}`)
+    const t0 = Date.now()
     try {
       const r = (await fn()) as { success?: boolean } | undefined
-      if (r && r.success === false) setToast(`échec : ${label}`)
-      else setToast(`ok : ${label}`)
+      if (r && r.success === false) setToast(`échec : ${nom}`)
+      else setToast(`ok : ${nom}`)
       refresh?.()
     } catch (e) {
-      setToast(`erreur : ${(e as Error).message}`)
+      setToast(`erreur : ${nom} — ${(e as Error).message}`)
     } finally {
       setBusy('')
-      setTimeout(() => setToast(''), 3500)
+      setTimeout(() => setToast(''), Date.now() - t0 > 5000 ? 6000 : 3500)
     }
   }
 
@@ -114,8 +120,10 @@ export function Ambiance() {
     <>
       <PageTitle help="ambiance" title="ambiance" desc="TV, ampli, lumières et scènes — la maison en un geste." />
       {toast && (
-        <div style={{ position: 'fixed', bottom: 70, right: 20, zIndex: 50 }}>
-          <Chip tone={toast.startsWith('ok') ? 'ok' : 'crit'}>{toast}</Chip>
+        <div className="action-toast" style={{ position: 'fixed', bottom: 70, right: 20, zIndex: 50 }}>
+          <Chip tone={toast.startsWith('ok') ? 'ok' : toast.startsWith('…') ? 'gold' : 'crit'}>
+            {toast.startsWith('…') && <span className="spin-dot" />}{toast}
+          </Chip>
         </div>
       )}
       <div
@@ -239,9 +247,11 @@ export function Ambiance() {
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Btn sm onClick={() => run('tvp', () => apiPost('/tv/power', { on: t?.power !== 'On' }), tv.refresh)} disabled={busy === 'tvp'}>
-              {t?.power === 'On' ? 'éteindre' : 'allumer'}
+              {busy === 'tvp' ? (t?.power === 'On' ? 'extinction…' : 'réveil… (jusqu’à 30 s)') : t?.power === 'On' ? 'éteindre' : 'allumer'}
             </Btn>
-            <Btn sm onClick={() => run('tvm', () => apiPost('/tv/mute', { muted: !t?.muted }), tv.refresh)}>muet</Btn>
+            <Btn sm onClick={() => run('tvm', () => apiPost('/tv/mute', { muted: !t?.muted }), tv.refresh)} disabled={busy === 'tvm'}>
+              {busy === 'tvm' ? '…' : t?.muted ? 'son' : 'muet'}
+            </Btn>
           </div>
         </Card>
         <Card title="denon avr" lite="x1700h">
@@ -250,9 +260,9 @@ export function Ambiance() {
             {t && t.denon_volume != null && <Chip>vol {t.denon_volume}</Chip>}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn sm onClick={() => run('dv-', () => apiPost('/tv/denon/volume', { delta: -2 }), tv.refresh)}>vol −</Btn>
-            <Btn sm onClick={() => run('dv+', () => apiPost('/tv/denon/volume', { delta: 2 }), tv.refresh)}>vol +</Btn>
-            <Btn sm onClick={() => run('dm', () => apiPost('/tv/denon/mute', { muted: !t?.denon_muted }), tv.refresh)}>muet</Btn>
+            <Btn sm onClick={() => run('dv-', () => apiPost('/tv/denon/volume', { delta: -2 }), tv.refresh)} disabled={busy === 'dv-'}>{busy === 'dv-' ? '…' : 'vol −'}</Btn>
+            <Btn sm onClick={() => run('dv+', () => apiPost('/tv/denon/volume', { delta: 2 }), tv.refresh)} disabled={busy === 'dv+'}>{busy === 'dv+' ? '…' : 'vol +'}</Btn>
+            <Btn sm onClick={() => run('dm', () => apiPost('/tv/denon/mute', { muted: !t?.denon_muted }), tv.refresh)} disabled={busy === 'dm'}>{busy === 'dm' ? '…' : t?.denon_muted ? 'son' : 'muet'}</Btn>
           </div>
         </Card>
         <Card title="huebeat" lite="sync musique">
@@ -261,8 +271,8 @@ export function Ambiance() {
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             {beat.data?.running
-              ? <Btn sm danger onClick={() => run('beat', () => apiPost('/hue/beat/stop'), beat.refresh)}>stop</Btn>
-              : <Btn sm solid onClick={() => run('beat', () => apiPost('/hue/beat/start', { palette: 'ironman' }), beat.refresh)}>démarrer</Btn>}
+              ? <Btn sm danger disabled={busy === 'beat'} onClick={() => run('beat', () => apiPost('/hue/beat/stop'), beat.refresh)}>{busy === 'beat' ? 'arrêt…' : 'stop'}</Btn>
+              : <Btn sm solid disabled={busy === 'beat'} onClick={() => run('beat', () => apiPost('/hue/beat/start', { palette: 'ironman' }), beat.refresh)}>{busy === 'beat' ? 'lancement…' : 'démarrer'}</Btn>}
           </div>
         </Card>
       </div>
@@ -274,7 +284,7 @@ export function Ambiance() {
               onClick={() => run(`m${m.name}`, () => apiPost('/screens/dpms', { name: m.name, state: m.dpms ? 'off' : 'on' }), screens.refresh)}>
               <span className="bulb" style={m.dpms ? { background: '#82d69c', boxShadow: '0 0 8px #82d69c66' } : { background: 'var(--off)' }} />
               <span className="nm mono" style={{ fontSize: 12 }}>{m.name}</span>
-              <span className="val">{m.width}×{m.height} · {m.dpms ? 'allumé' : 'éteint'}</span>
+              <span className="val">{m.width}×{m.height} · {busy === `m${m.name}` ? '…' : m.dpms ? 'allumé' : 'éteint'}</span>
             </div>
           ))}
           {(screens.data?.monitors ?? []).length === 0 && <span style={{ color: 'var(--faint)', fontSize: 12 }}>Moniteurs indisponibles.</span>}

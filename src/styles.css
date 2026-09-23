@@ -1096,3 +1096,8 @@ input[type=range].bri::-webkit-slider-thumb{-webkit-appearance:none;appearance:n
 .ag-progress.det i::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,#ffffff55,transparent);animation:agBar 1.8s ease-in-out infinite}
 .ag-rot .last{font-size:12px;color:var(--muted);margin-top:6px}
 @media(max-width:560px){.ag-rot-live .timer{margin-left:0;flex-basis:100%}}
+
+/* retour d'action (page ambiance) : puce qui glisse, point qui tourne pendant l'appel, bouton occupe */
+.action-toast{animation:fade .18s ease-out}
+.spin-dot{display:inline-block;width:8px;height:8px;border-radius:50%;border:1.5px solid currentColor;border-top-color:transparent;animation:spin .8s linear infinite}
+.btn:disabled{opacity:.55;cursor:progress}
