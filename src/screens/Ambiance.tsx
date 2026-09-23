@@ -8,7 +8,7 @@ const AMBILIGHT_MODES: Record<string, string> = {
   video: 'FOLLOW_VIDEO', audio: 'FOLLOW_AUDIO', lounge: 'LOUNGE_LIGHT', off: 'OFF',
 }
 
-type TvStatus = { power: string; volume: number; muted: boolean; ambilight_mode: string; denon_volume: number; denon_muted: boolean; denon_reachable: boolean }
+type TvStatus = { power: string; volume: number; muted: boolean; ambilight_mode: string; denon_volume: number | null; denon_muted: boolean; denon_reachable: boolean; denon_power?: string }
 type Monitor = { name: string; width: number; height: number; x: number; dpms: boolean }
 type Screens = { monitors: Monitor[]; tv_ok: boolean; ambilight: { on: boolean; style: string }; ambihue: boolean | null }
 type Light = { name: string; on: boolean; bri: number; reachable: boolean; color?: string }
@@ -187,7 +187,7 @@ export function Ambiance() {
       <div className="scene-grid" style={{ marginBottom: 16 }}>
         <div
           className={`scene-sq ${ironman.data?.active || activeScene === 'ironman' ? 'on' : ''}`}
-          onClick={() => { setActiveScene('ironman'); run('scène iron man', () => apiPost('/ironman/trigger')) }}
+          onClick={() => { setActiveScene('ironman'); run('scène iron man', async () => apiPost('/ironman/trigger', undefined, await withConfirm('ironman_trigger')), ironman.refresh) }}
         >
           <div className="base">
             <div className="sw-row">
@@ -238,21 +238,21 @@ export function Ambiance() {
             {t && <Chip tone="gold">ambilight {t.ambilight_mode.toLowerCase().replace('follow_', '')}</Chip>}
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Btn sm onClick={() => run('tvp', () => apiPost('/tv/power', { state: t?.power === 'On' ? 'off' : 'on' }), tv.refresh)} disabled={busy === 'tvp'}>
+            <Btn sm onClick={() => run('tvp', () => apiPost('/tv/power', { on: t?.power !== 'On' }), tv.refresh)} disabled={busy === 'tvp'}>
               {t?.power === 'On' ? 'éteindre' : 'allumer'}
             </Btn>
-            <Btn sm onClick={() => run('tvm', () => apiPost('/tv/mute'), tv.refresh)}>muet</Btn>
+            <Btn sm onClick={() => run('tvm', () => apiPost('/tv/mute', { muted: !t?.muted }), tv.refresh)}>muet</Btn>
           </div>
         </Card>
         <Card title="denon avr" lite="x1700h">
           <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-            <Chip tone={t?.denon_reachable ? 'ok' : 'crit'}>{t?.denon_reachable ? 'allumé' : 'injoignable'}</Chip>
-            {t && <Chip>vol {t.denon_volume}</Chip>}
+            <Chip tone={!t?.denon_reachable ? 'crit' : t?.denon_power === 'on' ? 'ok' : 'warn'}>{!t?.denon_reachable ? 'injoignable' : t?.denon_power === 'on' ? 'allumé' : 'veille'}</Chip>
+            {t && t.denon_volume != null && <Chip>vol {t.denon_volume}</Chip>}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn sm onClick={() => run('dv-', () => apiPost('/tv/denon/volume', { delta: -2 }), tv.refresh)}>vol −</Btn>
             <Btn sm onClick={() => run('dv+', () => apiPost('/tv/denon/volume', { delta: 2 }), tv.refresh)}>vol +</Btn>
-            <Btn sm onClick={() => run('dm', () => apiPost('/tv/denon/mute'), tv.refresh)}>muet</Btn>
+            <Btn sm onClick={() => run('dm', () => apiPost('/tv/denon/mute', { muted: !t?.denon_muted }), tv.refresh)}>muet</Btn>
           </div>
         </Card>
         <Card title="huebeat" lite="sync musique">
