@@ -3,7 +3,8 @@ import { pollMultiplier } from './settings'
 
 // Polling différencié gaté par visibilité (pattern Backend.qml de HALO) :
 // l'intervalle ne tourne que si l'onglet est visible, refresh immédiat au retour.
-export function usePoll<T>(fetcher: () => Promise<T>, intervalMs: number): {
+// enabled=false coupe le polling (ex. : suivi de VMs seulement pendant un démarrage).
+export function usePoll<T>(fetcher: () => Promise<T>, intervalMs: number, enabled = true): {
   data: T | null
   error: string | null
   refresh: () => void
@@ -23,6 +24,7 @@ export function usePoll<T>(fetcher: () => Promise<T>, intervalMs: number): {
   }, [])
 
   useEffect(() => {
+    if (!enabled) return
     let timer: ReturnType<typeof setInterval> | null = null
     const start = () => {
       tick()
@@ -39,7 +41,7 @@ export function usePoll<T>(fetcher: () => Promise<T>, intervalMs: number): {
       stop()
       document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [intervalMs, tick])
+  }, [intervalMs, tick, enabled])
 
   return { data, error, refresh: tick }
 }

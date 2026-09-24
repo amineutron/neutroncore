@@ -1101,3 +1101,29 @@ input[type=range].bri::-webkit-slider-thumb{-webkit-appearance:none;appearance:n
 .action-toast{animation:fade .18s ease-out}
 .spin-dot{display:inline-block;width:8px;height:8px;border-radius:50%;border:1.5px solid currentColor;border-top-color:transparent;animation:spin .8s linear infinite}
 .btn:disabled{opacity:.55;cursor:progress}
+
+/* ---------- vms : démarrage / arrêt avec double vérification ---------- */
+.vm-row{animation:vmIn .32s cubic-bezier(.22,1,.36,1) both;animation-delay:calc(var(--i,0) * 40ms)}
+.vm-row td{transition:background .25s}
+.vm-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none;margin-right:8px;vertical-align:middle;background:var(--off);transition:background .3s,box-shadow .3s}
+.vm-dot.ok{background:var(--ok);box-shadow:0 0 7px #82d69c66}
+.vm-dot.busy{background:var(--gold);animation:vmBusy 1.1s ease-in-out infinite}
+.vm-row td:first-child{white-space:nowrap}
+.vm-actions{display:inline-flex;align-items:center;gap:8px;justify-content:flex-end;white-space:nowrap}
+.vm-actions .btn{animation:fade .18s ease-out}
+.vm-row.armed td{background:color-mix(in srgb,var(--rose) 9%,transparent)}
+.vm-row.armed td:first-child{box-shadow:inset 3px 0 0 var(--rose);animation:vmArmed 1.2s ease-in-out infinite}
+.vm-countdown{height:2px;margin-top:6px;border-radius:2px;background:var(--line);overflow:hidden}
+.vm-countdown i{display:block;height:100%;background:linear-gradient(90deg,var(--rose),var(--gold));animation:vmCountdown linear forwards;transform-origin:left}
+.vm-progress{margin-top:6px}
+.vm-busy{font-family:var(--mono);font-size:11px;color:var(--gold);animation:vmBusyText 1.4s ease-in-out infinite}
+.vm-row.done td{animation:vmDone 1.6s ease-out}
+.vm-row.error td{animation:vmShake .45s ease-in-out}
+.vm-err{font-size:11px;color:var(--crit);margin-top:4px;animation:fade .2s ease-out}
+@keyframes vmIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+@keyframes vmBusy{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--gold) 60%,transparent);transform:scale(1)}50%{box-shadow:0 0 0 5px transparent;transform:scale(1.25)}}
+@keyframes vmArmed{0%,100%{box-shadow:inset 3px 0 0 var(--rose)}50%{box-shadow:inset 3px 0 0 var(--rose),inset 14px 0 18px -12px color-mix(in srgb,var(--rose) 55%,transparent)}}
+@keyframes vmCountdown{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+@keyframes vmBusyText{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes vmDone{0%{background:color-mix(in srgb,var(--ok) 26%,transparent)}100%{background:transparent}}
+@keyframes vmShake{0%,100%{transform:none}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}

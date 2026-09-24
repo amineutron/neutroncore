@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { apiGet, apiPost, lyraChat } from '../lib/api'
 import { usePoll, fmtRemaining } from '../lib/poll'
+import { fetchVms, type Vm } from '../lib/vms'
 import { getSettings } from '../lib/settings'
 import { onLyraEvent } from '../lib/mascotBus'
 import { Mascot } from './Mascot'
@@ -100,10 +101,11 @@ export function LyraPanel({ hidden, floating, onClose, onUnread }: {
   const [catalog, setCatalog] = useState<CatalogServer[]>([])
   const [currentTool, setCurrentTool] = useState('')
   const [watchedVms, setWatchedVms] = useState<string[]>([])
-  // suivi live des VMs demarrees : poll rapide tant qu'on en surveille
-  const vmWatch = usePoll<{ services: { name: string; display_name: string; status: string; type: string; extra: Record<string, string> }[] }>(
-    () => apiGet('/services'), 6000,
-  )
+  const [vmStates, setVmStates] = useState<Vm[]>([])
+  // suivi des VMs demarrees via Lyra : poll seulement tant qu'une VM suivie
+  // n'est pas encore active (chaque appel coute 3 a 7 s cote daemon)
+  const vmPending = watchedVms.some((vm) => vmStates.find((v) => v.name === `vm_${vm}`)?.status !== 'up')
+  usePoll(() => fetchVms().then((d) => setVmStates(d.vms)), 10000, vmPending)
   // suivi live des taches Lyra longues (clone systeme, backup...) via tracking
   const trackWatch = usePoll<TrackSession[]>(() => apiGet('/tracking/sessions'), 6000)
   const runningTasks = (trackWatch.data ?? []).filter(
@@ -355,9 +357,9 @@ export function LyraPanel({ hidden, floating, onClose, onUnread }: {
             )
           })}
           {watchedVms.map((vm) => {
-            const svc = (vmWatch.data?.services ?? []).find((s) => s.type === 'vm' && (s.name === `vm_${vm}` || s.display_name === `VM: ${vm}`))
+            const svc = vmStates.find((s) => s.name === `vm_${vm}`)
             const st = svc?.extra?.vm_state ?? svc?.status ?? 'inconnu'
-            const up = st === 'running' || st === 'up'
+            const up = svc?.status === 'up'
             return (
               <div key={vm} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontFamily: 'var(--mono)', marginBottom: 3 }}>
                 <span className={`dot ${up ? 'ok' : 'warn'}`} />

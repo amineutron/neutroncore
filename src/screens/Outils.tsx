@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { LOG_TARGET } from '../lib/nav'
 import { apiGet } from '../lib/api'
 import { usePoll, fmtBytes } from '../lib/poll'
+import { useVms } from '../lib/vms'
+import { VmRow } from '../components/VmRow'
 import { Bar, Card, Chip, PageTitle } from '../components/ui'
 
 type Resources = {
@@ -75,7 +77,9 @@ export function Outils() {
   // changement d'unit : refetch immédiat ici
   useEffect(() => { journal.refresh() }, [logUnit]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const vms = (services.data?.services ?? []).filter((s) => s.type === 'vm')
+  // VMs : chargées à l'ouverture de l'écran (3 à 7 s via Lyra), pas de polling
+  const vmList = useVms()
+  const vms = vmList.data?.vms ?? []
   const r = res.data
 
   const gauge = (label: string, value: string, pct: number, tone?: 'ok' | 'warn' | 'crit') => (
@@ -95,7 +99,6 @@ export function Outils() {
       <Card title="services" lite="les indisponibles en premier" style={{ marginBottom: 14 }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {[...(services.data?.services ?? [])]
-            .filter((s) => s.type !== 'vm')
             .sort((a, b) => (a.status === 'up' ? 1 : 0) - (b.status === 'up' ? 1 : 0))
             .map((s) => (
               <span key={s.name} className="svc" style={s.status !== 'up' ? { borderColor: 'color-mix(in srgb, var(--crit) 45%, var(--line))' } : undefined}>
@@ -118,21 +121,27 @@ export function Outils() {
             )}
           </div>
         </Card>
-        <Card title="machines virtuelles" lite="kvm">
+        <Card title="machines virtuelles" lite={vmList.loading ? 'mise à jour…' : 'kvm'}>
           <table>
             <tbody>
-              {vms.map((vm) => (
-                <tr key={vm.name}>
-                  <td className="mono">{vm.display_name}</td>
-                  <td style={{ textAlign: 'right' }}>
-                    <Chip tone={vm.status === 'up' ? 'ok' : undefined}>{vm.extra?.vm_state ?? vm.status}</Chip>
-                  </td>
-                </tr>
-              ))}
-              {vms.length === 0 && <tr><td style={{ color: 'var(--faint)', fontSize: 12 }}>Aucune VM détectée.</td></tr>}
+              {vms.map((vm, i) => <VmRow key={vm.name} vm={vm} i={i} onRefresh={vmList.refresh} />)}
+              {vms.length === 0 && (
+                <tr><td style={{ color: 'var(--faint)', fontSize: 12 }}>
+                  {vmList.loading && !vmList.data ? 'Interrogation de Lyra…' : 'Aucune VM détectée.'}
+                </td></tr>
+              )}
             </tbody>
           </table>
-          <p style={{ fontSize: 11.5, color: 'var(--faint)', marginTop: 8 }}>Démarrage/arrêt : via Lyra (panneau de gauche).</p>
+          {(vmList.data?.stale || vmList.error) && (
+            <p style={{ fontSize: 11.5, color: 'var(--crit)', marginTop: 8 }}>
+              {vmList.error ? 'API injoignable' : 'Lyra injoignable'}
+              {vmList.data?.fetched_at ? ` — état de ${vmList.data.fetched_at.slice(11, 16)}` : ''}.
+            </p>
+          )}
+          <p style={{ fontSize: 11.5, color: 'var(--faint)', marginTop: 8, display: 'flex', justifyContent: 'space-between' }}>
+            <span>Démarrage/arrêt : confirmation en deux clics.</span>
+            {!vmList.loading && <span className="x" style={{ cursor: 'pointer', color: 'var(--gold)' }} onClick={vmList.refresh}>actualiser</span>}
+          </p>
         </Card>
         <Card title="backups" lite="clic : journaux">
           <table>
