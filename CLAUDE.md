@@ -21,6 +21,13 @@ sous-titres, taches de fond (tracking + Lyra), projets & mises a jour, ambiance
 - **Chat Lyra** : POST /lyra/chat en SSE (pont vers le socket UNIX du daemon
   `~/.lyra/lyra.sock`, protocole JSON-lines) ; reponses aux confirmations via
   POST /lyra/answer.
+- **TV / Denon / Hue** (roadmap #73, 2026-09-24) : les routers `tv` et `hue`
+  ne parlent plus aux appareils. Chaque route nomme un outil MCP (`tv.*`,
+  `denon.*`, `hue.*`) et l'envoie au daemon par le message `{"type": "tool"}`
+  (`lib/lyra_tools.py`), sans passer par le modele : ~10-40 ms a chaud.
+  Seules les lectures sans equivalent MCP (couleurs, apercus de scene,
+  positions Entertainment) lisent encore le pont Hue (`lib/hue_client.py`).
+  neutroncore regroupe donc les MCP, il ne les reimplemente pas.
 
 ## Commandes
 
