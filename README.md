@@ -32,7 +32,7 @@ Captures reelles de l'application servie par `lyra-control-api`, prises par [`do
 | films & series | mediatheque, calendrier des sorties, espace disque, demandes |
 | pipeline media | telechargement, sous-titres, conversion : avancement en direct |
 | ambiance | lumieres Hue, TV, ampli |
-| outils & vms | services, ressources (CPU/RAM/VRAM/disques), VMs KVM, backups Borg/Timeshift, journaux |
+| outils & vms | services, ressources (CPU/RAM/VRAM/disques), VMs KVM (démarrage / arrêt confirmés en deux clics), backups Borg/Timeshift, journaux |
 | tests | batterie de tests Lyra |
 | parametres | 7 themes, densite, notifications, mascottes, mode tele |
 

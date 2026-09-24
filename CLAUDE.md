@@ -28,6 +28,11 @@ sous-titres, taches de fond (tracking + Lyra), projets & mises a jour, ambiance
   Seules les lectures sans equivalent MCP (couleurs, apercus de scene,
   positions Entertainment) lisent encore le pont Hue (`lib/hue_client.py`).
   neutroncore regroupe donc les MCP, il ne les reimplemente pas.
+- **VMs** (2026-09-24) : `GET /services/vms` (outil `fedora.vm_status`, a la
+  demande, cache 10 s, dernier etat connu si le demon tombe) et
+  `POST /services/vms/{vm}/{start|stop|force_stop}` (jeton `vm_<action>_<vm>`).
+  Jamais de `virsh` direct depuis l'API : sans `LIBVIRT_DEFAULT_URI`, il lit
+  `qemu:///session`, vide.
 
 ## Commandes
 
@@ -43,6 +48,10 @@ restart requis si le backend change) :
 ```bash
 systemctl --user restart lyra-control-api.service
 ```
+
+Un restart ne tue plus les kitty ouvertes par le lanceur (elles tournent dans
+leur propre scope via `systemd-run --scope`) ; l'arret prend 5 s maximum
+(`timeout_graceful_shutdown`).
 
 ## Conventions
 
