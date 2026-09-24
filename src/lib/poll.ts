@@ -53,16 +53,24 @@ export function fmtBytes(n: number): string {
   return `${(n / 1024 ** 4).toFixed(2)} To`
 }
 
+// durée lisible : "42 min", "3 h 05", "29 j" (42312 min ne se lisait pas)
+function fmtDur(sec: number): string {
+  const min = Math.max(1, Math.round(sec / 60))
+  if (min < 60) return `${min} min`
+  if (min < 1440) return `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')}`
+  return `${Math.round(min / 1440)} j`
+}
+
 // Temps restant estimé, décroissant : recalculé à chaque rendu à partir de
 // la progression réelle (elapsed × restant/fait). Null tant que trop tôt.
 export function fmtRemaining(createdAt: string | undefined, pct: number): string | null {
   if (!createdAt) return null
   const elapsed = (Date.now() - new Date(createdAt).getTime()) / 1000
   if (!isFinite(elapsed) || elapsed < 10) return null
-  if (pct <= 3) return `${Math.max(1, Math.round(elapsed / 60))} min écoulées`
+  if (pct <= 3) return `${fmtDur(elapsed)} écoulées`
   const remaining = (elapsed * (100 - pct)) / pct
   if (remaining < 60) return '< 1 min restante'
-  return `~${Math.round(remaining / 60)} min restantes`
+  return `~${fmtDur(remaining)} restantes`
 }
 
 export function fmtAgo(ts: number | null): string {

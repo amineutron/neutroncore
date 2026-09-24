@@ -66,15 +66,16 @@ export function glyph(name: string): string {
 }
 
 export function tone(s: LiveSession): 'wait' | 'busy' | 'idle' {
-  if (s.waiting) return 'wait'
+  if (s.waiting && s.state !== 'parked') return 'wait'
   return s.status === 'running' || s.status === 'busy' ? 'busy' : 'idle'
 }
 
 // Etat de la mascotte d'une session : l'activite reelle d'abord, puis l'etat
 // choisi dans l'app (veille = dort, fermeture = execute, prete = succes).
+// Exception : une session en veille qui attend reste endormie (pas d'alerte).
 export type GlyphState = 'idle' | 'sleep' | 'busy' | 'work' | 'ok' | 'err'
 export function glyphState(s: Pick<LiveSession, 'waiting' | 'status' | 'state' | 'close_ready'>): GlyphState {
-  if (s.waiting) return 'err'
+  if (s.waiting) return s.state === 'parked' ? 'sleep' : 'err'
   if (s.status === 'running' || s.status === 'busy') return s.state === 'closing' ? 'work' : 'busy'
   if (s.state === 'parked') return 'sleep'
   if (s.state === 'closing') return s.close_ready ? 'ok' : 'work'
@@ -83,5 +84,6 @@ export function glyphState(s: Pick<LiveSession, 'waiting' | 'status' | 'state' |
 
 export function stateLabel(s: Pick<LiveSession, 'waiting' | 'status' | 'state' | 'close_ready'>): string {
   const g = glyphState(s)
+  if (s.waiting && s.state === 'parked') return 'en veille · attend ta réponse'
   return { err: 'attend ta réponse', busy: 'travaille', work: 'clôture en cours', ok: 'prête à fermer', sleep: 'en veille', idle: 'en pause' }[g]
 }

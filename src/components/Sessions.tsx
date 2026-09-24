@@ -63,6 +63,8 @@ export function Sessions({ onCounts }: { onCounts?: (byRepo: Record<string, numb
             const sid = String(ev.sessionId ?? '')
             const cwd = String(ev.cwd ?? '')
             const repo = cwd.split('/').filter(Boolean).pop() ?? 'session'
+            // session en veille : la liste se met à jour, mais ni toast, ni notif, ni halo
+            if (ev.parked) { refreshRef.current(); return }
             if (ev.type === 'notification') {
               setFlash((f) => ({ ...f, [sid]: { kind: 'wait', at: Date.now() } }))
               const text = String(ev.message ?? 'claude attend ta réponse')
@@ -190,7 +192,7 @@ export function Sessions({ onCounts }: { onCounts?: (byRepo: Record<string, numb
     const t = tone(s)
     const g = glyphState(s)
     const cls = ['cs', `tone-${t}`, s.state, s.close_ready ? 'ready' : '', isOpen ? 'open' : '', isOpen && maxi ? 'max' : '',
-      s.waiting && ['pulse', 'shake', 'ring'].includes(anim) ? `anim-${anim}` : '',
+      s.waiting && s.state !== 'parked' && ['pulse', 'shake', 'ring'].includes(anim) ? `anim-${anim}` : '',
       fl?.kind === 'done' ? 'anim-done' : '', fl?.kind === 'arrive' ? 'anim-arrive' : ''].filter(Boolean).join(' ')
     const color = s.meta.color
     return (

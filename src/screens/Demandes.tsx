@@ -4,10 +4,11 @@ import { usePoll } from '../lib/poll'
 import { getSettings } from '../lib/settings'
 import { takePrefill } from '../lib/prefill'
 import { Loader, Btn, Card, Chip, PageTitle } from '../components/ui'
+import { Incoming } from '../components/Incoming'
+import { DeclinedAuto } from '../components/DeclinedAuto'
 
 type Req = { id: number; title: string; status: string; media_status: string; kind: string; created_at: string }
 type SearchResult = { tmdb_id: number; kind: string; title: string; year: string; poster: string; already_available: boolean }
-type Declined = { title: string; reason: string; declined_at: string }
 type Options = { movie_profiles: { id: number; name: string }[]; tv_profiles: { id: number; name: string }[]; languages: string[] }
 type Season = { number: number; episodes: number; name: string }
 type WatchItem = {
@@ -17,7 +18,6 @@ type WatchItem = {
 
 export function Demandes() {
   const pending = usePoll<{ requests: Req[]; total: number }>(() => apiGet('/requests?status=pending'), 30000)
-  const declined = usePoll<{ declined: Declined[]; stalled_watching: number }>(() => apiGet('/requests/declined-auto'), 300000)
   const [q, setQ] = useState(takePrefill)
   const [kind, setKind] = useState<'all' | 'movie' | 'tv'>('all')
   const [results, setResults] = useState<SearchResult[]>([])
@@ -220,6 +220,8 @@ export function Demandes() {
         </Card>
       )}
 
+      <Incoming />
+
       <div className="grid g2">
         <Card title="en attente d'approbation">
           {pending.data === null && <Loader label="chargement des demandes…" />}
@@ -241,23 +243,7 @@ export function Demandes() {
             </tbody>
           </table>
         </Card>
-        <Card title="refusées automatiquement" lite="par stalled_cleaner">
-          <table>
-            <tbody>
-              {(declined.data?.declined ?? []).slice(0, 8).map((x, i) => (
-                <tr key={i}>
-                  <td><b>{x.title}</b><br /><span style={{ color: 'var(--muted)', fontSize: 11 }}>{x.reason}</span></td>
-                  <td style={{ textAlign: 'right' }}><Chip tone="warn">introuvable</Chip></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {declined.data && declined.data.stalled_watching > 0 && (
-            <p style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 10 }}>
-              {declined.data.stalled_watching} torrent(s) à 0 seed sous surveillance.
-            </p>
-          )}
-        </Card>
+        <DeclinedAuto />
       </div>
     </>
   )

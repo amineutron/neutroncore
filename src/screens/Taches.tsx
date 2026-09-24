@@ -1,28 +1,10 @@
 import { useState } from 'react'
 import { apiGet, apiDelete, withConfirm } from '../lib/api'
-import { usePoll, fmtRemaining } from '../lib/poll'
-import { Bar, Btn, Card, Chip, Eyebrow, Loader, PageTitle } from '../components/ui'
+import { usePoll } from '../lib/poll'
+import { Btn, Card, Chip, Eyebrow, Loader, PageTitle } from '../components/ui'
+import { SessGroup, SessRow, fmtStamp, groupEntries, type Session } from '../components/TaskRows'
 
-type Item = { name: string; status: string }
-type Log = { timestamp: string; message: string }
-type Session = {
-  id: string; name: string; template: string; status: string
-  processed: number; total: number; unit: string; items: Item[]; logs: Log[]
-  extra: Record<string, string>; created_at?: string
-}
 type Timer = { unit: string; next: number | null; last: number | null }
-
-const TPL_TONE: Record<string, 'gold' | 'rose' | 'warn' | undefined> = {
-  movie: 'gold', series_episode: 'gold', series_season: 'warn', lyra_task: 'rose',
-}
-// horodatage complet des logs : "24/08 20:24:17" (l'heure seule ne permet
-// pas de comparer des taches qui courent sur plusieurs jours)
-function fmtStamp(ts: string, seconds = true): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}:\d{2})(?::(\d{2}))?/.exec(ts)
-  if (!m) return ts.slice(0, 19)
-  return `${m[3]}/${m[2]} ${m[4]}${seconds && m[5] ? ':' + m[5] : ''}`
-}
-const ICON: Record<string, string> = { done: '[ok]', running: '[>>]', error: '[!]', pending: '[ ]' }
 
 export function Taches() {
   const sessions = usePoll<Session[]>(() => apiGet('/tracking/sessions'), 5000)
@@ -92,50 +74,13 @@ export function Taches() {
           </div>
           {feedback && <div style={{ marginBottom: 10 }}><Chip tone={feedback.startsWith('échec') ? 'crit' : 'ok'}>{feedback}</Chip></div>}
           {sessions.data === null && <Loader label="chargement des sessions…" />}
-          {list.slice(0, 10).map((s) => {
-            const pct = s.total > 0 ? (s.processed / s.total) * 100 : 0
-            const remaining = s.status === 'running' ? fmtRemaining(s.created_at, pct) : null
-            const opened = open.includes(s.id)
-            return (
-              <div className="sess" key={s.id}>
-                <div className="head" onClick={() => toggle(s.id)} title="cliquer pour le détail">
-                  <Chip tone={TPL_TONE[s.template]}>{s.template}</Chip>
-                  <span className="nm">{s.name}</span>
-                  {remaining && <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--warn)' }}>{remaining}</span>}
-                  <Chip tone={s.status === 'error' ? 'crit' : s.status === 'done' ? 'ok' : undefined}>{s.status}</Chip>
-                  <span onClick={(e) => e.stopPropagation()}>
-                    <Btn sm danger disabled={busy} onClick={() => removeOne(s)}>suppr</Btn>
-                  </span>
-                </div>
-                <Bar pct={s.status === 'done' ? 100 : pct} tone={s.status === 'done' ? 'ok' : s.status === 'error' ? 'crit' : undefined} />
-                {opened && (
-                  <div className="sess-detail">
-                    <div>
-                      <b>{Math.round(pct)}%</b> · {s.processed}/{s.total}{s.unit || ''}
-                      {s.created_at && <> · démarrée {fmtStamp(s.created_at, false)}</>}
-                    </div>
-                    {Object.entries(s.extra ?? {}).filter(([, v]) => v).map(([k, v]) => (
-                      <div key={k}><span style={{ color: 'var(--faint)' }}>{k}</span> : {String(v).slice(0, 80)}</div>
-                    ))}
-                    {(s.logs ?? []).slice(-6).map((l, i) => (
-                      <div className="logline" key={i}><b>{fmtStamp(l.timestamp)}</b> {l.message.slice(0, 110)}</div>
-                    ))}
-                    {(s.logs ?? []).length === 0 && <div style={{ color: 'var(--faint)' }}>pas encore de logs</div>}
-                  </div>
-                )}
-                {!opened && s.items.length > 0 && (
-                  <div className="items">
-                    {s.items.map((it) => (
-                      <div key={it.name} className={`item ${it.status === 'done' ? 'done' : it.status === 'running' ? 'run' : it.status === 'error' ? 'err' : ''}`}>
-                        <span className="ic">{ICON[it.status] ?? '[ ]'}</span>
-                        {it.name}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )
-          })}
+          {groupEntries(list).slice(0, 10).map((e) => e.kind === 'group' ? (
+            <SessGroup key={e.key} title={e.title} members={e.members} opened={open.includes(e.key)} openIds={open}
+              busy={busy} onToggle={() => toggle(e.key)} onToggleOne={toggle} onRemove={removeOne} />
+          ) : (
+            <SessRow key={e.s.id} s={e.s} opened={open.includes(e.s.id)} busy={busy}
+              onToggle={() => toggle(e.s.id)} onRemove={() => removeOne(e.s)} />
+          ))}
           {sessions.data !== null && list.length === 0 && <span style={{ color: 'var(--faint)', fontSize: 12.5 }}>Aucune session de tracking.</span>}
         </div>
         <div>

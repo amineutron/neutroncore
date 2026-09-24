@@ -43,6 +43,9 @@ export function SessionChat({ session, onSent }: { session: LiveSession; onSent:
   const setText = (v: string) => { setTextState(v); saveDraft(session.sessionId, v) }
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const [loadErr, setLoadErr] = useState('')
+  // session neuve : Claude Code n'a pas encore écrit de transcript
+  const [empty, setEmpty] = useState(false)
   const scroller = useRef<HTMLDivElement>(null)
   const offsetRef = useRef(0)
   offsetRef.current = offset
@@ -53,12 +56,14 @@ export function SessionChat({ session, onSent }: { session: LiveSession; onSent:
     const load = async (first: boolean) => {
       try {
         const q = first ? 'limit=80' : `offset=${offsetRef.current}`
-        const r = await apiGet<{ messages: ChatMsg[]; offset: number; truncated: boolean }>(`/launcher/sessions/${session.sessionId}/messages?${q}`)
+        const r = await apiGet<{ messages: ChatMsg[]; offset: number; truncated: boolean; empty?: boolean }>(`/launcher/sessions/${session.sessionId}/messages?${q}`)
         if (stop) return
+        setLoadErr('')
+        setEmpty(!!r.empty)
         setOffset(r.offset)
         if (first) { setMsgs(r.messages); setTruncated(r.truncated) }
         else if (r.messages.length) setMsgs((m) => mergeTail(m, r.messages))
-      } catch (e) { if (!stop) setErr((e as Error).message) }
+      } catch (e) { if (!stop) setLoadErr((e as Error).message) }
     }
     load(true)
     timer = setInterval(() => { if (!document.hidden) load(false) }, 3000)
@@ -95,7 +100,7 @@ export function SessionChat({ session, onSent }: { session: LiveSession; onSent:
             ) : <div className="cs-text">{m.text}</div>}
           </div>
         ))}
-        {msgs.length === 0 && !err && <div className="cs-more">chargement…</div>}
+        {msgs.length === 0 && !loadErr && <div className="cs-more">{empty ? 'session neuve : aucun message pour l\'instant' : 'chargement…'}</div>}
         {session.waiting && (
           <div className="cs-wait-banner">
             <span className="cs-dot wait" /> en attente : {session.wait_message || 'réponse ou permission demandée'}
@@ -123,7 +128,7 @@ export function SessionChat({ session, onSent }: { session: LiveSession; onSent:
         />
         <Btn sm solid disabled={ro || busy || !text.trim()}>{busy ? '…' : 'envoyer'}</Btn>
       </form>
-      {err && <div className="cs-err">{err}</div>}
+      {(err || loadErr) && <div className="cs-err">{err || loadErr}</div>}
     </div>
   )
 }
