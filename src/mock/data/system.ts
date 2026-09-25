@@ -1,6 +1,6 @@
 // Système de démo : services, VM, ressources, sauvegardes, timers, tests, agenda.
 import type { MockHandler } from '../router'
-import { dayAt, isoAgo, localStamp, unixAgo, unixIn } from './time'
+import { dayAt, isoAgo, localStamp, systemdAgo, unixAgo, unixIn } from './time'
 
 const GB = 1024 ** 3
 const svc = (name: string, display: string, status = 'up', type = 'http') => ({ name, display_name: display, status, type, url: null, extra: {} })
@@ -56,9 +56,9 @@ export const system: [string, string, MockHandler][] = [
     { level: 'warn', title: 'Ollama arrêté', detail: 'Le service LLM local ne répond pas (données de démo).', action: 'outils' },
   ] })],
   ['GET', '/system/backups', () => ({
-    borg: { state: 'ok', last_run: isoAgo(3 * 1440), result: 'success', exit_status: '0' },
-    rotation: { state: 'ok', last_run: isoAgo(9 * 1440), result: 'success', exit_status: '0', age_days: 9 },
-    timeshift: { state: 'ok', last_run: isoAgo(10 * 60), result: 'success', exit_status: '0' },
+    borg: { state: 'ok', last_run: systemdAgo(3 * 1440), result: 'success', exit_status: '0' },
+    rotation: { state: 'ok', last_run: systemdAgo(9 * 1440), result: 'success', exit_status: '0', age_days: 9 },
+    timeshift: { state: 'ok', last_run: systemdAgo(10 * 60), result: 'success', exit_status: '0' },
   })],
   ['GET', '/system/timers', () => ({ timers: [
     { unit: 'timeshift-backup.timer', activates: 'timeshift-backup.service', next: unixIn(14 * 60), last: unixAgo(10 * 60) },

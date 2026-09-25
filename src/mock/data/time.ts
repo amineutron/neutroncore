@@ -17,3 +17,10 @@ export const dayAt = (offsetDays: number, hh: number, mm = 0): Date => {
   d.setHours(hh, mm, 0, 0)
   return d
 }
+// format systemd des sauvegardes : "Sun 2026-09-20 02:10:56 CEST" (l'écran affiche « date heure »)
+export function systemdAgo(minutes: number): string {
+  const d = new Date(Date.now() - minutes * MIN)
+  const day = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()]
+  const [date, time] = localStamp(d).split('T')
+  return `${day} ${date} ${time}:${String(d.getSeconds()).padStart(2, '0')} CEST`
+}

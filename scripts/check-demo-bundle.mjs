@@ -1,5 +1,6 @@
 // Garde-fou avant publication de la démo : le bundle ne doit contenir aucune
-// donnée de la machine de build (IP locale, Tailscale, chemin personnel, e-mail).
+// donnée de la machine de build (IP locale, Tailscale, chemin personnel, e-mail),
+// ni chemin /app/ en dur (la démo vit sous /neutroncore/).
 // Un .env.local oublié suffirait à en injecter via import.meta.env.
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
@@ -11,6 +12,8 @@ const RULES = [
   [/\/home\/(?!user\/|runner\/)[a-z][a-z0-9_-]*\//g, 'chemin personnel'],
   [/[\w.+-]+@(gmail|hotmail|outlook|yahoo)\.[a-z]+/gi, 'adresse e-mail'],
   [/[\w-]+\.ts\.net/g, 'nom Tailscale'],
+  // la démo est servie sous /neutroncore/ : un chemin /app/ en dur y serait un 404 (polices, icônes)
+  [/["'(]\/app\/[\w./-]+/g, 'chemin /app/ en dur (mauvaise base)'],
 ]
 
 const files = []
@@ -32,7 +35,7 @@ for (const f of files) {
   }
 }
 if (found) {
-  console.error(`\n${found} donnée(s) de la machine de build dans la démo : publication refusée.`)
+  console.error(`\n${found} problème(s) dans le bundle de démo : publication refusée.`)
   process.exit(1)
 }
 console.log(`démo propre : ${files.length} fichiers vérifiés`)

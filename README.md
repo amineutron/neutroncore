@@ -22,9 +22,9 @@
 
 ## Demo
 
-![Captures reelles de l'application : accueil, projets suivis, taches de fond, ambiance, lanceur](docs/assets/demo.gif)
+![Parcours de la demo : accueil, projets suivis, taches de fond, ambiance, lanceur](docs/assets/demo.gif)
 
-Captures reelles de l'application servie par `lyra-control-api`, prises par [`docs/demo/record.py`](docs/demo/record.py) (Chrome sans fenetre via Playwright, assemblage Pillow). La cle API est lue dans `~/.lyra-control.env` et n'apparait jamais a l'ecran.
+Toutes les images de ce README viennent de la [demo en ligne](https://amineutron.github.io/neutroncore/) : meme code, donnees fictives (aucune donnee de la machine n'est publiee). Elles sont regenerees par [`docs/demo/capture_demo.py`](docs/demo/capture_demo.py) (Chrome sans fenetre via Playwright, assemblage Pillow) apres `npm run build:demo`. [`docs/demo/record.py`](docs/demo/record.py) capture l'application reelle servie par `lyra-control-api`, a relire avant toute publication.
 
 ## Mode demo (sans backend)
 

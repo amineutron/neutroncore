@@ -75,4 +75,11 @@ describe('cohérence avec les types de l interface', () => {
       expect(['auto', 'manual']).toContain(o.source)
     }
   })
+  // Régression : une date ISO laissait vides les pastilles Borg et Timeshift (l'écran lit « jour date heure »).
+  it('les sauvegardes utilisent le format de date systemd', () => {
+    const r = mockRequest(ROUTES, 'GET', '/system/backups') as Record<string, { last_run: string | null }>
+    for (const unit of ['borg', 'rotation', 'timeshift']) {
+      expect(r[unit].last_run).toMatch(/^[A-Z][a-z]{2} \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} /)
+    }
+  })
 })

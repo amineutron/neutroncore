@@ -1,10 +1,10 @@
 
-@font-face{font-family:'JBM';font-weight:800;src:url(/app/fonts/jbm-ExtraBold.woff2) format('woff2')}
-@font-face{font-family:'JBM';font-weight:600;src:url(/app/fonts/jbm-SemiBold.woff2) format('woff2')}
-@font-face{font-family:'JBM';font-weight:400;src:url(/app/fonts/jbm-Regular.woff2) format('woff2')}
-@font-face{font-family:'JBM';font-weight:300;src:url(/app/fonts/jbm-Light.woff2) format('woff2')}
-@font-face{font-family:'Cant';font-weight:400;src:url(/app/fonts/cantarell-Regular.woff2) format('woff2')}
-@font-face{font-family:'Cant';font-weight:700;src:url(/app/fonts/cantarell-Bold.woff2) format('woff2')}
+@font-face{font-family:'JBM';font-weight:800;src:url(/fonts/jbm-ExtraBold.woff2) format('woff2')}
+@font-face{font-family:'JBM';font-weight:600;src:url(/fonts/jbm-SemiBold.woff2) format('woff2')}
+@font-face{font-family:'JBM';font-weight:400;src:url(/fonts/jbm-Regular.woff2) format('woff2')}
+@font-face{font-family:'JBM';font-weight:300;src:url(/fonts/jbm-Light.woff2) format('woff2')}
+@font-face{font-family:'Cant';font-weight:400;src:url(/fonts/cantarell-Regular.woff2) format('woff2')}
+@font-face{font-family:'Cant';font-weight:700;src:url(/fonts/cantarell-Bold.woff2) format('woff2')}
 
 :root{
   --ink:#0e0a10; --surface:#171019; --surface2:#1f1622; --raise:#251a29;
@@ -1153,3 +1153,4 @@ input[type=range].bri::-webkit-slider-thumb{-webkit-appearance:none;appearance:n
 .demo-banner{position:sticky;top:0;z-index:300;padding:6px 16px;text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:.02em;color:var(--bg);background:linear-gradient(100deg,var(--gold),var(--rose))}
 .demo-banner a{color:inherit;text-decoration:underline;font-weight:600}
 .app.is-demo{min-height:calc(100vh - 28px)}
+@media (max-width:560px){.demo-banner .demo-long{display:none}.app.is-demo{min-height:calc(100vh - 26px)}}

@@ -255,7 +255,7 @@ export default function App() {
     )}
     {DEMO && (
       <div className="demo-banner" role="status">
-        démo · données fictives, aucune action n'est exécutée · le backend lyra-control-api n'est pas encore publié ·{' '}
+        démo · données fictives<span className="demo-long">, aucune action n'est exécutée · le backend lyra-control-api n'est pas encore publié</span> ·{' '}
         <a href="https://github.com/amineutron/neutroncore" target="_blank" rel="noreferrer">code source</a>
       </div>
     )}
