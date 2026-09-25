@@ -1148,3 +1148,8 @@ input[type=range].bri::-webkit-slider-thumb{-webkit-appearance:none;appearance:n
 @keyframes vmBusyText{0%,100%{opacity:.55}50%{opacity:1}}
 @keyframes vmDone{0%{background:color-mix(in srgb,var(--ok) 26%,transparent)}100%{background:transparent}}
 @keyframes vmShake{0%,100%{transform:none}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}
+
+/* démo GitHub Pages : bandeau fixe, l'app garde toute la hauteur restante */
+.demo-banner{position:sticky;top:0;z-index:300;padding:6px 16px;text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:.02em;color:var(--bg);background:linear-gradient(100deg,var(--gold),var(--rose))}
+.demo-banner a{color:inherit;text-decoration:underline;font-weight:600}
+.app.is-demo{min-height:calc(100vh - 28px)}

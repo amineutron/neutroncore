@@ -85,7 +85,7 @@ function HelpTree({ catalog }: { catalog: CatalogServer[] }) {
 function notifyDesktop(text: string) {
   if (!getSettings().notifications || !('Notification' in window)) return
   if (Notification.permission === 'granted') {
-    new Notification('lyra', { body: text.slice(0, 140), icon: '/app/icon-512.png' })
+    new Notification('lyra', { body: text.slice(0, 140), icon: `${import.meta.env.BASE_URL}icon-512.png` })
   } else if (Notification.permission === 'default') {
     Notification.requestPermission()
   }

@@ -3,6 +3,22 @@
 
 const KEY_STORAGE = 'neutroncore_api_key'
 
+// Mode démo (build VITE_MOCK_API=1, publié sur GitHub Pages) : aucune requête
+// réseau, données fictives de src/mock. Constante de compilation : dans le build
+// normal, ces branches et le code de démo sont retirés du bundle.
+export const DEMO = import.meta.env.VITE_MOCK_API === '1'
+
+async function demoRequest<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const [{ mockRequest, MockNotFound }, { ROUTES }] = await Promise.all([import('../mock/router'), import('../mock/routes')])
+  await new Promise((r) => setTimeout(r, 150)) // latence d'un vrai appel
+  try {
+    return mockRequest(ROUTES, method, path, body) as T
+  } catch (e) {
+    if (e instanceof MockNotFound) throw new ApiError(404, `mode démo : ${e.message} sans données`)
+    throw e
+  }
+}
+
 export function getApiKey(): string {
   return localStorage.getItem(KEY_STORAGE) ?? ''
 }
@@ -39,20 +55,24 @@ async function handle<T>(r: Response): Promise<T> {
 }
 
 export async function apiGet<T = unknown>(path: string): Promise<T> {
+  if (DEMO) return demoRequest<T>('GET', path)
   return handle<T>(await fetch(path, { headers: headers() }))
 }
 
 export async function apiPost<T = unknown>(path: string, body?: unknown, extra?: Record<string, string>): Promise<T> {
+  if (DEMO) return demoRequest<T>('POST', path, body)
   return handle<T>(
     await fetch(path, { method: 'POST', headers: headers(extra), body: body === undefined ? undefined : JSON.stringify(body) }),
   )
 }
 
 export async function apiPut<T = unknown>(path: string, body: unknown): Promise<T> {
+  if (DEMO) return demoRequest<T>('PUT', path, body)
   return handle<T>(await fetch(path, { method: 'PUT', headers: headers(), body: JSON.stringify(body) }))
 }
 
 export async function apiDelete<T = unknown>(path: string, extra?: Record<string, string>): Promise<T> {
+  if (DEMO) return demoRequest<T>('DELETE', path)
   return handle<T>(await fetch(path, { method: 'DELETE', headers: headers(extra) }))
 }
 
@@ -69,6 +89,7 @@ export async function lyraChat(
   signal?: AbortSignal,
   mode: 'default' | 'performance' = 'default',
 ): Promise<void> {
+  if (DEMO) return (await import('../mock/streams')).demoLyraChat(text, onEvent, signal)
   const r = await fetch('/lyra/chat', {
     method: 'POST',
     headers: headers(),
@@ -104,6 +125,7 @@ export async function sessionEvents(
   onEvent: (ev: Record<string, unknown>) => void,
   signal?: AbortSignal,
 ): Promise<void> {
+  if (DEMO) return (await import('../mock/streams')).demoSessionEvents(signal)
   const r = await fetch('/launcher/sessions/events', { headers: headers(), signal })
   if (!r.ok || !r.body) throw new ApiError(r.status, 'flux sessions indisponible')
   const reader = r.body.getReader()

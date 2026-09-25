@@ -1,0 +1,47 @@
+# Démo publique sur GitHub Pages (https://amineutron.github.io/neutroncore/) :
+# build VITE_MOCK_API=1, données fictives de src/mock, aucun appel réseau.
+# Le backend réel (lyra-control-api) n'est pas publié.
+#
+# Avant de publier : tests, puis scripts/check-demo-bundle.mjs refuse tout
+# bundle contenant une donnée de la machine de build (IP locale, Tailscale,
+# chemin personnel, e-mail) injectée par un .env oublié.
+name: pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:demo
+      - name: Aucune donnée personnelle dans la démo
+        run: npm run check:demo
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist-demo
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

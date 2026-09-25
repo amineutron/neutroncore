@@ -1,5 +1,5 @@
 import { createContext, useEffect, useRef, useState } from 'react'
-import { getApiKey, setApiKey, apiGet } from './lib/api'
+import { getApiKey, setApiKey, apiGet, DEMO } from './lib/api'
 import { applySettings, getSettings } from './lib/settings'
 import { LyraPanel } from './components/LyraPanel'
 import { BootSplash } from './components/BootSplash'
@@ -59,7 +59,7 @@ function pickIntro(): Intro {
 // Hash du bundle charge — permet de reperer d'un coup d'oeil un appareil
 // reste sur une vieille version (PWA/onglet jamais recharge)
 export const BUILD_ID =
-  (document.querySelector('script[src*="/app/assets/"]') as HTMLScriptElement | null)
+  (document.querySelector(`script[src*="${import.meta.env.BASE_URL}assets/"]`) as HTMLScriptElement | null)
     ?.src.match(/index-([\w-]+)\.js/)?.[1] ?? 'dev'
 
 const SCREENS: Record<ScreenId, () => React.JSX.Element> = {
@@ -82,9 +82,9 @@ function Setup({ onDone }: { onDone: () => void }) {
   return (
     <div style={{ maxWidth: 460, margin: '18vh auto', padding: 24 }}>
       <div className="brand" style={{ border: 'none', paddingLeft: 0 }}>
-        <img src="/app/logo.svg" width={40} height={40} alt="" />
+        <img src={`${import.meta.env.BASE_URL}logo.svg`} width={40} height={40} alt="" />
         <div>
-          <div className="wm">neutroncore<i>.app</i></div>
+          <div className="wm">neutroncore</div>
           <div className="sub">amineutron</div>
         </div>
       </div>
@@ -110,7 +110,8 @@ function Setup({ onDone }: { onDone: () => void }) {
 }
 
 export default function App() {
-  const [ready, setReady] = useState(() => Boolean(getApiKey()))
+  // en démo, pas de backend donc pas de clé à saisir
+  const [ready, setReady] = useState(() => DEMO || Boolean(getApiKey()))
   const [screen, setScreen] = useState<ScreenId>(() => {
     const params = new URLSearchParams(window.location.search)
     // lien profond vers un journal (bouton « journal » d'un échec dans la barre Quickshell)
@@ -165,12 +166,12 @@ export default function App() {
   // auto-détection d'un nouveau build : compare le bundle référencé par
   // l'index frais avec celui réellement chargé
   useEffect(() => {
-    const current = (document.querySelector('script[src*="/app/assets/"]') as HTMLScriptElement | null)?.src
+    const current = (document.querySelector(`script[src*="${import.meta.env.BASE_URL}assets/"]`) as HTMLScriptElement | null)?.src
     if (!current) return
     const check = async () => {
       try {
-        const html = await (await fetch('/app/', { cache: 'no-store' })).text()
-        const m = html.match(/\/app\/assets\/index-[\w-]+\.js/)
+        const html = await (await fetch(import.meta.env.BASE_URL, { cache: 'no-store' })).text()
+        const m = html.match(/\/assets\/index-[\w-]+\.js/)
         if (m && !current.endsWith(m[0].split('/').pop()!)) setUpdateReady(true)
       } catch { /* hors ligne */ }
     }
@@ -252,13 +253,19 @@ export default function App() {
         onDone={() => { markTourSeen(); setTourOn(null) }}
       />
     )}
-    <div className="app">
+    {DEMO && (
+      <div className="demo-banner" role="status">
+        démo · données fictives, aucune action n'est exécutée · le backend lyra-control-api n'est pas encore publié ·{' '}
+        <a href="https://github.com/amineutron/neutroncore" target="_blank" rel="noreferrer">code source</a>
+      </div>
+    )}
+    <div className={`app${DEMO ? ' is-demo' : ''}`}>
       {menuOpen && <div className="drawer-bg" onClick={() => setMenuOpen(false)} />}
       <nav className={`rail ${menuOpen ? 'open' : ''}`}>
         <div className="brand">
-          <img src="/app/logo.svg" width={34} height={34} alt="" />
+          <img src={`${import.meta.env.BASE_URL}logo.svg`} width={34} height={34} alt="" />
           <div>
-            <div className="wm">neutroncore<i>.app</i></div>
+            <div className="wm">neutroncore</div>
             <div className="sub">amineutron</div>
           </div>
         </div>

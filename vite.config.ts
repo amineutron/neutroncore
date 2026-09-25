@@ -1,9 +1,10 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// base /app/ : servi par lyra-control-api (FastAPI StaticFiles) sur :9876/app
+// base /app/ : servi par lyra-control-api (FastAPI StaticFiles) sur :9876/app.
+// VITE_BASE la remplace pour la démo GitHub Pages (/neutroncore/).
 export default defineConfig({
-  base: '/app/',
+  base: process.env.VITE_BASE || '/app/',
   plugins: [react()],
   server: {
     proxy: {

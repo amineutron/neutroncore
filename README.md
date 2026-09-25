@@ -11,16 +11,37 @@
 </p>
 
 <p align="center">
+  <a href="https://amineutron.github.io/neutroncore/"><b>Essayer la démo en ligne</b></a> : données fictives, aucun backend, rien n'est exécuté.
+</p>
+
+<p align="center">
   <img src="docs/screenshots/accueil.jpg" width="900" alt="Accueil : etat du reacteur, alertes, sessions Claude Code">
 </p>
 
-**English summary.** neutroncore is the PWA hub of a self-hosted homelab: services, background tasks, media library, home automation, tracked projects and Claude Code sessions, driven by the Lyra assistant. React 19 + Vite + TypeScript, no UI library, served by the (not yet published) lyra-control-api backend. See [ARCHITECTURE.md](ARCHITECTURE.md).
+**English summary.** neutroncore is the PWA hub of a self-hosted homelab: services, background tasks, media library, home automation, tracked projects and Claude Code sessions, driven by the Lyra assistant. React 19 + Vite + TypeScript, no UI library, served by the (not yet published) lyra-control-api backend. **Try the live demo** (fake data, no backend): https://amineutron.github.io/neutroncore/. See [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Demo
 
 ![Captures reelles de l'application : accueil, projets suivis, taches de fond, ambiance, lanceur](docs/assets/demo.gif)
 
 Captures reelles de l'application servie par `lyra-control-api`, prises par [`docs/demo/record.py`](docs/demo/record.py) (Chrome sans fenetre via Playwright, assemblage Pillow). La cle API est lue dans `~/.lyra-control.env` et n'apparait jamais a l'ecran.
+
+## Mode demo (sans backend)
+
+La demo publiee sur GitHub Pages est le meme code compile avec `VITE_MOCK_API=1` :
+aucune requete reseau, les reponses viennent de `src/mock/` (donnees inventees :
+films du domaine public, images ISO Linux, chemins `/home/user`), et les actions
+sont simulees. Le chat Lyra repond avec un scenario fixe.
+
+```bash
+npm run build:demo     # dist-demo/, base /neutroncore/
+npm run check:demo     # refuse le bundle s'il contient une IP locale, un chemin perso ou un e-mail
+npm test               # routeur de demo et coherence des donnees (vitest)
+```
+
+Dans le build normal (`npm run build`), la constante de compilation retire le code
+et les donnees de demo du bundle. Le workflow `.github/workflows/pages.yml` publie la
+demo a chaque push sur `main`, apres les tests et `check:demo`.
 
 ## Ce que ca fait
 
@@ -51,7 +72,7 @@ ntfy (docker, IP Tailscale uniquement)  <--  notifications push (Claude attend /
 ```
 
 - **Frontend** : React 19 + Vite + TypeScript, design system maison dans `src/styles.css`, aucune lib UI.
-- **Backend** : `lyra-control-api` (Python), depot separe. Sans lui, l'interface affiche l'ecran de connexion et rien d'autre.
+- **Backend** : `lyra-control-api` (Python), depot separe, **pas encore publie** (il le sera apres audit). Sans lui, l'interface demande sa cle API ; pour l'essayer sans backend, voir le mode demo ci-dessous.
 - **Auth** : cle Bearer saisie au premier lancement (localStorage) ; actions destructives protegees par un jeton HMAC 30 s a usage unique (`X-Confirm`).
 - **Android** : la coque charge directement l'URL du backend sur le tailnet, donc `npm run build` suffit pour mettre a jour le telephone, sans recompiler l'APK.
 

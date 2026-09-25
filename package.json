@@ -14,7 +14,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "build:demo": "VITE_MOCK_API=1 VITE_BASE=/neutroncore/ VITE_MEDIA_HOST=media-server.lan tsc -b && VITE_MOCK_API=1 VITE_BASE=/neutroncore/ VITE_MEDIA_HOST=media-server.lan vite build --outDir dist-demo --emptyOutDir",
+    "check:demo": "node scripts/check-demo-bundle.mjs dist-demo"
   },
   "dependencies": {
     "react": "^19.2.0",
@@ -29,7 +32,8 @@
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.1.1",
     "typescript": "^7.0.2",
-    "vite": "^8.2.2"
+    "vite": "^8.2.2",
+    "vitest": "5.0.2"
   },
   "overrides": {
     "uuid": "^11.1.1"

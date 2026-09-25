@@ -20,7 +20,7 @@ type Flash = { kind: 'wait' | 'done' | 'arrive'; at: number }
 function notifyDesktop(title: string, body: string) {
   const st = getSettings()
   if (!st.notifications || !st.sessionBrowserNotif || !('Notification' in window)) return
-  if (Notification.permission === 'granted') new Notification(title, { body: body.slice(0, 140), icon: '/app/icon-512.png' })
+  if (Notification.permission === 'granted') new Notification(title, { body: body.slice(0, 140), icon: `${import.meta.env.BASE_URL}icon-512.png` })
   else if (Notification.permission === 'default') Notification.requestPermission()
 }
 
