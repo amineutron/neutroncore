@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import { apiGet, apiPost, withConfirm } from '../lib/api'
+import { ColorPalette } from '../components/ColorPalette'
+import { DenonVolume } from '../components/DenonVolume'
+import { IronmanScene } from '../components/IronmanScene'
 import { usePoll } from '../lib/poll'
 import { Btn, Card, Chip, PageTitle, Eyebrow, Loader } from '../components/ui'
 
@@ -139,6 +142,7 @@ export function Ambiance() {
               ? mainColors.map((c, i) => <span key={i} className="main-dot" style={{ background: c, boxShadow: `0 0 10px ${c}66` }} />)
               : <span className="main-dot" style={{ background: 'var(--off)' }} />}
           </span>
+          <ColorPalette onPick={(hex, name) => run(`couleur ${name}`, () => apiPost('/hue/group/color', { color: hex, group_id: '81' }), lights.refresh)} />
           <span className="mono" style={{ fontSize: 10, color: 'var(--faint)', letterSpacing: '.12em' }}>GÉNÉRAL</span>
           <input
             type="range" className="bri" style={{ flex: 1, minWidth: 140, maxWidth: 320 }}
@@ -193,26 +197,11 @@ export function Ambiance() {
       <Eyebrow>scènes</Eyebrow>
       {scenes.data === null && <Loader label="chargement des scènes hue…" />}
       <div className="scene-grid" style={{ marginBottom: 16 }}>
-        <div
-          className={`scene-sq ${ironman.data?.active || activeScene === 'ironman' ? 'on' : ''}`}
-          onClick={() => { setActiveScene('ironman'); run('scène iron man', async () => apiPost('/ironman/trigger', undefined, await withConfirm('ironman_trigger')), ironman.refresh) }}
-        >
-          <div className="base">
-            <div className="sw-row">
-              {['#e04a4a', '#f6c177', '#3a6ea8'].map((c) => <span key={c} className="sw-dot" style={{ background: c }} />)}
-            </div>
-            <b>iron man<span style={{ color: 'var(--gold)' }}>.</span></b>
-            {(ironman.data?.active || activeScene === 'ironman') && <span className="lbl-state">{busy === 'scène iron man' ? 'lancement' : 'active'}</span>}
-          </div>
-          <div className="room-wrap">
-            <RoomPreview
-              positions={positions.data?.positions ?? {}}
-              lightstates={Object.fromEntries(Object.keys(positions.data?.positions ?? {}).map((id) => [id, '#e04a4a']))}
-              size={78}
-            />
-            <b>iron man.</b>
-          </div>
-        </div>
+        <IronmanScene
+          active={Boolean(ironman.data?.active) || activeScene === 'ironman'}
+          launching={busy === 'scène iron man'}
+          onLaunch={() => { setActiveScene('ironman'); run('scène iron man', async () => apiPost('/ironman/trigger', undefined, await withConfirm('ironman_trigger')), ironman.refresh) }}
+        />
         {sceneList.map((s) => {
           const p = previews[s.id]
           return (
@@ -255,15 +244,16 @@ export function Ambiance() {
           </div>
         </Card>
         <Card title="denon avr" lite="x1700h">
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center' }}>
             <Chip tone={!t?.denon_reachable ? 'crit' : t?.denon_power === 'on' ? 'ok' : 'warn'}>{!t?.denon_reachable ? 'injoignable' : t?.denon_power === 'on' ? 'allumé' : 'veille'}</Chip>
-            {t && t.denon_volume != null && <Chip>vol {t.denon_volume}</Chip>}
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Btn sm onClick={() => run('dv-', () => apiPost('/tv/denon/volume', { delta: -2 }), tv.refresh)} disabled={busy === 'dv-'}>{busy === 'dv-' ? '…' : 'vol −'}</Btn>
-            <Btn sm onClick={() => run('dv+', () => apiPost('/tv/denon/volume', { delta: 2 }), tv.refresh)} disabled={busy === 'dv+'}>{busy === 'dv+' ? '…' : 'vol +'}</Btn>
+            <span style={{ flex: 1 }} />
             <Btn sm onClick={() => run('dm', () => apiPost('/tv/denon/mute', { muted: !t?.denon_muted }), tv.refresh)} disabled={busy === 'dm'}>{busy === 'dm' ? '…' : t?.denon_muted ? 'son' : 'muet'}</Btn>
           </div>
+          <DenonVolume
+            volume={t?.denon_volume}
+            disabled={!t?.denon_reachable || t?.denon_power !== 'on'}
+            onCommit={(level) => run(`volume ${level}`, () => apiPost('/tv/denon/volume', { level }), tv.refresh)}
+          />
         </Card>
         <Card title="huebeat" lite="sync musique">
           <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>

@@ -1154,3 +1154,48 @@ input[type=range].bri::-webkit-slider-thumb{-webkit-appearance:none;appearance:n
 .demo-banner a{color:inherit;text-decoration:underline;font-weight:600}
 .app.is-demo{min-height:calc(100vh - 28px)}
 @media (max-width:560px){.demo-banner .demo-long{display:none}.app.is-demo{min-height:calc(100vh - 26px)}}
+
+/* ambiance : scène Iron Man = séquence hue beat, pas une scène fixe */
+.scene-sq.ironman{--im:#e0302e;--im2:#f6c177;border-color:color-mix(in srgb,var(--im) 55%,var(--line));background:radial-gradient(circle at 50% 38%,color-mix(in srgb,var(--im) 22%,transparent),transparent 62%),var(--surface)}
+.scene-sq.ironman .arc-reactor{color:var(--im2);filter:drop-shadow(0 0 6px color-mix(in srgb,var(--im2) 70%,transparent));animation:arcspin 6s linear infinite}
+.scene-sq.ironman.on .arc-reactor{animation:arcspin 1.6s linear infinite,arcbeat .9s ease-in-out infinite}
+.scene-sq.ironman .im-dot{color:var(--im)}
+.scene-sq.ironman .lbl-state{color:var(--im2)}
+.scene-sq.ironman.on::after{background:linear-gradient(125deg,var(--im),var(--im2))}
+.beat-badge{position:absolute;top:7px;right:7px;font-family:var(--mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase;padding:2px 6px;border-radius:99px;color:#fff;background:linear-gradient(100deg,var(--im),var(--rose));box-shadow:0 0 10px color-mix(in srgb,var(--im) 50%,transparent);z-index:2}
+.scene-sq.ironman .im-warn{margin:0;padding:12px 8px 0;font-size:11px;line-height:1.4;text-align:center;color:var(--text)}
+.scene-sq.ironman .im-warn b{font-size:10.5px;color:var(--im2)}
+@keyframes arcspin{to{transform:rotate(360deg)}}
+@keyframes arcbeat{0%,100%{filter:drop-shadow(0 0 5px var(--im2))}50%{filter:drop-shadow(0 0 14px var(--im))}}
+
+/* barre de volume du Denon */
+.vol{margin-top:4px}
+.vol-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px}
+.vol-label{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+.vol-val{font-family:var(--mono);font-size:18px;color:var(--gold);animation:volbump .35s ease}
+.vol-track{position:relative;height:12px;border-radius:99px;background:var(--surface2);overflow:hidden}
+.vol-fill{position:absolute;inset:0 auto 0 0;width:var(--pct);border-radius:99px;background:linear-gradient(90deg,var(--gold),var(--rose));box-shadow:0 0 12px color-mix(in srgb,var(--rose) 45%,transparent);transition:width .28s cubic-bezier(.2,.8,.2,1)}
+.vol.sending .vol-fill{animation:volpulse .9s ease-in-out infinite}
+.vol.off .vol-fill{opacity:.35}
+.vol-track input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.vol-track input:disabled{cursor:not-allowed}
+.vol-track input:focus-visible + .vol-fill,.vol-track:focus-within{outline:2px solid var(--gold);outline-offset:2px}
+.vol-steps{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
+.vol-hint{font-family:var(--mono);font-size:9.5px;color:var(--faint)}
+@keyframes volbump{0%{transform:scale(1.25)}100%{transform:scale(1)}}
+@keyframes volpulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.35)}}
+@media (prefers-reduced-motion:reduce){.vol-fill,.scene-sq.ironman .arc-reactor,.vol-val{animation:none;transition:none}}
+
+/* nuancier de l'ambiance */
+.palette{position:relative;display:inline-block}
+.palette-btn{display:inline-flex;align-items:center;gap:6px}
+.palette-ico{width:12px;height:12px;border-radius:50%;background:conic-gradient(#e0302e,#f6c177,#4caf50,#2ed1d9,#3b4ce0,#c03aa8,#e0302e)}
+.palette-pop{position:fixed;z-index:400;width:236px;padding:12px;border:1px solid var(--line2);border-radius:12px;background:var(--surface);box-shadow:0 12px 32px #0008;animation:popin .18s ease}
+.palette-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.palette-sw{aspect-ratio:1;border-radius:10px;border:1px solid #0004;cursor:pointer;transition:transform .15s ease}
+.palette-sw:hover,.palette-sw:focus-visible{transform:scale(1.12);outline:2px solid var(--text);outline-offset:2px}
+.palette-custom{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:11.5px;color:var(--muted)}
+.palette-custom input[type=color]{width:30px;height:30px;padding:0;border:1px solid var(--line2);border-radius:8px;background:none;cursor:pointer}
+.palette-custom span{flex:1}
+.palette-note{margin:8px 0 0;font-size:10.5px;color:var(--faint);line-height:1.4}
+@keyframes popin{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
