@@ -16,9 +16,17 @@ const SCENES = [
   { id: 's-nuit', name: 'Veilleuse', group: '81', colors: ['#6a3b1f', '#2a1810'] },
 ]
 
+// volume de l'ampli : la démo retient la consigne pour que la barre la relise
+let denonVolume = 42.5
+
 export const home: [string, string, MockHandler][] = [
   ['GET', '/tv/status', () => ({ power: 'On', volume: 18, muted: false, ambilight_mode: 'FOLLOW_VIDEO', ambilight_on: true,
-    denon_volume: 42.5, denon_muted: false, denon_reachable: true, denon_power: 'on', denon_source: 'TV' })],
+    denon_volume: denonVolume, denon_muted: false, denon_reachable: true, denon_power: 'on', denon_source: 'TV' })],
+  ['POST', '/tv/denon/volume', ({ body }) => {
+    const level = Number((body as { level?: unknown } | undefined)?.level)
+    if (Number.isFinite(level)) denonVolume = Math.max(0, Math.min(98, Math.round(level)))
+    return { success: true, demo: true, volume: denonVolume }
+  }],
   ['GET', '/hue/lights', () => ({ lights: LIGHTS })],
   ['GET', '/hue/scenes', () => ({ scenes: SCENES.map(({ id, name, group }) => ({ id, name, group })) })],
   ['GET', '/hue/scenes/:id/preview', ({ params }) => {
