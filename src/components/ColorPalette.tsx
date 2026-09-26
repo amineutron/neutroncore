@@ -1,60 +1,40 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { hexToHsv, hsvToHex, normalizeHex, type Hsv } from '../lib/color'
 
-// Nuancier : colore toute la pièce d'un geste. Rangé par familles (blancs pour la
-// lumière utile, chauds pour le soir, saturés pour l'ambiance), chaque teinte avec
-// son code hexa ; une couleur libre se saisit au sélecteur ou en hexa.
-type Swatch = { name: string; hex: string }
-export const SWATCH_GROUPS: { label: string; swatches: Swatch[] }[] = [
-  { label: 'blancs', swatches: [
-    { name: 'bougie', hex: '#ffb46b' }, { name: 'blanc chaud', hex: '#ffd6a5' }, { name: 'ivoire', hex: '#ffe9c9' },
-    { name: 'blanc', hex: '#fff6ec' }, { name: 'lune', hex: '#eef3ff' }, { name: 'blanc froid', hex: '#dff0ff' },
-  ] },
-  { label: 'chauds', swatches: [
-    { name: 'braise', hex: '#ff6a1a' }, { name: 'orange', hex: '#ff8c2e' }, { name: 'ambre', hex: '#f6c177' },
-    { name: 'or', hex: '#ffc83d' }, { name: 'miel', hex: '#e9a23b' }, { name: 'citron', hex: '#e5e04a' },
-  ] },
-  { label: 'rouges et roses', swatches: [
-    { name: 'rouge', hex: '#e0302e' }, { name: 'carmin', hex: '#b3122e' }, { name: 'corail', hex: '#ff6b5a' },
-    { name: 'saumon', hex: '#ff9e8a' }, { name: 'rose', hex: '#eb6f92' }, { name: 'fuchsia', hex: '#ff3ea5' },
-  ] },
-  { label: 'violets', swatches: [
-    { name: 'magenta', hex: '#c03aa8' }, { name: 'orchidée', hex: '#d17be0' }, { name: 'lavande', hex: '#b39dff' },
-    { name: 'violet', hex: '#7d4ce0' }, { name: 'améthyste', hex: '#9b59d0' }, { name: 'prune', hex: '#6b2d7a' },
-  ] },
-  { label: 'bleus', swatches: [
-    { name: 'indigo', hex: '#3b4ce0' }, { name: 'nuit', hex: '#1f3a93' }, { name: 'bleu', hex: '#2f8ff0' },
-    { name: 'azur', hex: '#5ab8ff' }, { name: 'ciel', hex: '#9fd8ff' }, { name: 'cyan', hex: '#2ed1d9' },
-  ] },
-  { label: 'verts', swatches: [
-    { name: 'turquoise', hex: '#1fc7b0' }, { name: 'menthe', hex: '#3ddc97' }, { name: 'vert', hex: '#4caf50' },
-    { name: 'émeraude', hex: '#1f9e6e' }, { name: 'anis', hex: '#a8e05a' }, { name: 'sapin', hex: '#2e6b3a' },
-  ] },
-]
-export const SWATCHES: Swatch[] = SWATCH_GROUPS.flatMap((g) => g.swatches)
+// Nuancier : colore toute la pièce d'un geste. Canevas saturation × luminosité,
+// curseur de teinte, code hexa éditable et les dernières couleurs appliquées.
 
-const HEX_RE = /^#?([0-9a-f]{6}|[0-9a-f]{3})$/i
-/** "#ABC" / "abc" / "#aabbcc" -> "#aabbcc" ; null si ce n'est pas un code hexa. */
-export function normalizeHex(v: string): string | null {
-  const m = HEX_RE.exec(v.trim())
-  if (!m) return null
-  const h = m[1].length === 3 ? m[1].split('').map((c) => c + c).join('') : m[1]
-  return `#${h.toLowerCase()}`
+const RECENT_STORAGE_SLOT = 'neutroncore_recent_colors'
+const RECENT_MAX = 8
+const POP_W = 300
+const START: Hsv = { h: 36, s: 0.52, v: 0.96 } // ambre du branding
+
+function loadRecent(): string[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(RECENT_STORAGE_SLOT) ?? '[]')
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && normalizeHex(x) === x) : []
+  } catch { return [] }
 }
-
-const POP_W = 324
+function saveRecent(list: string[]) {
+  try { localStorage.setItem(RECENT_STORAGE_SLOT, JSON.stringify(list)) } catch { /* stockage indisponible : sans mémoire */ }
+}
 
 type Props = { disabled?: boolean; onPick: (hex: string, name: string) => void }
 
 export function ColorPalette({ disabled, onPick }: Props) {
   const [open, setOpen] = useState(false)
-  const [custom, setCustom] = useState('#f6c177')
-  const [hexText, setHexText] = useState('#f6c177')
-  const [hover, setHover] = useState<Swatch | null>(null)
+  const [hsv, setHsv] = useState<Hsv>(START)
+  const [hexText, setHexText] = useState(hsvToHex(START))
+  const [recent, setRecent] = useState<string[]>(loadRecent)
   const [at, setAt] = useState<{ top: number; left: number; maxH: number } | null>(null)
   const box = useRef<HTMLDivElement>(null)
   const pop = useRef<HTMLDivElement>(null)
+  const area = useRef<HTMLDivElement>(null)
+  const hex = hsvToHex(hsv)
   const typed = normalizeHex(hexText)
+
+  const setColor = (next: Hsv) => { setHsv(next); setHexText(hsvToHex(next)) }
 
   // le nuancier est rendu dans <body> (portail) : une carte qui masque ce qui
   // dépasse (animation de dépliage) ne peut plus le couper
@@ -88,8 +68,29 @@ export function ColorPalette({ disabled, onPick }: Props) {
     }
   }, [open])
 
-  const pick = (hex: string, name: string) => { setOpen(false); onPick(hex, name) }
-  const pickCustom = (hex: string) => { setCustom(hex); setHexText(hex) }
+  // glisser dans le canevas : x = saturation, y = luminosité (haut = clair)
+  function fromPointer(e: React.PointerEvent) {
+    const r = area.current?.getBoundingClientRect()
+    if (!r) return
+    const s = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width))
+    const v = 1 - Math.min(1, Math.max(0, (e.clientY - r.top) / r.height))
+    setColor({ ...hsv, s, v })
+  }
+  function onAreaKey(e: React.KeyboardEvent) {
+    const step = e.shiftKey ? 0.1 : 0.02
+    const d: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, step], ArrowDown: [0, -step] }
+    if (!d[e.key]) return
+    e.preventDefault()
+    const [ds, dv] = d[e.key]
+    setColor({ ...hsv, s: Math.min(1, Math.max(0, hsv.s + ds)), v: Math.min(1, Math.max(0, hsv.v + dv)) })
+  }
+
+  function apply(color: string) {
+    const next = [color, ...recent.filter((c) => c !== color)].slice(0, RECENT_MAX)
+    setRecent(next); saveRecent(next)
+    setOpen(false)
+    onPick(color, color)
+  }
 
   return (
     <div className="palette" ref={box}>
@@ -98,37 +99,37 @@ export function ColorPalette({ disabled, onPick }: Props) {
       </button>
       {open && at && createPortal(
         <div className="palette-pop" role="dialog" aria-label="Nuancier" ref={pop}
-          style={{ top: at.top, left: at.left, maxHeight: at.maxH }}>
-          <div className="palette-preview">
-            <span className="palette-dot" style={{ background: hover?.hex ?? custom }} />
-            <b>{hover?.name ?? 'survole une teinte'}</b>
-            <code>{hover?.hex ?? ''}</code>
+          style={{ top: at.top, left: at.left, maxHeight: at.maxH, ['--hue' as string]: `hsl(${hsv.h} 100% 50%)` }}>
+          <div ref={area} className="cv-area" role="slider" tabIndex={0} aria-label="Saturation et luminosité"
+            aria-valuetext={hex}
+            onPointerDown={(e) => { (e.target as HTMLElement).setPointerCapture(e.pointerId); fromPointer(e) }}
+            onPointerMove={(e) => { if (e.buttons) fromPointer(e) }}
+            onKeyDown={onAreaKey}>
+            <span className="cv-thumb" style={{ left: `${hsv.s * 100}%`, top: `${(1 - hsv.v) * 100}%`, background: hex }} />
           </div>
-          {SWATCH_GROUPS.map((g) => (
-            <section key={g.label} className="palette-group">
-              <h4>{g.label}</h4>
-              <div className="palette-grid">
-                {g.swatches.map((s) => (
-                  <button key={s.hex} type="button" className="palette-sw" title={`${s.name} ${s.hex}`}
-                    aria-label={`${s.name} ${s.hex}`}
-                    onMouseEnter={() => setHover(s)} onFocus={() => setHover(s)}
-                    onMouseLeave={() => setHover(null)} onBlur={() => setHover(null)}
-                    onClick={() => pick(s.hex, s.name)}>
-                    <span className="palette-chip" style={{ background: s.hex, boxShadow: `0 0 10px ${s.hex}55` }} />
-                    <code>{s.hex}</code>
-                  </button>
-                ))}
-              </div>
-            </section>
-          ))}
+          <input type="range" className="cv-hue" min={0} max={359} step={1} value={Math.round(hsv.h)}
+            aria-label="Teinte" onChange={(e) => setColor({ ...hsv, h: Number(e.target.value) })} />
           <div className="palette-custom">
-            <input type="color" value={custom} onChange={(e) => pickCustom(e.target.value)} aria-label="Couleur libre" />
+            <span className="palette-dot" style={{ background: typed ?? hex }} />
             <input type="text" className={`palette-hex ${typed ? '' : 'bad'}`} value={hexText} maxLength={7}
               spellCheck={false} aria-label="Code hexa"
-              onChange={(e) => { setHexText(e.target.value); const h = normalizeHex(e.target.value); if (h) setCustom(h) }}
-              onKeyDown={(e) => { if (e.key === 'Enter' && typed) pick(typed, typed) }} />
-            <button type="button" className="btn sm solid" disabled={!typed} onClick={() => typed && pick(typed, typed)}>appliquer</button>
+              onChange={(e) => {
+                setHexText(e.target.value)
+                const next = hexToHsv(e.target.value)
+                if (next) setHsv(next.s === 0 ? { ...next, h: hsv.h } : next) // un gris garde la teinte choisie
+              }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && typed) apply(typed) }} />
+            <button type="button" className="btn sm solid" disabled={!typed} onClick={() => typed && apply(typed)}>appliquer</button>
           </div>
+          {recent.length > 0 && (
+            <div className="palette-recent">
+              <span>récentes</span>
+              {recent.map((c) => (
+                <button key={c} type="button" className="palette-rsw" title={c} aria-label={`réappliquer ${c}`}
+                  style={{ background: c }} onClick={() => { const v = hexToHsv(c); if (v) setColor(v); apply(c) }} />
+              ))}
+            </div>
+          )}
           <p className="palette-note">Toute la pièce prend la couleur ; une scène ou hue beat la remplace ensuite.</p>
         </div>,
         document.body,

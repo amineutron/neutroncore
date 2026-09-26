@@ -16,6 +16,7 @@ type Monitor = { name: string; width: number; height: number; x: number; dpms: b
 type Screens = { monitors: Monitor[]; tv_ok: boolean; ambilight: { on: boolean; style: string }; ambihue: boolean | null }
 type Light = { name: string; on: boolean; bri: number; reachable: boolean; color?: string }
 type Scene = { id: string; name: string; group: string }
+type ScenesResp = { scenes: Scene[]; stale?: boolean; source?: string; error?: string }
 type Preview = { colors: string[]; lightstates: Record<string, string> }
 
 /** Mini-plan de la pièce : positions entertainment (-1..1) colorées par la scène. */
@@ -42,7 +43,11 @@ function RoomPreview({ positions, lightstates, size = 52 }: {
 export function Ambiance() {
   const tv = usePoll<TvStatus>(() => apiGet('/tv/status'), 15000)
   const lights = usePoll<{ lights: Record<string, Light> }>(() => apiGet('/hue/lights'), 15000)
-  const scenes = usePoll<{ scenes: Scene[] }>(() => apiGet('/hue/scenes'), 300000)
+  // liste figée : relue toutes les 5 min, toutes les 20 s tant qu'elle est périmée
+  // (démon et pont muets : l'API sert alors la dernière liste connue, marquée stale)
+  const [scenesStale, setScenesStale] = useState(false)
+  const scenes = usePoll<ScenesResp>(() => apiGet('/hue/scenes'), scenesStale ? 20000 : 300000)
+  useEffect(() => { setScenesStale(Boolean(scenes.data?.stale) || Boolean(scenes.error)) }, [scenes.data, scenes.error])
   const beat = usePoll<{ running: boolean }>(() => apiGet('/hue/beat/status'), 20000)
   const screens = usePoll<Screens>(() => apiGet('/screens'), 15000)
   const ironman = usePoll<{ active: boolean; state: string }>(() => apiGet('/ironman/status'), 30000)
@@ -195,7 +200,13 @@ export function Ambiance() {
       </div>
 
       <Eyebrow>scènes</Eyebrow>
-      {scenes.data === null && <Loader label="chargement des scènes hue…" />}
+      {scenes.data === null && !scenes.error && <Loader label="chargement des scènes hue…" />}
+      {scenesStale && (
+        <p className="scene-stale">
+          {sceneList.length ? 'scènes : dernière liste connue' : 'scènes indisponibles'} — pont hue et démon lyra
+          muets pour l'instant, nouvel essai toutes les 20 s.
+        </p>
+      )}
       <div className="scene-grid" style={{ marginBottom: 16 }}>
         <IronmanScene
           active={Boolean(ironman.data?.active) || activeScene === 'ironman'}
