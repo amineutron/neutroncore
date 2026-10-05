@@ -29,4 +29,5 @@
 - Fait (hors de ce depot) : hue-mcp repasse sur `main` + `uv sync --frozen`, demon Lyra relance (28 outils hue, smoke MCP OK, couleur OK). Patch manuel intermediaire mis en stash (doublon de `main`).
 - GitHub : aucun workflow rouge sur son dernier run ; les echecs visibles (catt, hue, mcp-tracking, pylips, roadmap traffic, releases fedora-agents v1.2.1 / pylips v0.2.0) avaient deja ete corriges ou relances.
 - Dans ce depot : aucun changement de code.
-- Ouvert : supprimer le stash de hue-mcp ; le smoke MCP quotidien a vu la panne 2 jours sans alerter -> le brancher sur ntfy.
+- Suite (2026-10-06) : alerte ntfy du smoke MCP (`OnFailure=` -> `lyra-mcp-smoke-alert.service`, `scripts/smoke_alert.py` teste, commit lyra `74010e8`) ; drop-in local `ntfy.conf` -> fichier d'env de l'API ; CVE brace-expansion corrigee (lockfile) ; consigne : CI complete rejouee avant chaque push.
+- Ouvert : `git stash drop` dans `$DEV_ROOT/hue-mcp` (bloque par les permissions, a faire a la main) ; IP Tailscale reelle en valeur par defaut dans `config.py` de lyra-control-api (prive).
