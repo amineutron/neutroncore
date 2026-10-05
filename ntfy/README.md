@@ -3,7 +3,7 @@
 Serveur push local (tailnet) pour les notifications téléphone de neutroncore.
 
 ```bash
-cd ~/dev/neutroncore/ntfy
+cd ntfy   # depuis la racine du depot
 docker compose up -d
 # créer l'utilisateur de l'API (une fois) et son jeton :
 docker exec -it ntfy ntfy user add --role=admin neutroncore

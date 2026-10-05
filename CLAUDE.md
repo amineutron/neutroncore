@@ -4,13 +4,28 @@ Hub central de l'ecosysteme amineutron : films/series, demandes, telechargements
 sous-titres, taches de fond (tracking + Lyra), projets & mises a jour, ambiance
 (TV/Hue/scenes), lanceur local (dossiers + terminaux Claude Code), chat Lyra.
 
+## Chemins et adresses
+
+Aucun chemin ni IP de machine en dur dans ce depot. Les chemins s'ecrivent
+avec les variables que lit l'API (`config.py` de lyra-control-api), a
+surcharger dans son fichier d'env :
+
+| Variable | Defaut | Role |
+|---|---|---|
+| `DEV_ROOT` | `~/dev` | racine des projets (lyra, hue-mcp, lyra-control-api...) |
+| `LYRA_SOCKET` | `~/.lyra/lyra.sock` | socket UNIX du daemon Lyra |
+| `NEUTRONCORE_STATE` | `~/.neutroncore` | etat persistant (watchlist, fiches, reglages notif) |
+
+Les IP vont dans `.env.local` (modele `.env.example`, valeurs de
+documentation) ; on ecrit `<IP_TAILSCALE>` dans la doc.
+
 ## Architecture
 
 - **Frontend** (ce depot) : Vite + React 19 + TypeScript, PWA. Aucune lib UI —
   design system maison dans `src/styles.css` (tokens issus du branding
   amineutron : or #f6c177, rose #eb6f92, aubergine #0e0a10 ; polices JetBrains
   Mono + Cantarell auto-hebergees dans `public/fonts/`).
-- **Backend** : `~/dev/mobile/lyra-control-api` (FastAPI :9876) — les routers
+- **Backend** : `$DEV_ROOT/mobile/lyra-control-api` (FastAPI :9876) — les routers
   neutroncore sont `arr, overseerr, subtitles, system, projects, launcher,
   lyra_chat` + les routers historiques (tv, hue, qbit, services, tracking...).
 - **Serving** : `npm run build` -> `dist/`, monte par FastAPI sur
@@ -19,7 +34,7 @@ sous-titres, taches de fond (tracking + Lyra), projets & mises a jour, ambiance
   au premier lancement, stockee en localStorage. Actions destructives : token
   HMAC 30 s via `GET /auth/token` renvoye en header `X-Confirm`.
 - **Chat Lyra** : POST /lyra/chat en SSE (pont vers le socket UNIX du daemon
-  `~/.lyra/lyra.sock`, protocole JSON-lines) ; reponses aux confirmations via
+  `$LYRA_SOCKET`, protocole JSON-lines) ; reponses aux confirmations via
   POST /lyra/answer.
 - **TV / Denon / Hue** (roadmap #73, 2026-09-24) : les routers `tv` et `hue`
   ne parlent plus aux appareils. Chaque route nomme un outil MCP (`tv.*`,
@@ -86,8 +101,8 @@ leur propre scope via `systemd-run --scope`) ; l'arret prend 5 s maximum
 - 7 themes (data-theme sur :root, tokens dans styles.css), reglages localStorage (lib/settings.ts, ecran Parametres)
 - Scrollbar auto-masquee (classe html.scrolling), responsive <560px
 - LyraPanel toujours monte (hidden CSS) : badge non-lu anime + Notification API ; bulles larges en .bub.pre scrollables
-- Demandes : saisons/qualite/langue + watchlist maison (~/.neutroncore/watchlist.json)
-- Updates systeme : dnf check-update (cache ~/.neutroncore/system_updates.json), download-only des paquets surs
+- Demandes : saisons/qualite/langue + watchlist maison ($NEUTRONCORE_STATE/watchlist.json)
+- Updates systeme : dnf check-update (cache $NEUTRONCORE_STATE/system_updates.json), download-only des paquets surs
 - Ambilight : modes JointSpace FOLLOW_VIDEO/FOLLOW_AUDIO/LOUNGE_LIGHT/OFF (pas les libelles courts)
 
 ## v4 (2026-08-13)
@@ -219,7 +234,7 @@ leur propre scope via `systemd-run --scope`) ; l'arret prend 5 s maximum
 - Backend `routers/claude_sessions.py` + `lib/claude_sessions.py` (logique pure,
   testée `tests/test_claude_sessions.py`) + `lib/kitty_rc.py`. Sources : registre
   `~/.claude/sessions/<pid>.json` (status idle/running), transcripts JSONL
-  (lecture incrémentale par offset d'octets), fiches `~/.neutroncore/sessions_meta.json`.
+  (lecture incrémentale par offset d'octets), fiches `$NEUTRONCORE_STATE/sessions_meta.json`.
 - Répondre = kitty remote control (`allow_remote_control socket-only` +
   `listen_on unix:/tmp/kitty-nc-{kitty_pid}` dans dotfiles/kitty.conf) : la
   fenêtre est retrouvée par le pid `claude` dans foreground_processes. Une
@@ -254,7 +269,7 @@ leur propre scope via `systemd-run --scope`) ; l'arret prend 5 s maximum
   `notify-send` avec les hints du template Quickshell `Capsule`
   (`routers/claude_sessions.py: _send_capsule`, hints construits par
   `lib/claude_sessions.capsule_hints`, testés). Réglages persistants
-  `~/.neutroncore/notif_capsule.json` (GET/PUT /launcher/sessions/notif-settings,
+  `$NEUTRONCORE_STATE/notif_capsule.json` (GET/PUT /launcher/sessions/notif-settings,
   POST /launcher/sessions/notif-test) : enabled, accent (session|#hex), label
   ({repo} {name} {message}), position, style, open_ms, duration_ms, on_stop.
   UI : `components/SessionNotifSettings.tsx` dans paramètres (5 exemples par
