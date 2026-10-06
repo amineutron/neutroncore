@@ -1364,3 +1364,6 @@ input[type=range].bri::-webkit-slider-thumb{-webkit-appearance:none;appearance:n
 .rp3-pick.sel .rp-strip{stroke:var(--gold);opacity:1}
 .pl-tilt{margin:10px 0 0}
 .pl-tilt input{width:min(220px,55%)}
+
+/* une lampe se saisit pour régler sa hauteur : son geste vertical ne doit pas faire défiler la page */
+.rp3-lamp{touch-action:none;cursor:ns-resize}

@@ -96,7 +96,7 @@ export const HELP: Record<string, HelpTopic> = {
     points: [
       ['déplacer', 'Glisse une lampe pour la replacer. Un carreau fait un mètre.'],
       ['ruban led', 'Glisse le ruban : il se déplace d’un bloc. Touche un segment pour régler son angle, ou le replacer seul.'],
-      ['vue 3d', 'Le bouton « 3d » montre la pièce en volume ; glisse pour tourner autour.'],
+      ['vue 3d', 'Le bouton « 3d » montre la pièce en volume. Glisse le fond pour tourner autour, glisse une lampe de haut en bas pour régler sa hauteur.'],
       ['hauteur', 'Touche une lampe : le curseur règle sa hauteur depuis le sol.'],
       ['enregistrer', 'Rien n’est écrit avant « enregistrer ». HALO recharge le plan tout seul.'],
       ['halo', 'Associer l’Ambilight aux lampes Hue, voir les couleurs de la TV en direct, ouvrir HALO sur le PC.'],

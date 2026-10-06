@@ -1,6 +1,7 @@
 import { useId, useRef } from 'react'
 import { segEnds, type Plan } from '../lib/plan'
-import { backWalls, orbit, project, wallCorners, type P3, type View } from '../lib/plan3d'
+import { heightFromFloor } from '../lib/plan'
+import { backWalls, heightDelta, orbit, project, wallCorners, type P3, type View } from '../lib/plan3d'
 import type { Measured } from './RoomPlan'
 import { segId } from './RoomPlan'
 
@@ -10,14 +11,18 @@ const STRIP_H = 180         // hauteur du ruban, comme dans HALO (il n'a pas de 
 const TAP_PX = 5            // en dessous, un appui est un toucher (sélection), pas une rotation
 
 // Vue 3D de la pièce : sol quadrillé, murs du fond, TV, ruban LED et lampes sur
-// leur tige. On tourne autour en glissant ; le déplacement se fait dans la vue de dessus.
-export function RoomPlan3D({ plan, colors, selected, measured, view, onView, onSelect }: {
+// leur tige. Glisser le fond tourne la vue ; glisser une lampe vers le haut ou
+// le bas règle sa HAUTEUR (sa place au sol se règle dans la vue de dessus).
+export function RoomPlan3D({ plan, colors, selected, measured, view, onView, onSelect, onHeight }: {
   plan: Plan; colors: Record<string, string>; selected: string | null; measured: Measured | null
   view: View; onView: (fn: (v: View) => View) => void; onSelect: (id: string | null) => void
+  onHeight: (id: string, heightCm: number) => void
 }) {
   // pick : objet sous le doigt à l'appui ; il n'est sélectionné qu'au relâchement, si on n'a pas tourné
-  const drag = useRef<{ pointer: number; x: number; y: number; moved: number; pick: string | null } | null>(null)
+  // lift : hauteur (cm) de la lampe saisie, mise à jour pendant le glissement ; null = on tourne la vue
+  const drag = useRef<{ pointer: number; x: number; y: number; moved: number; pick: string | null; lift: number | null } | null>(null)
   const picked = useRef<string | null>(null)
+  const svg = useRef<SVGSVGElement>(null)
   const blur = useId()
   const dims = plan.roomDims
   const pr = (p: P3) => project(p, view, dims, SIZE)
@@ -30,15 +35,25 @@ export function RoomPlan3D({ plan, colors, selected, measured, view, onView, onS
     const pick = picked.current   // posé juste avant par l'objet touché (l'événement remonte jusqu'ici)
     picked.current = null
     if (!e.isPrimary || e.button !== 0) return
-    drag.current = { pointer: e.pointerId, x: e.clientX, y: e.clientY, moved: 0, pick }
+    const lamp = pick ? plan.configs[pick] : undefined
+    drag.current = { pointer: e.pointerId, x: e.clientX, y: e.clientY, moved: 0, pick, lift: lamp ? heightFromFloor(lamp.pos.z, dims) : null }
     try { e.currentTarget.setPointerCapture(e.pointerId) } catch { drag.current = null }
   }
   function onPointerMove(e: React.PointerEvent) {
     const d = drag.current
     if (!d || d.pointer !== e.pointerId) return
     const dx = e.clientX - d.x, dy = e.clientY - d.y
-    onView((v) => orbit(v, dx, dy))
-    drag.current = { ...d, x: e.clientX, y: e.clientY, moved: d.moved + Math.abs(dx) + Math.abs(dy) }
+    const moved = d.moved + Math.abs(dx) + Math.abs(dy)
+    if (d.lift === null || !d.pick) {
+      onView((v) => orbit(v, dx, dy))
+      drag.current = { ...d, x: e.clientX, y: e.clientY, moved }
+      return
+    }
+    // pixels écran -> unités du dessin (la matrice tient compte de la taille affichée et du zoom télé)
+    const scale = svg.current?.getScreenCTM()?.d || 1
+    const lift = Math.min(dims.d, Math.max(0, d.lift + heightDelta(dy / scale, view, dims, SIZE)))
+    drag.current = { ...d, x: e.clientX, y: e.clientY, moved, lift }
+    if (moved >= TAP_PX) onHeight(d.pick, Math.round(lift))
   }
   function onPointerUp(e: React.PointerEvent) {
     const d = drag.current
@@ -109,7 +124,13 @@ export function RoomPlan3D({ plan, colors, selected, measured, view, onView, onS
     items.push({
       depth: head.depth,
       node: (
-        <g key={id} {...pickable(id, `${cfg.name}, à ${Math.round(z)} centimètres du sol`)}>
+        <g key={id} {...pickable(id, `${cfg.name}, à ${Math.round(z)} centimètres du sol. Flèches haut et bas pour régler la hauteur.`)}
+          className={`rp3-pick rp3-lamp ${selected === id ? 'sel' : ''}`}
+          onKeyDown={(e) => {
+            const step = e.key === 'ArrowUp' ? 5 : e.key === 'ArrowDown' ? -5 : 0
+            if (step) { e.preventDefault(); onHeight(id, Math.round(z) + step * (e.shiftKey ? 4 : 1)) }
+            else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(id) }
+          }}>
           {color && <ellipse cx={foot.x} cy={foot.y} rx={pool} ry={pool * Math.sin((view.tilt * Math.PI) / 180)} fill={color} opacity={0.22} filter={`url(#${blur})`} pointerEvents="none" />}
           <line className="rp3-stem" x1={foot.x} y1={foot.y} x2={head.x} y2={head.y} />
           <circle className="rp3-foot" cx={foot.x} cy={foot.y} r={3} />
@@ -123,8 +144,8 @@ export function RoomPlan3D({ plan, colors, selected, measured, view, onView, onS
   })
 
   return (
-    <svg className="rp rp3" viewBox={`0 0 ${SIZE} ${SIZE}`} tabIndex={0} role="group"
-      aria-label="Vue 3D de la pièce. Glisser de côté ou flèches pour tourner autour, Tab pour atteindre les lampes et le ruban."
+    <svg ref={svg} className="rp rp3" viewBox={`0 0 ${SIZE} ${SIZE}`} tabIndex={0} role="group"
+      aria-label="Vue 3D de la pièce. Glisser le fond ou flèches pour tourner autour ; glisser une lampe de haut en bas pour régler sa hauteur."
       onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={cancel}
       onLostPointerCapture={cancel} onKeyDown={onKeyDown}>
       {backWalls(view).map((w) => <polygon key={w} className="rp3-wall" points={pts(wallCorners(w, dims))} />)}

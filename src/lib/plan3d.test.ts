@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { TILT_MAX, TILT_MIN, backWalls, orbit, project, wallCorners } from './plan3d'
+import { TILT_MAX, TILT_MIN, backWalls, heightDelta, orbit, project, wallCorners } from './plan3d'
 
 const dims = { w: 500, h: 600, d: 270 }
 const SIZE = 400
@@ -62,4 +62,21 @@ describe('orbit', () => {
     expect(orbit({ yaw: 0, tilt: 30 }, 0, -9999).tilt).toBe(TILT_MIN)
     expect(orbit({ yaw: 170, tilt: 30 }, 50, 0).yaw).toBeCloseTo(-170)
   })
+})
+
+describe('heightDelta', () => {
+  it('glisser vers le haut monte, vers le bas descend', () => {
+    expect(heightDelta(-40, front, dims, SIZE)).toBeGreaterThan(0)
+    expect(heightDelta(40, front, dims, SIZE)).toBeLessThan(0)
+    expect(heightDelta(0, front, dims, SIZE)).toBeCloseTo(0)
+  })
+  it('la lampe suit le doigt : monter de h cm déplace sa tête du même nombre d’unités', () => {
+    const a = project({ x: 0, y: 0, z: 50 }, front, dims, SIZE), b = project({ x: 0, y: 0, z: 150 }, front, dims, SIZE)
+    expect(heightDelta(b.y - a.y, front, dims, SIZE)).toBeCloseTo(100)
+  })
+  it('vue très plongeante : le gain est plafonné', () => {
+    const steep = heightDelta(-10, { yaw: 0, tilt: 89 }, dims, SIZE), capped = heightDelta(-10, { yaw: 0, tilt: TILT_MAX }, dims, SIZE)
+    expect(steep).toBeCloseTo(capped)
+  })
+  it('pièce sans dimensions : zéro, pas de NaN', () => expect(heightDelta(-10, front, { w: 0, h: 0, d: 0 }, SIZE)).toBe(0))
 })

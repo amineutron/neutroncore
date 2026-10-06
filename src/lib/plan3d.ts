@@ -26,9 +26,23 @@ export function project(p: P3, view: View, dims: RoomDims, size: number): P2 {
   const yr = p.x * sy + p.y * cy
   const zc = p.z - dims.d / 2
   // la pièce entière tient dans l'écran quel que soit l'angle : on cadre sur sa diagonale
-  const radius = Math.sqrt(dims.w ** 2 + dims.h ** 2 + dims.d ** 2) / 2
-  const k = radius > 0 ? (size * 0.46) / radius : 0
+  const k = scaleOf(dims, size)
   return { x: size / 2 + xr * k, y: size / 2 + (yr * st - zc * ct) * k, depth: yr * ct + zc * st }
+}
+
+/** Facteur d'échelle de `project` : unités d'écran par centimètre. */
+export function scaleOf(dims: RoomDims, size: number): number {
+  const radius = Math.sqrt(dims.w ** 2 + dims.h ** 2 + dims.d ** 2) / 2
+  return radius > 0 ? (size * 0.46) / radius : 0
+}
+
+/** Glisser verticalement de `dyUnits` (unités d'écran, positif = vers le bas)
+ * -> variation de hauteur en cm. Vue trop plongeante : la verticale est écrasée,
+ * on plafonne le gain pour qu'un petit geste ne propulse pas la lampe au plafond. */
+export function heightDelta(dyUnits: number, view: View, dims: RoomDims, size: number): number {
+  const k = scaleOf(dims, size)
+  const vertical = Math.max(0.25, Math.cos(rad(view.tilt)))
+  return k > 0 ? -dyUnits / (k * vertical) : 0
 }
 
 /** Murs situés derrière la pièce vus de l'œil : les seuls qu'on dessine pleins. */

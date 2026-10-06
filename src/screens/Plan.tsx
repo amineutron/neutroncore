@@ -111,7 +111,8 @@ export function Plan() {
               )
               : (
                 <>
-                  <RoomPlan3D plan={draft} colors={colors} selected={selected} measured={liveColors} view={view} onView={setView} onSelect={setSelected} />
+                  <RoomPlan3D plan={draft} colors={colors} selected={selected} measured={liveColors} view={view} onView={setView} onSelect={setSelected}
+                    onHeight={(id, h) => { setSelected(id); setDraft((d) => (d ? setHeight(d, id, h) : d)) }} />
                   <label className="pl-field pl-tilt">inclinaison
                     <input type="range" className="bri" min={TILT_MIN} max={TILT_MAX} value={Math.round(view.tilt)} aria-label="Inclinaison de la vue 3D"
                       onChange={(e) => setView((v) => ({ ...v, tilt: Number(e.target.value) }))} />
@@ -121,7 +122,7 @@ export function Plan() {
             <div className="pl-actions">
               <Btn solid disabled={!dirty || busy === 'save'} onClick={save}>{busy === 'save' ? 'enregistrement…' : 'enregistrer'}</Btn>
               <Btn disabled={!dirty} onClick={() => { setDraft(saved); setSelected(null) }}>annuler les changements</Btn>
-              <span className="pl-hint">{mode === '2d' ? 'glisse une lampe ou le ruban pour les déplacer · un carreau = 1 m' : 'glisse de côté pour tourner autour · le déplacement se fait dans la vue de dessus'}</span>
+              <span className="pl-hint">{mode === '2d' ? 'glisse une lampe ou le ruban pour les déplacer · un carreau = 1 m' : 'glisse une lampe de haut en bas pour régler sa hauteur · glisse le fond pour tourner autour'}</span>
             </div>
           </Card>
           <div className="pl-side">
