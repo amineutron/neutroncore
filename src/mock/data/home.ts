@@ -47,7 +47,9 @@ let demoPlan = {
     1: { pos: { x: -61, y: 225, z: -80 }, name: 'Lampadaire', haloId: 'l3' }, 2: { pos: { x: 221, y: 93, z: -80 }, name: 'Chevet', haloId: 'l4' },
     3: { pos: { x: -125, y: -270, z: -25 }, name: 'Play gauche', haloId: 'l1' }, 4: { pos: { x: 40, y: -270, z: -25 }, name: 'Play droite', haloId: 'l2' },
   },
-  strip: { pos: { x: 7, y: 184 }, stripEnd: { x: 142, y: 116 }, segments: 3, readOnly: true },
+  strip: { segments: 3, segs: [
+    { pos: { x: 7, y: 184 }, angle: -90, length: 67 }, { pos: { x: 46, y: 118 }, angle: 0, length: 67 }, { pos: { x: 142, y: 116 }, angle: 0, length: 67 },
+  ] },
   tv: { pos: { x: -42, y: -282, z: 116 }, readOnly: true },
 }
 
@@ -60,11 +62,12 @@ export const home: [string, string, MockHandler][] = [
     return { success: true, demo: true, volume: denonVolume }
   }],
   ['GET', '/hue/lights', () => ({ lights: LIGHTS })],
-  ['GET', '/plan', () => demoPlan],
+  ['GET', '/plan', () => ({ ...demoPlan, rev: 'demo' })],
   ['PUT', '/plan', ({ body }) => {
-    const b = body as { roomDims: typeof demoPlan.roomDims; configs: Record<string, { pos: { x: number; y: number; z: number } }> }
-    demoPlan = { ...demoPlan, roomDims: b.roomDims, configs: Object.fromEntries(Object.entries(demoPlan.configs).map(([id, c]) => [id, { ...c, pos: b.configs[id]?.pos ?? c.pos }])) as typeof demoPlan.configs }
-    return { success: true, demo: true }
+    const b = body as { roomDims: typeof demoPlan.roomDims; configs: Record<string, { pos: { x: number; y: number; z: number } }>; strip?: { segs: { pos: { x: number; y: number }; angle: number }[] } }
+    const segs = demoPlan.strip.segs.map((sg, i) => ({ ...sg, ...(b.strip?.segs[i] ?? {}) }))
+    demoPlan = { ...demoPlan, roomDims: b.roomDims, strip: { ...demoPlan.strip, segs }, configs: Object.fromEntries(Object.entries(demoPlan.configs).map(([id, c]) => [id, { ...c, pos: b.configs[id]?.pos ?? c.pos }])) as typeof demoPlan.configs }
+    return { success: true, demo: true, rev: 'demo' }
   }],
   ['GET', '/screens/measured', () => ({ ok: true, left: ['#1d3a6e', '#22407a', '#162c55'], top: ['#7a3b1e', '#8a4a22', '#6e2f18'], right: ['#5a1d4e', '#6b2460', '#481640'], bottom: [] })],
   ['GET', '/routines', () => ({ routines: demoRoutines, catalogue: ROUTINE_CATALOGUE, running: null, last: demoLast, invalid: 0 })],

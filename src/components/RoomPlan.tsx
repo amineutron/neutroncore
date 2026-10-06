@@ -1,21 +1,27 @@
 import { useId, useRef } from 'react'
-import { fromSvg, toSvg, type Plan } from '../lib/plan'
+import { fromSvg, segEnds, toSvg, type Plan } from '../lib/plan'
 
 export type Measured = { left: string[]; top: string[]; right: string[]; bottom: string[] }
 
-// Vue de dessus de la pièce, en centimètres. Les lampes se déplacent au doigt
-// ou à la souris ; la TV et le ruban LED sont affichés mais restent à HALO.
-export function RoomPlan({ plan, colors, selected, measured, onSelect, onMove }: {
+export const segId = (i: number) => `seg:${i}`
+export const segIndex = (id: string | null) => (id?.startsWith('seg:') ? Number(id.slice(4)) : -1)
+
+// Vue de dessus de la pièce, en centimètres. Les lampes et les segments du
+// ruban LED se déplacent au doigt, à la souris ou aux flèches ; la TV est
+// affichée mais reste à HALO.
+export function RoomPlan({ plan, colors, selected, measured, onSelect, onMove, onMoveSeg }: {
   plan: Plan
   colors: Record<string, string>          // id de lampe -> couleur quand elle est allumée
   selected: string | null
   measured: Measured | null               // couleurs Ambilight mesurées par la TV
   onSelect: (id: string | null) => void
   onMove: (id: string, xy: { x: number; y: number }) => void
+  onMoveSeg: (index: number, xy: { x: number; y: number }) => void
 }) {
   const svg = useRef<SVGSVGElement>(null)
   // un seul glissement à la fois, lié à SON pointeur (un second doigt ne le détourne pas)
-  const drag = useRef<{ id: string; pointer: number } | null>(null)
+  // dx/dy : écart entre le doigt et le centre de l'objet à la prise, pour qu'il ne saute pas sous le doigt
+  const drag = useRef<{ id: string; pointer: number; dx: number; dy: number } | null>(null)
   const blur = useId()
   const { w, h } = plan.roomDims
   const unit = Math.max(w, h) / 100       // tailles relatives à la pièce, quel que soit le zoom
@@ -31,14 +37,21 @@ export function RoomPlan({ plan, colors, selected, measured, onSelect, onMove }:
   function onPointerMove(e: React.PointerEvent) {
     if (!drag.current || drag.current.pointer !== e.pointerId) return
     const p = point(e)
-    if (p) onMove(drag.current.id, fromSvg(p, plan.roomDims))
+    if (p) place(drag.current.id, fromSvg({ x: p.x - drag.current.dx, y: p.y - drag.current.dy }, plan.roomDims))
+  }
+  const centerOf = (id: string) => (segIndex(id) >= 0 ? plan.strip?.segs?.[segIndex(id)]?.pos : plan.configs[id]?.pos)
+  function place(id: string, xy: { x: number; y: number }) {
+    if (segIndex(id) >= 0) onMoveSeg(segIndex(id), xy)
+    else onMove(id, xy)
   }
   const stop = (e: React.PointerEvent) => { if (drag.current?.pointer === e.pointerId) drag.current = null }
   function grab(e: React.PointerEvent, id: string) {
     e.stopPropagation()
     onSelect(id)
     if (drag.current || !e.isPrimary || e.button !== 0) return
-    drag.current = { id, pointer: e.pointerId }
+    const p = point(e), c = centerOf(id)
+    const at = c ? toSvg(c, plan.roomDims) : null
+    drag.current = { id, pointer: e.pointerId, dx: p && at ? p.x - at.x : 0, dy: p && at ? p.y - at.y : 0 }
     try { svg.current?.setPointerCapture(e.pointerId) } catch { drag.current = null }
   }
   // au clavier : flèches = 5 cm, avec Maj = 20 cm
@@ -48,8 +61,8 @@ export function RoomPlan({ plan, colors, selected, measured, onSelect, onMove }:
     const move = delta[e.key]
     if (!move) return
     e.preventDefault()
-    const pos = plan.configs[id].pos
-    onMove(id, { x: pos.x + move[0], y: pos.y + move[1] })
+    const pos = centerOf(id)
+    if (pos) place(id, { x: pos.x + move[0], y: pos.y + move[1] })
   }
 
   const tv = plan.tv ? toSvg(plan.tv.pos, plan.roomDims) : null
@@ -67,10 +80,19 @@ export function RoomPlan({ plan, colors, selected, measured, onSelect, onMove }:
       {Array.from({ length: Math.floor(w / 100) }, (_, i) => <line key={`v${i}`} className="rp-grid" x1={(i + 1) * 100} y1={0} x2={(i + 1) * 100} y2={h} />)}
       {Array.from({ length: Math.floor(h / 100) }, (_, i) => <line key={`h${i}`} className="rp-grid" x1={0} y1={(i + 1) * 100} x2={w} y2={(i + 1) * 100} />)}
 
-      {strip && (() => {
-        const a = toSvg(strip.pos, plan.roomDims), b = toSvg(strip.stripEnd, plan.roomDims)
-        return <line className="rp-strip" x1={a.x} y1={a.y} x2={b.x} y2={b.y} strokeWidth={unit * 1.4} />
-      })()}
+      {(strip?.segs ?? []).map((sg, i) => {
+        const [a, b] = segEnds(sg).map((pt) => toSvg(pt, plan.roomDims))
+        const id = segId(i)
+        return (
+          <g key={id} className={`rp-light rp-seg ${selected === id ? 'sel' : ''}`} tabIndex={0} role="button"
+            aria-label={`Segment ${i + 1} du ruban LED, angle ${Math.round(sg.angle)} degrés`}
+            onFocus={() => onSelect(id)} onKeyDown={(e) => nudge(e, id)} onPointerDown={(e) => grab(e, id)}>
+            {/* trait épais invisible : cible tactile */}
+            <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="transparent" strokeWidth={unit * 9} strokeLinecap="round" />
+            <line className="rp-strip" x1={a.x} y1={a.y} x2={b.x} y2={b.y} strokeWidth={unit * 1.6} />
+          </g>
+        )
+      })}
 
       {tv && (
         <g>

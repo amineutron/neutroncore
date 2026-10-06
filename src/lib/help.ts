@@ -95,11 +95,13 @@ export const HELP: Record<string, HelpTopic> = {
     intro: 'La pièce vue de dessus : où sont les lampes, la TV et le ruban LED. C’est le plan que HALO utilise.',
     points: [
       ['déplacer', 'Glisse une lampe pour la replacer. Un carreau fait un mètre.'],
+      ['ruban led', 'Glisse le ruban : il se déplace d’un bloc. Touche un segment pour régler son angle, ou le replacer seul.'],
+      ['vue 3d', 'Le bouton « 3d » montre la pièce en volume ; glisse pour tourner autour.'],
       ['hauteur', 'Touche une lampe : le curseur règle sa hauteur depuis le sol.'],
       ['enregistrer', 'Rien n’est écrit avant « enregistrer ». HALO recharge le plan tout seul.'],
       ['halo', 'Associer l’Ambilight aux lampes Hue, voir les couleurs de la TV en direct, ouvrir HALO sur le PC.'],
     ],
-    tip: 'Le ruban LED et la TV se règlent dans HALO ; ils sont affichés ici pour se repérer.',
+    tip: 'La TV, la longueur du ruban et son nombre de segments se règlent dans HALO.',
   },
   ambiance: {
     title: 'ambiance',

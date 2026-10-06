@@ -433,3 +433,22 @@ leur propre scope via `systemd-run --scope`) ; l'arret prend 5 s maximum
   Entree — ne pas borner un champ controle a chaque frappe, la saisie devient
   impossible. `lib/navGuard.ts` : un ecran avec un brouillon (plan) fait
   confirmer avant tout changement d'ecran, retour ou mode tele.
+
+## Plan de piece : vue 3D et ruban deplacable (2026-10-06, soir)
+- **Vue 3D** (`components/RoomPlan3D.tsx`, projection pure `lib/plan3d.ts`
+  testee) : meme principe que le Plan3D de HALO, projection orthographique
+  yaw + inclinaison. Lecture seule : on tourne autour (glisser de cote,
+  fleches, curseur d'inclinaison), on selectionne en touchant ; le deplacement
+  se fait dans la vue de dessus. Un appui ne selectionne qu'au relachement et
+  s'il n'a pas tourne la vue. TV, ruban et lampes sont tries par profondeur.
+- **Ruban LED** : chaque segment = centre, angle (degres, sens horaire vu de
+  dessus, 0 = le long de la largeur — convention QML de HALO) et longueur.
+  L'app modifie position et angle ; longueur, nombre de segments et TV restent
+  a HALO. Glisser deplace tout le ruban d'un bloc (case a decocher pour un
+  segment seul). Pas de hauteur stockee : dessine a min(180 cm, plafond - 20).
+- **Ne pas ecraser HALO** : GET /plan renvoie `rev` (empreinte du fichier),
+  PUT la verifie et refuse si HALO a ecrit entre-temps (`stale`). Le ruban
+  n'est envoye que s'il a ete modifie ici (`toPayload(draft, saved)`), et un
+  segment inchange n'est pas reecrit cote API (ni arrondi, ni angle normalise).
+- Piege de hauteur : `tv.pos.z` est une hauteur depuis le SOL, alors que le
+  `pos.z` des lampes est centre sur la mi-hauteur.

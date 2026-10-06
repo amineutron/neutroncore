@@ -1341,3 +1341,26 @@ input[type=range].bri::-webkit-slider-thumb{-webkit-appearance:none;appearance:n
 
 .rt-close{background:transparent;border:none;color:var(--muted);font-family:var(--mono);font-size:11px;cursor:pointer;padding:2px 4px}
 .rt-close:hover{color:var(--text)}
+
+/* ---------- plan de pièce : ruban déplaçable et vue 3d ---------- */
+.rp-seg .rp-strip{opacity:.85}
+.rp-seg.sel .rp-strip,.rp-strip.sel{stroke:var(--gold);opacity:1}
+.rp-seg:focus-visible .rp-strip{stroke:var(--gold);stroke-dasharray:6 4}
+.pl-modes{display:flex;gap:6px;margin-bottom:10px}
+/* pan-y : un geste vertical fait défiler la page (la vue occupe tout un écran de téléphone) ;
+   glisser de côté tourne, l'inclinaison a son curseur */
+.rp.rp3{touch-action:pan-y;cursor:grab;aspect-ratio:1;max-height:68vh;outline:none}
+.rp.rp3:active{cursor:grabbing}
+.rp.rp3:focus-visible{box-shadow:0 0 0 1px color-mix(in srgb,var(--gold) 55%,transparent);border-radius:10px}
+.rp3-floor{fill:var(--surface2);stroke:var(--line2);stroke-width:1.5}
+.rp3-wall{fill:color-mix(in srgb,var(--surface2) 55%,transparent);stroke:var(--line);stroke-width:1}
+.rp3-stem{stroke:var(--muted);stroke-width:1.5;opacity:.7}
+.rp3-foot{fill:var(--muted)}
+.rp3-pick{cursor:pointer}
+.rp3-pick.sel .rp-dot{stroke:var(--gold)}
+.rp3-pick.sel .rp-label{fill:var(--gold)}
+.rp3-pick{outline:none}
+.rp3-pick:focus-visible .rp-dot,.rp3-pick:focus-visible .rp-strip{stroke:var(--gold);stroke-dasharray:4 3}
+.rp3-pick.sel .rp-strip{stroke:var(--gold);opacity:1}
+.pl-tilt{margin:10px 0 0}
+.pl-tilt input{width:min(220px,55%)}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fromSvg, heightFromFloor, isDirty, moveLight, resizeRoom, setHeight, toPayload, toSvg, zFromHeight, type Plan } from './plan'
+import { fromSvg, heightFromFloor, isDirty, moveLight, moveSeg, normAngle, resizeRoom, rotateSeg, segEnds, setHeight, toPayload, toSvg, zFromHeight, type Plan } from './plan'
 
 const dims = { w: 500, h: 600, d: 270 }
 const plan = (): Plan => ({
@@ -60,7 +60,7 @@ describe('édition', () => {
 })
 
 describe('envoi', () => {
-  it('n’envoie que dimensions et positions (pas la TV ni le ruban)', () => {
+  it('sans ruban : dimensions et positions seulement (jamais la TV)', () => {
     const payload = toPayload(plan())
     expect(Object.keys(payload)).toEqual(['roomDims', 'configs'])
     expect(payload.configs['1']).toEqual({ pos: { x: -61.1, y: 224.9, z: -80 }, name: 'Hue' })
@@ -68,5 +68,94 @@ describe('envoi', () => {
   it('isDirty', () => {
     expect(isDirty(plan(), plan())).toBe(false)
     expect(isDirty(plan(), moveLight(plan(), '1', { x: 0, y: 0 }))).toBe(true)
+  })
+})
+
+describe('ruban LED', () => {
+  const withStrip = (): Plan => ({
+    ...plan(),
+    strip: { segments: 2, segs: [{ pos: { x: 0, y: 180 }, angle: -90, length: 67 }, { pos: { x: 50, y: 120 }, angle: 0, length: 50 }] },
+  })
+
+  it('extrémités : à plat le long de la largeur, à -90° le long de la profondeur', () => {
+    const [a, b] = segEnds({ pos: { x: 50, y: 120 }, angle: 0, length: 50 })
+    expect([a, b]).toEqual([{ x: 25, y: 120 }, { x: 75, y: 120 }])
+    const [c, d] = segEnds({ pos: { x: 0, y: 180 }, angle: -90, length: 60 })
+    expect(c.x).toBeCloseTo(0); expect(c.y).toBeCloseTo(210); expect(d.y).toBeCloseTo(150)
+  })
+
+  it('déplacer un seul segment laisse les autres en place', () => {
+    const p = moveSeg(withStrip(), 0, { x: -100, y: 0 }, false)
+    expect(p.strip?.segs?.map((s) => s.pos)).toEqual([{ x: -100, y: 0 }, { x: 50, y: 120 }])
+  })
+
+  it('déplacer tout le ruban garde sa forme', () => {
+    const p = moveSeg(withStrip(), 0, { x: -100, y: 100 }, true)
+    expect(p.strip?.segs?.map((s) => s.pos)).toEqual([{ x: -100, y: 100 }, { x: -50, y: 40 }])
+  })
+
+  it('tout le ruban bute contre le mur sans se déformer', () => {
+    const p = moveSeg(withStrip(), 0, { x: 9999, y: 9999 }, true)
+    const [a, b] = p.strip!.segs!
+    expect(b.pos.x).toBe(245)                       // le segment le plus à droite touche le mur
+    expect(a.pos.y).toBe(295)                       // le plus au fond aussi
+    expect([b.pos.x - a.pos.x, b.pos.y - a.pos.y]).toEqual([50, -60])   // écart d'origine conservé
+  })
+
+  it('segment inconnu ou plan sans ruban : inchangé', () => {
+    const p = withStrip()
+    expect(moveSeg(p, 7, { x: 0, y: 0 }, false).strip).toEqual(p.strip)
+    const bare = plan()
+    expect(moveSeg(bare, 0, { x: 0, y: 0 }, true)).toBe(bare)
+    expect(rotateSeg(bare, 0, 30)).toBe(bare)
+  })
+
+  it.each([[270, -90], [-200, 160], [180, 180], [-180, 180], [0, 0], [725, 5], [12.34, 12.3]])('angle %d normalisé en %d', (input, out) => {
+    expect(normAngle(input)).toBe(out)
+  })
+
+  it('tourner un segment, sans muter', () => {
+    const before = withStrip()
+    const after = rotateSeg(before, 1, 45)
+    expect(after.strip?.segs?.[1].angle).toBe(45)
+    expect(before.strip?.segs?.[1].angle).toBe(0)
+    expect(rotateSeg(before, 1, Number.NaN)).toBe(before)
+  })
+
+  it('l’envoi ne porte que position et angle du ruban, pas sa longueur', () => {
+    expect(toPayload(withStrip()).strip).toEqual({ segs: [{ pos: { x: 0, y: 180 }, angle: -90 }, { pos: { x: 50, y: 120 }, angle: 0 }] })
+    expect(isDirty(withStrip(), rotateSeg(withStrip(), 0, 10))).toBe(true)
+    expect(isDirty(withStrip(), withStrip())).toBe(false)
+  })
+
+  it('un ruban non modifié n’est pas renvoyé (déplacer une lampe ne réécrit pas le ruban)', () => {
+    const saved = withStrip()
+    const lampMoved = moveLight(saved, '1', { x: 0, y: 0 })
+    expect(toPayload(lampMoved, saved).strip).toBeUndefined()
+    expect(toPayload(rotateSeg(saved, 0, 10), saved).strip?.segs).toHaveLength(2)
+  })
+
+  it('la révision lue est renvoyée, sans compter comme une modification', () => {
+    const saved = { ...withStrip(), rev: 'abc123' }
+    expect(toPayload(saved, saved).rev).toBe('abc123')
+    expect(isDirty(saved, { ...saved, rev: 'autre' })).toBe(false)
+  })
+
+  it('un ruban plus large que la pièce peut encore bouger, sans saut', () => {
+    const wide: Plan = { ...plan(), strip: { segments: 2, segs: [{ pos: { x: -300, y: 0 }, angle: 0, length: 50 }, { pos: { x: 300, y: 0 }, angle: 0, length: 50 }] } }
+    // aucun déplacement horizontal possible sans aggraver un côté : il reste en place au lieu de sauter
+    expect(moveSeg(wide, 0, { x: -290, y: 0 }, true).strip?.segs?.map((s) => s.pos.x)).toEqual([-300, 300])
+    // l'autre axe reste libre
+    expect(moveSeg(wide, 0, { x: -300, y: 40 }, true).strip?.segs?.map((s) => s.pos.y)).toEqual([40, 40])
+  })
+
+  it('un segment hors bornes peut revenir vers l’intérieur', () => {
+    const out: Plan = { ...plan(), strip: { segments: 1, segs: [{ pos: { x: 260, y: 0 }, angle: 0, length: 50 }] } }
+    expect(moveSeg(out, 0, { x: 200, y: 0 }, true).strip?.segs?.[0].pos.x).toBe(200)
+    expect(moveSeg(out, 0, { x: 280, y: 0 }, true).strip?.segs?.[0].pos.x).toBe(260)   // ne s'éloigne pas davantage
+  })
+
+  it('rétrécir la pièce ramène aussi le ruban à l’intérieur', () => {
+    expect(resizeRoom(withStrip(), 'h', 300).strip?.segs?.[0].pos.y).toBe(145)
   })
 })
