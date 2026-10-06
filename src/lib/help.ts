@@ -90,6 +90,18 @@ export const HELP: Record<string, HelpTopic> = {
       ['docker', 'Images du stack média plus récentes que celles installées.'],
     ],
   },
+  automatisations: {
+    title: 'automatisations',
+    intro: 'Ce que la maison fait toute seule, et les routines qu’on lance d’un geste. Chacune se compose de blocs.',
+    points: [
+      ['quand', 'Le déclencheur : une heure, une alerte, un téléchargement fini, une session Claude, un service, la TV… ou « à la main » pour une routine.'],
+      ['si', 'Des conditions facultatives : plage horaire, jours, TV ou lumières allumées. Si un appareil ne répond pas, la condition échoue : dans le doute, rien ne se lance.'],
+      ['alors', 'Les actions, dans l’ordre : scène, lumières, TV, ampli, notification, démarrer un service, attendre.'],
+      ['passages', 'Touche une automatisation pour voir ses derniers passages : réussie, en échec, ou non lancée et pourquoi.'],
+      ['agenda', 'Les automatisations horaires apparaissent dans l’agenda, avec le résultat de chaque passage.'],
+    ],
+    tip: '« essayer » lance les actions tout de suite, sans regarder ni le déclencheur ni les conditions.',
+  },
   plan: {
     title: 'plan de pièce',
     intro: 'La pièce vue de dessus : où sont les lampes, la TV et le ruban LED. C’est le plan que HALO utilise.',
@@ -110,7 +122,6 @@ export const HELP: Record<string, HelpTopic> = {
       ['scènes', 'Les carrés montrent un aperçu des couleurs et leur position dans la pièce.'],
       ['lumières', 'Cliquer une ampoule la bascule ; le curseur règle son intensité.'],
       ['tv et denon', 'Alimentation, volume, source, Ambilight. Le volume TV est redirigé vers le Denon.'],
-      ['routines', 'Plusieurs actions d’un seul geste (scène, TV, ampli), à la demande ou à heure fixe. Aussi dans la palette (Ctrl+K).'],
       ['télécommande', 'Flèches, validation, lecture, applications et entrée de l’ampli. Un clic dans la carte active les flèches du clavier.'],
       ['iron man', 'La scène complète : trente-trois secondes de lumière et de son synchronisés.'],
     ],

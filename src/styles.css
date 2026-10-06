@@ -1311,17 +1311,7 @@ input[type=range].bri::-webkit-slider-thumb{-webkit-appearance:none;appearance:n
 .pl-note{font-size:11.5px;color:var(--faint);line-height:1.5;margin:8px 0 0}
 .pl-toggles{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
 
-/* ---------- routines (components/Routines.tsx, RoutineEditor.tsx) ---------- */
-.rt-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
-.rt-card{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:10px;background:var(--surface2);padding:10px;min-width:0}
-.rt-run{display:flex;flex-direction:column;gap:4px;text-align:left;background:transparent;border:none;color:var(--text);cursor:pointer;padding:2px;font:inherit;min-width:0}
-.rt-run b{font-family:var(--mono);font-size:13px;color:var(--gold)}
-.rt-run span,.rt-new span{font-size:11.5px;color:var(--muted);line-height:1.45;overflow-wrap:anywhere}
-.rt-run:disabled{opacity:.55;cursor:progress}
-.rt-card:has(.rt-run:not(:disabled):hover){border-color:var(--gold)}
-.rt-meta{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px}
-.rt-new{align-items:flex-start;justify-content:center;border-style:dashed;color:var(--muted);font-family:var(--mono);font-size:12px;cursor:pointer;text-align:left}
-.rt-new:hover{color:var(--text);border-color:var(--line2)}
+/* ---------- éditeur par blocs (components/AutomationEditor.tsx) : champs, lignes d'action ---------- */
 .pre-modal .inner.rt-editor{width:min(640px,96vw)}
 .rt-body{padding:14px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
 .rt-field{display:flex;flex-direction:column;gap:4px;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
@@ -1333,7 +1323,6 @@ input[type=range].bri::-webkit-slider-thumb{-webkit-appearance:none;appearance:n
 .rt-num{flex:0 0 18px;font-family:var(--mono);font-size:11px;color:var(--faint)}
 .rt-tools{display:inline-flex;gap:4px;margin-left:auto}
 .rt-tools .btn{padding:5px 9px}
-.rt-summary{margin:0;font-size:11.5px;color:var(--muted);line-height:1.5}
 .rt-check{display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer}
 .rt-check input{accent-color:var(--gold);width:15px;height:15px}
 .rt-sched{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
@@ -1367,3 +1356,37 @@ input[type=range].bri::-webkit-slider-thumb{-webkit-appearance:none;appearance:n
 
 /* une lampe se saisit pour régler sa hauteur : son geste vertical ne doit pas faire défiler la page */
 .rp3-lamp{touch-action:none;cursor:ns-resize}
+
+/* ---------- automatisations (screens/Automations.tsx, components/AutomationEditor.tsx) ---------- */
+.au-card{border:1px solid var(--line);border-radius:10px;background:var(--surface2);padding:10px 12px;margin-bottom:8px}
+.au-card.off{opacity:.62}
+.au-card.open{border-color:var(--line2)}
+.au-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.au-title{flex:1 1 220px;min-width:0;display:flex;flex-direction:column;gap:3px;text-align:left;background:transparent;border:none;color:var(--text);cursor:pointer;padding:2px;font:inherit}
+.au-title b{font-family:var(--mono);font-size:13px;color:var(--gold)}
+.au-title span{font-size:12px;color:var(--muted);line-height:1.45;overflow-wrap:anywhere}
+.au-tools{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.au-last{display:flex;align-items:center;gap:7px;margin-top:7px;font-size:11.5px;color:var(--faint)}
+.au-detail{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.au-flow{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:baseline;font-size:12.5px;margin-bottom:12px}
+.au-pill{font-family:var(--mono);font-size:10px;font-weight:600;border-radius:6px;padding:2px 7px;border:1px solid var(--line2);text-align:center}
+.au-pill.when,.au-block.when h4{color:var(--gold)}
+.au-pill.if,.au-block.if h4{color:var(--rose)}
+.au-pill.then,.au-block.then h4{color:var(--ok)}
+.au-run{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;padding:5px 0;font-size:12px}
+.au-run .dot{align-self:center}
+.au-run-main{flex:1 1 200px;min-width:0;overflow-wrap:anywhere}
+.au-run-main em{font-style:normal;color:var(--muted)}
+.au-run-meta{font-family:var(--mono);font-size:10px;color:var(--faint)}
+.au-note{font-size:12px;color:var(--faint);line-height:1.5;margin:6px 0 0}
+.pre-modal .inner.au-editor{width:min(700px,96vw)}
+.au-block{border:1px solid var(--line);border-left-width:3px;border-radius:9px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.au-block.when{border-left-color:var(--gold)}.au-block.if{border-left-color:var(--rose)}.au-block.then{border-left-color:var(--ok)}
+.au-block h4{margin:0;font-family:var(--mono);font-size:12px;font-weight:600}
+.au-block h4 span{font-weight:400;font-size:10px;color:var(--faint);margin-left:6px}
+.au-block>.btn{align-self:flex-start}
+.au-sentence{margin:0;padding:10px 12px;border-radius:9px;background:color-mix(in srgb,var(--gold) 8%,transparent);font-size:12.5px;line-height:1.5}
+.bp-days{display:inline-flex;flex-wrap:wrap;gap:4px}
+.bp-days .btn{padding:5px 8px}
+.rt-editor input.bp-text{flex:1 1 200px}
+.au-editor .rt-sched select{margin-left:6px}

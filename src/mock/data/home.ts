@@ -19,7 +19,7 @@ const SCENES = [
 // volume de l'ampli : la démo retient la consigne pour que la barre la relise
 let denonVolume = 42.5
 
-const ROUTINE_CATALOGUE = [
+const ACTION_CATALOGUE = [
   { action: 'hue.scene', label: 'scène hue', params: [{ name: 'scene_id', type: 'id' }] },
   { action: 'hue.off', label: 'lumières : tout éteindre', params: [] },
   { action: 'hue.brightness', label: 'lumières : intensité', params: [{ name: 'brightness', type: 'int', min: 1, max: 254 }] },
@@ -29,16 +29,56 @@ const ROUTINE_CATALOGUE = [
   { action: 'denon.volume', label: 'ampli : volume', params: [{ name: 'level', type: 'int', min: 0, max: 60 }] },
   { action: 'denon.source', label: 'ampli : entrée', params: [{ name: 'source', type: 'choice', choices: ['TV', 'BD', 'GAME', 'SAT/CBL', 'DVD', 'MPLAY'] }] },
   { action: 'wait', label: 'attendre', params: [{ name: 'seconds', type: 'int', min: 1, max: 60 }] },
+  { action: 'notify.app', label: "notification dans l'app", params: [{ name: 'message', type: 'text', max: 200 }] },
+  { action: 'notify.phone', label: 'notification sur le téléphone', params: [{ name: 'message', type: 'text', max: 200 }] },
+  { action: 'service.start', label: 'démarrer un service', params: [{ name: 'name', type: 'choice', choices: ['lyra', 'n8n', 'tracking', 'plex', 'radarr', 'sonarr', 'bazarr'] }] },
 ]
-type DemoRoutine = { id: string; name: string; enabled: boolean; schedule: { time: string; days: number[] } | null; steps: { action: string; params: Record<string, unknown> }[]; last_run: string | null }
-let demoRoutines: DemoRoutine[] = [
-  { id: 'r-film', name: 'soirée film', enabled: true, schedule: null, last_run: null, steps: [
-    { action: 'hue.scene', params: { scene_id: SCENES[0].id } }, { action: 'tv.power', params: { on: true } },
-    { action: 'wait', params: { seconds: 5 } }, { action: 'tv.app', params: { app: 'plex' } }, { action: 'denon.source', params: { source: 'TV' } },
-  ] },
-  { id: 'r-lit', name: 'au lit', enabled: true, schedule: { time: '23:30', days: [0, 1, 2, 3, 6] }, last_run: null, steps: [
-    { action: 'tv.power', params: { on: false } }, { action: 'hue.off', params: {} },
-  ] },
+const SERVICE_NAMES = ['any', 'lyra', 'n8n', 'tracking', 'plex', 'radarr', 'sonarr', 'bazarr']
+const AUTOMATION_CATALOGUE = {
+  triggers: [
+    { type: 'manual', label: 'à la main (routine)', params: [] },
+    { type: 'time', label: 'à heure fixe', params: [{ name: 'time', type: 'time' }, { name: 'days', type: 'days' }] },
+    { type: 'alert', label: 'une alerte système', params: [{ name: 'kind', type: 'choice', choices: ['any', 'disk', 'unit', 'backup', 'rotation', 'memory', 'agenda'] }, { name: 'when', type: 'choice', choices: ['raised', 'resolved'] }] },
+    { type: 'download_done', label: 'un téléchargement se termine', params: [] },
+    { type: 'session', label: 'une session claude', params: [{ name: 'when', type: 'choice', choices: ['waiting', 'done'] }] },
+    { type: 'service', label: "un service change d'état", params: [{ name: 'name', type: 'choice', choices: SERVICE_NAMES }, { name: 'state', type: 'choice', choices: ['down', 'up'] }] },
+    { type: 'tv', label: "la tv s'allume ou s'éteint", params: [{ name: 'state', type: 'choice', choices: ['on', 'off'] }] },
+  ],
+  conditions: [
+    { type: 'time_between', label: 'entre deux heures', params: [{ name: 'start', type: 'time' }, { name: 'end', type: 'time' }] },
+    { type: 'days', label: 'certains jours', params: [{ name: 'days', type: 'days' }] },
+    { type: 'tv_is', label: 'la tv est', params: [{ name: 'state', type: 'choice', choices: ['on', 'off'] }] },
+    { type: 'lights_are', label: 'les lumières sont', params: [{ name: 'state', type: 'choice', choices: ['on', 'off'] }] },
+  ],
+  actions: ACTION_CATALOGUE,
+}
+type DemoBlock = { type: string; params: Record<string, unknown> }
+type DemoRun = { at: number; trigger: string; why: string; success: boolean; failed: number; detail: string; skipped?: boolean }
+type DemoAutomation = {
+  id: string; name: string; enabled: boolean; trigger: DemoBlock; conditions: DemoBlock[]
+  actions: { action: string; params: Record<string, unknown> }[]; cooldown_min: number; last_run: string | null; history: DemoRun[]
+}
+const minutesAgo = (m: number) => Date.now() / 1000 - m * 60
+let demoAutomations: DemoAutomation[] = [
+  { id: 'a-disque', name: 'alerte disque', enabled: true, cooldown_min: 60, last_run: null,
+    trigger: { type: 'alert', params: { kind: 'disk', when: 'raised' } }, conditions: [],
+    actions: [{ action: 'notify.phone', params: { message: 'un disque est presque plein' } }],
+    history: [{ at: minutesAgo(26 * 60), trigger: 'alert', why: '/data presque plein — 93 %', success: true, failed: 0, detail: '' }] },
+  { id: 'a-lit', name: 'au lit', enabled: true, cooldown_min: 5, last_run: null,
+    trigger: { type: 'time', params: { time: '23:30', days: [0, 1, 2, 3, 6] } }, conditions: [{ type: 'tv_is', params: { state: 'off' } }],
+    actions: [{ action: 'hue.off', params: {} }],
+    history: [
+      { at: minutesAgo(20 * 60), trigger: 'time', why: 'condition non remplie : la tv n’est pas éteinte', success: true, failed: 0, detail: '', skipped: true },
+      { at: minutesAgo(44 * 60), trigger: 'time', why: 'heure prévue', success: true, failed: 0, detail: '' },
+    ] },
+  { id: 'a-plex', name: 'plex tombé', enabled: false, cooldown_min: 15, last_run: null,
+    trigger: { type: 'service', params: { name: 'plex', state: 'down' } }, conditions: [],
+    actions: [{ action: 'service.start', params: { name: 'plex' } }, { action: 'notify.app', params: { message: 'plex a été relancé' } }], history: [] },
+  { id: 'r-film', name: 'soirée film', enabled: true, cooldown_min: 5, last_run: null, trigger: { type: 'manual', params: {} }, conditions: [], history: [],
+    actions: [
+      { action: 'hue.scene', params: { scene_id: SCENES[0].id } }, { action: 'tv.power', params: { on: true } },
+      { action: 'wait', params: { seconds: 5 } }, { action: 'tv.app', params: { app: 'plex' } }, { action: 'denon.source', params: { source: 'TV' } },
+    ] },
 ]
 let demoLast: { id: string; success: boolean; failed: number; steps: { action: string; label: string; ok: boolean; error: string }[] } | null = null
 let demoPlan = {
@@ -70,18 +110,21 @@ export const home: [string, string, MockHandler][] = [
     return { success: true, demo: true, rev: 'demo' }
   }],
   ['GET', '/screens/measured', () => ({ ok: true, left: ['#1d3a6e', '#22407a', '#162c55'], top: ['#7a3b1e', '#8a4a22', '#6e2f18'], right: ['#5a1d4e', '#6b2460', '#481640'], bottom: [] })],
-  ['GET', '/routines', () => ({ routines: demoRoutines, catalogue: ROUTINE_CATALOGUE, running: null, last: demoLast, invalid: 0 })],
-  ['PUT', '/routines/:id', ({ params, body }) => {
-    const r = (body as { routine: Omit<DemoRoutine, 'id' | 'last_run'> }).routine
-    const id = params.id === 'new' ? `r-${Date.now()}` : params.id
-    demoRoutines = [...demoRoutines.filter((x) => x.id !== id), { ...r, id, last_run: null }].sort((a, b) => a.name.localeCompare(b.name))
+  ['GET', '/automations', () => ({ automations: demoAutomations, catalogue: AUTOMATION_CATALOGUE, running: null, last: demoLast, invalid: 0 })],
+  ['PUT', '/automations/:id', ({ params, body }) => {
+    const a = (body as { automation: Omit<DemoAutomation, 'id' | 'last_run' | 'history'> }).automation
+    const id = params.id === 'new' ? `a-${Date.now()}` : params.id
+    const old = demoAutomations.find((x) => x.id === id)
+    demoAutomations = [...demoAutomations.filter((x) => x.id !== id), { ...a, id, last_run: null, history: old?.history ?? [] }].sort((x, y) => x.name.localeCompare(y.name))
     return { success: true, id }
   }],
-  ['DELETE', '/routines/:id', ({ params }) => { demoRoutines = demoRoutines.filter((x) => x.id !== params.id); return { success: true } }],
-  ['POST', '/routines/:id/run', ({ params }) => {
-    const r = demoRoutines.find((x) => x.id === params.id)
-    demoLast = { id: params.id, success: true, failed: 0, steps: (r?.steps ?? []).map((x) => ({ action: x.action, label: x.action, ok: true, error: '' })) }
-    return { success: true, started: true, steps: r?.steps.length ?? 0 }
+  ['DELETE', '/automations/:id', ({ params }) => { demoAutomations = demoAutomations.filter((x) => x.id !== params.id); return { success: true } }],
+  ['POST', '/automations/:id/run', ({ params }) => {
+    const a = demoAutomations.find((x) => x.id === params.id)
+    demoLast = { id: params.id, success: true, failed: 0, steps: (a?.actions ?? []).map((x) => ({ action: x.action, label: x.action, ok: true, error: '' })) }
+    demoAutomations = demoAutomations.map((x) => (x.id === params.id
+      ? { ...x, history: [{ at: Date.now() / 1000, trigger: 'manual', why: '', success: true, failed: 0, detail: '' }, ...x.history] } : x))
+    return { success: true, started: true, steps: a?.actions.length ?? 0 }
   }],
   ['GET', '/hue/scenes', () => ({ scenes: SCENES.map(({ id, name, group }) => ({ id, name, group })) })],
   ['GET', '/hue/scenes/:id/preview', ({ params }) => {

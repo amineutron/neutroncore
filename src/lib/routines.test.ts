@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { defaultParams, describeStep, draftError, moveStep, scheduleLabel, toggleDay, type ActionSpec, type Step } from './routines'
+import { defaultParams, describeStep, moveStep, type ActionSpec, type Step } from './routines'
 
 const CAT: ActionSpec[] = [
   { action: 'hue.scene', label: 'scène hue', params: [{ name: 'scene_id', type: 'id' }] },
@@ -36,19 +36,9 @@ describe('defaultParams', () => {
     expect(defaultParams(CAT[5])).toEqual({ level: 30 })
     expect(defaultParams(CAT[6])).toEqual({ seconds: 5 })
   })
-})
-
-describe('planification', () => {
-  it.each([
-    [[0, 1, 2, 3, 4, 5, 6], '07:30 · tous les jours'], [[4, 0, 2, 1, 3], '07:30 · en semaine'],
-    [[5, 6], '07:30 · le week-end'], [[0, 2], '07:30 · lun mer'],
-  ])('%j', (days, out) => expect(scheduleLabel({ time: '07:30', days })).toBe(out))
-  it('sans planification', () => expect(scheduleLabel(null)).toBe(''))
-  it('toggleDay garde les jours triés, sans muter', () => {
-    const s = { time: '07:30', days: [0, 4] }
-    expect(toggleDay(s, 2).days).toEqual([0, 2, 4])
-    expect(toggleDay(s, 0).days).toEqual([4])
-    expect(s.days).toEqual([0, 4])
+  it('un message de notification démarre vide, jamais avec l’identifiant d’une scène', () => {
+    const notify: ActionSpec = { action: 'notify.app', label: 'notification', params: [{ name: 'message', type: 'text', max: 200 }] }
+    expect(defaultParams(notify, 'scene-123')).toEqual({ message: '' })
   })
 })
 
@@ -61,18 +51,5 @@ describe('moveStep', () => {
   it('aux extrémités : inchangé', () => {
     expect(moveStep(steps, 0, -1)).toBe(steps)
     expect(moveStep(steps, 2, 1)).toBe(steps)
-  })
-})
-
-describe('draftError', () => {
-  const ok = { name: 'soirée', enabled: true, schedule: null, steps: [step('hue.off')] }
-  it.each([
-    [ok, ''], [{ ...ok, name: '  ' }, 'nom'], [{ ...ok, steps: [] }, 'étape'],
-    [{ ...ok, steps: [step('hue.scene', { scene_id: '' })] }, 'scène'],
-    [{ ...ok, schedule: { time: '07:30', days: [] } }, 'jour'],
-  ])('%#', (draft, fragment) => {
-    const e = draftError(draft)
-    if (fragment === '') expect(e).toBe('')
-    else expect(e).toContain(fragment)
   })
 })

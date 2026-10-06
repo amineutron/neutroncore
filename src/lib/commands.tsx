@@ -6,7 +6,7 @@ import { addLaunch } from './launches'
 import { LINKS } from './links'
 import type { Command } from './palette'
 import { saveSettings, THEMES } from './settings'
-import { runRoutine } from './routineRun'
+import { runAutomation } from './automationRun'
 
 // Ce que les commandes pilotent dans App (navigation et surcouches)
 export type Shell = {
@@ -41,12 +41,13 @@ async function loadDynamic(): Promise<Dynamic> {
   const [scenes, launcher, routines] = await Promise.allSettled([
     apiGet<{ scenes: Scene[] }>('/hue/scenes'),
     apiGet<{ favorites: Fav[] }>('/launcher'),
-    apiGet<{ routines: RoutineRef[] }>('/routines'),
+    apiGet<{ automations: (RoutineRef & { trigger: { type: string } })[] }>('/automations'),
   ])
   const data: Dynamic = {
     scenes: scenes.status === 'fulfilled' ? scenes.value.scenes.filter((s) => s.group === HUE_ROOM) : [],
     favorites: launcher.status === 'fulfilled' ? launcher.value.favorites.filter((f) => f.exists) : [],
-    routines: routines.status === 'fulfilled' ? routines.value.routines.map(({ id, name }) => ({ id, name })) : [],
+    // seules les routines (déclencheur manuel) se lancent depuis la palette
+    routines: routines.status === 'fulfilled' ? routines.value.automations.filter((a) => a.trigger.type === 'manual').map(({ id, name }) => ({ id, name })) : [],
   }
   // une source en panne n'est pas mise en cache : elle reviendra à la prochaine ouverture
   if (scenes.status === 'fulfilled' && launcher.status === 'fulfilled' && routines.status === 'fulfilled') cache = { at: Date.now(), data }
@@ -76,7 +77,7 @@ export function buildCommands(shell: Shell, dyn: Dynamic): Command[] {
   const home: Command[] = [
     ...dyn.routines.map((r): Command => ({
       id: `routine:${r.id}`, label: `routine : ${r.name}`, group: 'maison', keywords: 'enchainement scenario lancer',
-      run: () => { toast(`routine « ${r.name} » lancée…`); return runRoutine(r) },
+      run: () => { toast(`routine « ${r.name} » lancée…`); return runAutomation(r) },
     })),
     ...dyn.scenes.map((s): Command => ({
       id: `scene:${s.id}`, label: `scène : ${s.name}`, group: 'maison', keywords: 'hue lumiere ambiance',

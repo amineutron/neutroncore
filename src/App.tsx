@@ -27,15 +27,16 @@ import { Tests } from './screens/Tests'
 import { TvDashboard } from './screens/TvDashboard'
 import { Agenda } from './screens/Agenda'
 import { Plan } from './screens/Plan'
+import { Automations } from './screens/Automations'
 import { LOG_TARGET } from './lib/nav'
 
-export type ScreenId = 'accueil' | 'agenda' | 'films' | 'demandes' | 'dl' | 'taches' | 'projets' | 'ambiance' | 'plan' | 'lanceur' | 'outils' | 'tests' | 'parametres'
+export type ScreenId = 'accueil' | 'agenda' | 'automatisations' | 'films' | 'demandes' | 'dl' | 'taches' | 'projets' | 'ambiance' | 'plan' | 'lanceur' | 'outils' | 'tests' | 'parametres'
 
 // Permet aux écrans (tuiles de l'accueil...) de naviguer vers un autre onglet
 export const NavContext = createContext<(s: ScreenId) => void>(() => {})
 
 const NAV: { group: string; items: { id: ScreenId; label: string }[] }[] = [
-  { group: 'pilotage', items: [{ id: 'accueil', label: 'accueil' }, { id: 'agenda', label: 'agenda' }, { id: 'taches', label: 'tâches' }, { id: 'projets', label: 'projets' }] },
+  { group: 'pilotage', items: [{ id: 'accueil', label: 'accueil' }, { id: 'agenda', label: 'agenda' }, { id: 'automatisations', label: 'automatisations' }, { id: 'taches', label: 'tâches' }, { id: 'projets', label: 'projets' }] },
   { group: 'média', items: [{ id: 'films', label: 'films & séries' }, { id: 'demandes', label: 'demandes' }, { id: 'dl', label: 'téléchargements' }] },
   { group: 'maison', items: [{ id: 'ambiance', label: 'ambiance' }, { id: 'plan', label: 'plan de pièce' }, { id: 'lanceur', label: 'lanceur' }] },
   { group: 'système', items: [{ id: 'outils', label: 'outils & vms' }, { id: 'tests', label: 'tests' }, { id: 'parametres', label: 'paramètres' }] },
@@ -71,7 +72,7 @@ export const BUILD_ID =
     ?.src.match(/index-([\w-]+)\.js/)?.[1] ?? 'dev'
 
 const SCREENS: Record<ScreenId, () => React.JSX.Element> = {
-  accueil: Accueil, agenda: Agenda, films: Media, demandes: Demandes, dl: Downloads, taches: Taches,
+  accueil: Accueil, agenda: Agenda, automatisations: Automations, films: Media, demandes: Demandes, dl: Downloads, taches: Taches,
   projets: Projets, ambiance: Ambiance, plan: Plan, lanceur: Lanceur, outils: Outils, tests: Tests, parametres: Parametres,
 }
 

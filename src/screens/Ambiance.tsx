@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useContext } from 'react'
 import { apiGet, apiPost, withConfirm } from '../lib/api'
 import { confirmDialog } from '../lib/dialog'
 import { Remote } from '../components/Remote'
-import { Routines } from '../components/Routines'
+import { NavContext } from '../App'
 import { ColorPalette } from '../components/ColorPalette'
 import { DenonVolume } from '../components/DenonVolume'
 import { IronmanScene } from '../components/IronmanScene'
@@ -44,6 +44,7 @@ function RoomPreview({ positions, lightstates, size = 52 }: {
 }
 
 export function Ambiance() {
+  const navigate = useContext(NavContext)
   const tv = usePoll<TvStatus>(() => apiGet('/tv/status'), 15000)
   const lights = usePoll<{ lights: Record<string, Light> }>(() => apiGet('/hue/lights'), 15000)
   // liste figée : relue toutes les 5 min, toutes les 20 s tant qu'elle est périmée
@@ -314,7 +315,10 @@ export function Ambiance() {
         <Remote source={t?.denon_source} tvOn={t?.power === 'On'} onChange={tv.refresh} />
       </div>
 
-      <Routines scenes={(scenes.data?.scenes ?? []).filter((s) => s.group === '81')} />
+      <Card title="routines et automatisations" style={{ marginTop: 14 }}>
+        <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 10px' }}>Plusieurs actions d'un seul geste, ou la maison qui réagit toute seule (heure, alerte, tv…).</p>
+        <Btn onClick={() => navigate('automatisations')}>ouvrir les automatisations</Btn>
+      </Card>
 
       <Card title="gestion avancée — halo" style={{ marginTop: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>

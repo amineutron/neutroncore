@@ -452,3 +452,40 @@ leur propre scope via `systemd-run --scope`) ; l'arret prend 5 s maximum
   segment inchange n'est pas reecrit cote API (ni arrondi, ni angle normalise).
 - Piege de hauteur : `tv.pos.z` est une hauteur depuis le SOL, alors que le
   `pos.z` des lampes est centre sur la mi-hauteur.
+
+## Automatisations (2026-10-06, nuit) — remplacent la carte « routines »
+- **Section dediee** (ecran `automatisations`, groupe pilotage) : `screens/Automations.tsx`,
+  editeur par blocs `components/AutomationEditor.tsx`, champ generique
+  `components/BlockParams.tsx`, mise en phrases `lib/automations.ts` (testee).
+  Une automatisation = QUAND (un declencheur) + SI (conditions, facultatives)
+  + ALORS (actions). Declencheur `manual` = une routine (bouton « lancer »,
+  aussi dans la palette sous l'identifiant `routine:<id>`). Les routines du
+  lot 3 sont reprises automatiquement au premier chargement.
+- **Cote API** : `lib/automations.py` (catalogues fermes ACTIONS / TRIGGERS /
+  CONDITIONS, logique pure testee) + `routers/automations.py` (moteur). Le
+  moteur tourne dans l'API (tache du lifespan, 30 s) : alertes et sessions
+  Claude EMETTENT des evenements (`automations.emit`), services, TV et
+  telechargements sont SONDES toutes les 60 s seulement si une automatisation
+  active s'en sert, avec anti-rebond (2 releves identiques).
+- **Garde-fous** : aucune action ne peut arreter, supprimer ni executer du
+  texte libre ; un etat d'appareil inconnu fait echouer la condition ; delai
+  minimal par automatisation (`cooldown_min`) et plafond de 12 lancements par
+  heure ; une seule automatisation a la fois ; revalidation a chaque lecture
+  du fichier `$NEUTRONCORE_STATE/automations.json`.
+- **Trace** : chaque passage automatique va dans l'historique de
+  l'automatisation (reussi, en echec, ou « non lance » avec la raison) et dans
+  le centre de notifications. Les automatisations horaires apparaissent dans
+  l'agenda (categorie `automatisations`, statut a venir / fait / en echec /
+  manque).
+- **Ajouter un bloc** : une entree dans le catalogue concerne de
+  `lib/automations.py`, une branche dans `_execute` / `matches` /
+  `conditions_ok`, sa phrase dans `lib/automations.ts`, et le catalogue de
+  demo (`src/mock/data/home.ts`).
+- **Action « phrase a Lyra » : PAS ENCORE FAITE.** L'etude du demon Lyra
+  (2026-10-06) montre qu'envoyer une phrase brute sans humain n'est pas fiable
+  aujourd'hui. Approche retenue a valider avec l'utilisateur : resoudre la
+  phrase a l'edition (nouveau message `analyze` du demon), stocker l'appel
+  resolu, l'executer par la route `tool`. Demande des changements dans Lyra
+  avec ses propres tests, e2e, fumee et bancs.
+- **Plan de piece** : dans la vue 3D, glisser une lampe de haut en bas regle
+  sa hauteur (`heightDelta` dans `lib/plan3d.ts`) ; glisser le fond tourne.
