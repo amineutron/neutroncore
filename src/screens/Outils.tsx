@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { LOG_TARGET } from '../lib/nav'
+import { LINKS } from '../lib/links'
 import { apiGet } from '../lib/api'
 import { usePoll, fmtBytes } from '../lib/poll'
 import { useVms } from '../lib/vms'
@@ -26,21 +27,6 @@ const backupLabel = (u: BackupUnit | undefined, age?: number | null): string => 
   if (age != null) return age === 0 ? "aujourd'hui" : `il y a ${age} j`
   return u.last_run ? u.last_run.split(' ').slice(1, 3).join(' ') : 'ok'
 }
-
-const MEDIA_HOST = import.meta.env.VITE_MEDIA_HOST ?? 'media-server.lan'
-
-const LINKS = [
-  { name: 'plex', url: `http://${MEDIA_HOST}:32400/web` },
-  { name: 'overseerr', url: `http://${MEDIA_HOST}:5055` },
-  { name: 'radarr', url: `http://${MEDIA_HOST}:7878` },
-  { name: 'sonarr', url: `http://${MEDIA_HOST}:8989` },
-  { name: 'bazarr', url: `http://${MEDIA_HOST}:6767` },
-  { name: 'qbittorrent', url: `http://${MEDIA_HOST}:8080` },
-  { name: 'prowlarr', url: `http://${MEDIA_HOST}:9696` },
-  { name: 'kavita', url: `http://${MEDIA_HOST}:5000` },
-  { name: 'vaultwarden', url: 'http://127.0.0.1:8222' },
-  { name: 'worldmonitor', url: 'https://worldmonitor.app' },
-]
 
 const LOG_UNITS = [
   { unit: 'all', label: 'tous les logs' },

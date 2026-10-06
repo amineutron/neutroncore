@@ -381,3 +381,23 @@ leur propre scope via `systemd-run --scope`) ; l'arret prend 5 s maximum
   arreter, seulement si `controllable` (vrai quand un jeton `service_stop_<nom>`
   existe cote API). Toujours avec X-Confirm.
 - Volets ecartes par choix : ventilateur, pairs d'un torrent.
+
+## Lot 2 des nouveaux volets (2026-10-06)
+- **Alertes typees** : chaque alerte de GET /system/alerts porte `kind` (disk,
+  unit, backup, rotation, memory, agenda) et `key` (identite stable, sans le
+  pourcentage). L'accueil lit `kind` ; ne plus tester le texte du titre.
+- **Centre de notifications** : cloche dans la barre du haut + tiroir
+  (`components/NotifCenter.tsx`, mise en forme `lib/notifs.ts`). Cote API,
+  `routers/notifications.py` + `lib/notif_center.py` (teste), fil borne a 300
+  entrees dans `$NEUTRONCORE_STATE/notifications.json`. Un veilleur (tache du
+  lifespan, 60 s) journalise l'apparition, l'aggravation et la resolution des
+  alertes meme sans interface ouverte ; le hook des sessions Claude y ajoute
+  « attend ta reponse » et « reponse prete » (une ligne par session, comptee
+  xN tant qu'elle n'est pas lue). Vider = jeton `notifications_clear`.
+- **Palette de commandes** (Ctrl+K ou bouton « chercher ») :
+  `components/Palette.tsx`, classement `lib/palette.ts` (teste), registre
+  `lib/commands.tsx` (ecrans, mode tele, themes, scenes Hue, TV, favoris du
+  lanceur, liens). Etoile ou Ctrl+D = favori (`neutroncore_palette_favs` en
+  localStorage) ; les favoris passent en tete et s'affichent en « raccourcis »
+  sur l'accueil (`components/HomeShortcuts.tsx`). Ajouter une commande = une
+  entree dans `buildCommands`, avec un `id` stable (c'est la cle du favori).

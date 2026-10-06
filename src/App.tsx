@@ -3,6 +3,11 @@ import { getApiKey, setApiKey, apiGet, DEMO } from './lib/api'
 import { applySettings, getSettings } from './lib/settings'
 import { LyraPanel } from './components/LyraPanel'
 import { Dialogs } from './components/Dialogs'
+import { Palette } from './components/Palette'
+import { NotifBell, NotifCenter } from './components/NotifCenter'
+import { CommandsContext, useCommands, type Shell } from './lib/commands'
+import { getFavs } from './lib/palette'
+import type { Notif, NotifList } from './lib/notifs'
 import { BootSplash } from './components/BootSplash'
 import { WelcomeBack } from './components/WelcomeBack'
 import { Tour, tourSeen, markTourSeen, type TourName } from './components/Tour'
@@ -67,6 +72,9 @@ const SCREENS: Record<ScreenId, () => React.JSX.Element> = {
   accueil: Accueil, agenda: Agenda, films: Media, demandes: Demandes, dl: Downloads, taches: Taches,
   projets: Projets, ambiance: Ambiance, lanceur: Lanceur, outils: Outils, tests: Tests, parametres: Parametres,
 }
+
+// liste à plat des écrans pour la palette (référence stable)
+const SCREEN_LIST = NAV.flatMap((g) => g.items.map((i) => ({ ...i, group: g.group })))
 
 function Setup({ onDone }: { onDone: () => void }) {
   const [key, setKey] = useState('')
@@ -158,6 +166,39 @@ export default function App() {
 
   const nav = (s: ScreenId) => { setScreen(s); setMenuOpen(false) }
 
+  // palette de commandes (Ctrl+K) et centre de notifications
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const [notifOpen, setNotifOpen] = useState(false)
+  const notifs = usePoll<NotifList>(() => apiGet('/notifications?limit=80'), 30000, ready)
+  const shell: Shell = {
+    screens: SCREEN_LIST,
+    go: nav,
+    toggleTv: () => setTvMode((v) => !v),
+    openLyra: () => setLyraOpen(true),
+    openNotifs: () => setNotifOpen(true),
+    startTour: () => setTourOn('main'),
+  }
+  // scènes et favoris du lanceur : chargés à l'ouverture, ou d'emblée s'il y a des raccourcis à afficher
+  const cmds = useCommands(shell, ready && (paletteOpen || getFavs().length > 0), paletteOpen)
+  useEffect(() => {
+    // pas pendant la saisie de la clé ni l'intro (la palette surgirait après), ni sous un dialogue de confirmation
+    if (!ready || introOn) return
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.key.toLowerCase() !== 'k') return
+      if (document.querySelector('.pre-modal.nc-dialog')) return
+      e.preventDefault()
+      setPaletteOpen((v) => !v)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [ready, introOn])
+  const openEntry = (n: Notif) => {
+    // la session à déplier n'a de sens que si le clic mène au lanceur
+    if (n.ref && n.action === 'lanceur') { try { sessionStorage.setItem('deepLinkTarget', n.ref) } catch { /* stockage indisponible */ } }
+    setNotifOpen(false)
+    if (SCREEN_LIST.some((x) => x.id === n.action)) nav(n.action as ScreenId)
+  }
+
   useEffect(() => {
     if (tvMode) document.documentElement.dataset.tv = '1'
     else delete document.documentElement.dataset.tv
@@ -209,7 +250,8 @@ export default function App() {
   // Bouton retour Android (et geste retour du navigateur) : on empile une
   // entrée d'historique par surcouche ouverte, et on la ferme au retour plutôt
   // que de quitter l'application. La coque native délègue à cet historique.
-  const overlays = (tourOn ? 1 : 0) + (menuOpen ? 1 : 0) + (lyraOpen ? 1 : 0)
+  const overlays = (tourOn ? 1 : 0) + (menuOpen ? 1 : 0) + (lyraOpen ? 1 : 0) + (notifOpen ? 1 : 0)
+    + (paletteOpen ? 1 : 0)
     + (tvMode ? 1 : 0) + (screen !== 'accueil' ? 1 : 0)
   const prevOverlays = useRef(0)
   useEffect(() => {
@@ -220,7 +262,10 @@ export default function App() {
   useEffect(() => {
     const onPop = () => {
       // le dialogue de confirmation est au-dessus des autres modales : il se ferme en premier
-      const modal = (document.querySelector('.pre-modal.nc-dialog') ?? document.querySelector('.pre-modal')) as HTMLElement | null
+      const dialog = document.querySelector('.pre-modal.nc-dialog')
+      // la palette a sa propre entrée d'historique (comptée dans overlays) : retour = la fermer
+      if (!dialog && paletteOpen) { setPaletteOpen(false); return }
+      const modal = (dialog ?? document.querySelector('.pre-modal')) as HTMLElement | null
       if (modal) {
         (modal.querySelector('.x') as HTMLElement)?.click()
         // une modale n'a pas d'entrée d'historique à elle : on rend celle que ce
@@ -229,6 +274,7 @@ export default function App() {
         return
       }
       if (tourOn) { markTourSeen(); setTourOn(null); setTvMode(false); setMenuOpen(false); return }
+      if (notifOpen) { setNotifOpen(false); return }
       if (menuOpen) { setMenuOpen(false); return }
       if (lyraOpen) { setLyraOpen(false); return }
       if (tvMode) { setTvMode(false); return }
@@ -236,7 +282,7 @@ export default function App() {
     }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
-  }, [tourOn, menuOpen, lyraOpen, tvMode, screen])
+  }, [tourOn, menuOpen, lyraOpen, tvMode, screen, notifOpen, paletteOpen])
 
   if (!ready) return <Setup onDone={() => setReady(true)} />
   if (introOn) {
@@ -251,6 +297,7 @@ export default function App() {
 
   return (
     <NavContext.Provider value={nav}>
+    <CommandsContext.Provider value={{ commands: cmds.commands, run: cmds.run, open: () => setPaletteOpen(true) }}>
     {tourOn && (
       <Tour
         tour={tourOn}
@@ -330,6 +377,8 @@ export default function App() {
               nouvelle version — recharger
             </button>
           )}
+          <button className="pl-open" aria-label="Palette de commandes" onClick={() => setPaletteOpen(true)}>chercher <kbd>ctrl k</kbd></button>
+          <NotifBell data={notifs.data} open={notifOpen} onToggle={() => setNotifOpen((v) => !v)} />
           <button data-tour="tv" className={`btn sm ${tvMode ? 'solid' : ''}`} onClick={() => setTvMode((v) => !v)}>
             {tvMode ? 'quitter télé' : 'télé'}
           </button>
@@ -341,7 +390,10 @@ export default function App() {
       </div>
 
     </div>
+      {notifOpen && <NotifCenter data={notifs.data} onClose={() => setNotifOpen(false)} onOpenEntry={openEntry} onChanged={notifs.refresh} />}
+      {paletteOpen && <Palette commands={cmds.commands} loading={cmds.loading} onRun={cmds.run} onClose={() => setPaletteOpen(false)} />}
       <Dialogs />
+    </CommandsContext.Provider>
     </NavContext.Provider>
   )
 }

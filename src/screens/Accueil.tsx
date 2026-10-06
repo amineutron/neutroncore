@@ -6,10 +6,12 @@ import { mainProject, useProjects } from '../components/Projects'
 import { getSettings } from '../lib/settings'
 import { MascotChain } from '../components/Mascot'
 import { HomeSessions } from '../components/HomeSessions'
+import { HomeShortcuts } from '../components/HomeShortcuts'
 import { Reactor, type SubSystem } from '../components/Reactor'
 import { Btn, Dot, PageTitle, Eyebrow, serviceTone } from '../components/ui'
 
-type Alert = { level: 'warn' | 'crit'; title: string; detail: string; action?: ScreenId }
+// kind : famille de l'alerte (disk, unit, backup, rotation, memory, agenda) — posé par l'API
+type Alert = { level: 'warn' | 'crit'; title: string; detail: string; action?: ScreenId; kind?: string; key?: string }
 type Service = { name: string; display_name: string; status: string }
 
 export function Accueil() {
@@ -27,6 +29,12 @@ export function Accueil() {
   const running = (sessions.data ?? []).filter((s) => s.status === 'running').length
   const alertList = alerts.data?.alerts ?? []
 
+  // pire niveau parmi les alertes de ces familles
+  const worst = (...kinds: string[]): SubSystem['state'] => {
+    const hit = alertList.filter((a) => a.kind !== undefined && kinds.includes(a.kind))
+    return hit.some((a) => a.level === 'crit') ? 'crit' : hit.length > 0 ? 'warn' : 'ok'
+  }
+
   const qbitOk = qbit.data ? qbit.data.connection_status !== 'unreachable' : true
   const systems: SubSystem[] = [
     { label: 'média', state: svcList.some((s) => ['plex', 'radarr', 'sonarr'].includes(s.name) && s.status !== 'up') ? 'crit' : 'ok' },
@@ -34,8 +42,8 @@ export function Accueil() {
     { label: 'sous-titres', state: svcList.find((s) => s.name === 'bazarr')?.status === 'up' ? 'ok' : 'warn' },
     { label: 'lyra', state: lyra.data?.reachable ? 'ok' : 'warn' },
     { label: 'tracking', state: svcList.find((s) => s.name === 'tracking')?.status === 'up' ? 'ok' : 'warn' },
-    { label: 'disque', state: alertList.some((a) => a.title.includes('plein') && a.level === 'crit') ? 'crit' : alertList.some((a) => a.title.includes('plein')) ? 'warn' : 'ok' },
-    { label: 'timers', state: alertList.some((a) => a.title.includes('échec')) ? 'warn' : 'ok' },
+    { label: 'disque', state: worst('disk') },
+    { label: 'timers', state: worst('unit', 'backup') },
     { label: 'n8n', state: svcList.find((s) => s.name === 'n8n')?.status === 'up' ? 'ok' : 'crit' },
   ]
 
@@ -54,7 +62,7 @@ export function Accueil() {
               </div>
             )}
             {alertList.map((a) => (
-              <div key={a.title} className={`alert ${a.level === 'crit' ? 'crit' : ''}`}
+              <div key={a.key ?? a.title} className={`alert ${a.level === 'crit' ? 'crit' : ''}`}
                 onClick={a.action ? () => navigate(a.action as ScreenId) : undefined}
                 style={a.action ? { cursor: 'pointer' } : undefined}>
                 <Dot s={a.level} />
@@ -77,6 +85,8 @@ export function Accueil() {
       )}
 
       {getSettings().homeSessions && <HomeSessions />}
+
+      <HomeShortcuts />
 
       <div className="tiles">
         <div className="tile" onClick={() => navigate('dl')}>

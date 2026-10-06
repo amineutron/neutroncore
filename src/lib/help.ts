@@ -13,6 +13,8 @@ export const HELP: Record<string, HelpTopic> = {
     title: 'accueil',
     intro: "Le briefing du homelab : ce qui va, ce qui cloche, ce qui tourne.",
     points: [
+      ['palette', 'Ctrl+K ouvre la recherche de commandes : aller à un écran, lancer une scène, ouvrir Claude dans un projet. L’étoile épingle une commande dans les raccourcis.'],
+      ['notifications', 'La cloche garde la trace des alertes (apparition, résolution) et des sessions Claude, même après coup.'],
       ['le réacteur', "L'anneau central compte les alertes en cours. Vert et calme = rien à faire."],
       ['à traiter', 'Services tombés, disque plein, timers en échec — ce qui demande une action.'],
       ['les tuiles', 'Cliquables : chaque tuile ouvre la page correspondante.'],

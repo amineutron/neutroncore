@@ -41,7 +41,7 @@ const GETS = [
   '/hue/scenes/s-soir/preview', '/ironman/status', '/launcher', '/launcher/browse?path=/home/user/dev',
   '/launcher/claude-quota', '/launcher/claude-stats', '/launcher/sessions', '/launcher/sessions/notif-settings',
   '/launcher/sessions/recent', '/launcher/sessions/demo-1/messages?limit=80', '/lyra/catalog', '/lyra/settings',
-  '/lyra/status', '/projects', '/projects/stats', '/projects/updates', '/qbit/stats', '/qbit/torrents', '/requests',
+  '/lyra/status', '/notifications?limit=80', '/projects', '/projects/stats', '/projects/updates', '/qbit/stats', '/qbit/torrents', '/requests',
   '/requests/declined-auto', '/requests/options', '/requests/search?q=metro', '/requests/seasons/1',
   '/requests/watchlist', '/roadmap/projects', '/screens', '/services', '/services/vms', '/subtitles/status',
   '/system/alerts', '/system/backups', '/system/journal?unit=lyra-daemon&lines=40', '/system/resources',
