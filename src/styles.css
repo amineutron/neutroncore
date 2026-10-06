@@ -1208,3 +1208,21 @@ input[type=range].bri::-webkit-slider-thumb{-webkit-appearance:none;appearance:n
 .palette-note{margin:8px 0 0;font-size:10.5px;color:var(--faint);line-height:1.4}
 @keyframes popin{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 .scene-stale{margin:-4px 0 10px;font-size:11.5px;color:var(--faint)}
+
+/* ---------- dialogues maison (lib/dialog.ts) : confirmation et messages ---------- */
+.pre-modal.nc-dialog{z-index:210;animation:agFade .18s ease both}
+.pre-modal.nc-dialog .inner{width:min(430px,94vw);animation:agModal .28s cubic-bezier(.22,1,.36,1) both}
+.nc-dialog-body{padding:18px 18px 6px;display:flex;flex-direction:column;gap:8px}
+.nc-dialog-body b{font-family:var(--mono);font-size:14px;font-weight:600;overflow-wrap:anywhere}
+.nc-dialog-body p{margin:0;font-size:13px;line-height:1.5;color:var(--muted);white-space:pre-line}
+.nc-dialog-check{display:flex;align-items:center;gap:9px;margin-top:4px;font-size:13px;cursor:pointer}
+.nc-dialog-check input{accent-color:var(--gold);width:16px;height:16px}
+.nc-dialog-actions{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px 16px}
+.btn.danger.armed{border-color:var(--crit);color:var(--crit);background:color-mix(in srgb,var(--crit) 12%,transparent)}
+.btn.danger.armed:hover{background:color-mix(in srgb,var(--crit) 22%,transparent)}
+.nc-toasts{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:220;display:flex;flex-direction:column;gap:8px;width:min(440px,92vw);pointer-events:none}
+.nc-toast{pointer-events:auto;cursor:pointer;background:var(--surface);border:1px solid var(--line2);border-left:3px solid var(--ok);border-radius:10px;padding:10px 14px;font-size:12.5px;line-height:1.45;box-shadow:0 8px 28px #00000055;animation:agPop .28s cubic-bezier(.22,1,.36,1) both}
+.nc-toast.warn{border-left-color:var(--warn)}
+.nc-toast.crit{border-left-color:var(--crit)}
+@media(prefers-reduced-motion:reduce){.pre-modal.nc-dialog,.pre-modal.nc-dialog .inner,.nc-toast{animation:none}}
+.nc-dialog-body p{user-select:text}

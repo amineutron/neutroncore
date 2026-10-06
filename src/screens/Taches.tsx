@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { apiGet, apiDelete, withConfirm } from '../lib/api'
+import { confirmDialog } from '../lib/dialog'
 import { usePoll } from '../lib/poll'
 import { Btn, Card, Chip, Eyebrow, Loader, PageTitle } from '../components/ui'
 import { SessGroup, SessRow, fmtStamp, groupEntries, type Session } from '../components/TaskRows'
@@ -26,7 +27,7 @@ export function Taches() {
   }
 
   async function removeOne(s: Session) {
-    if (!window.confirm(`Supprimer la tâche « ${s.name} » ?`)) return
+    if (!await confirmDialog({ title: 'supprimer la tâche ?', body: s.name, ok: 'supprimer', danger: true })) return
     setBusy(true)
     try {
       await apiDelete(`/tracking/sessions/${s.id}`, await withConfirm('tracking_delete'))
@@ -41,7 +42,7 @@ export function Taches() {
   async function clearFinished() {
     const finished = list.filter((s) => s.status === 'done' || s.status === 'error')
     if (finished.length === 0) { flash('rien à nettoyer (aucune tâche terminée ou en erreur)'); return }
-    if (!window.confirm(`Nettoyer ${finished.length} tâche(s) terminée(s) ou en erreur ?`)) return
+    if (!await confirmDialog({ title: 'nettoyer les tâches ?', body: `${finished.length} tâche(s) terminée(s) ou en erreur seront retirées.`, ok: 'nettoyer', danger: true })) return
     setBusy(true)
     let ok = 0
     try {

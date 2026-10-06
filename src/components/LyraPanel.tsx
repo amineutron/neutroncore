@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { apiGet, apiPost, lyraChat } from '../lib/api'
+import { confirmDialog } from '../lib/dialog'
 import { usePoll, fmtRemaining } from '../lib/poll'
 import { fetchVms, type Vm } from '../lib/vms'
 import { getSettings } from '../lib/settings'
@@ -260,7 +261,7 @@ export function LyraPanel({ hidden, floating, onClose, onUnread }: {
 
   async function startVoice() {
     if (!localStorage.getItem('neutroncore_audio_warned')) {
-      window.alert('Dictée vocale : veille à bien choisir ta source audio dans paramètres > audio avant utilisation.')
+      if (!await confirmDialog({ title: 'dictée vocale', body: 'Vérifie ta source audio dans paramètres > audio avant de commencer.', ok: 'continuer' })) return
       localStorage.setItem('neutroncore_audio_warned', '1')
     }
     const wanted = getSettings().audioInput

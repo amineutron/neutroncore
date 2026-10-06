@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { apiGet, apiPost, withConfirm } from '../lib/api'
+import { ask } from '../lib/dialog'
 import { usePoll, fmtAgo } from '../lib/poll'
 import { Btn, Card, Chip, PageTitle } from '../components/ui'
 import { Projects } from '../components/Projects'
@@ -25,7 +26,7 @@ export function Projets() {
     setSysBusy('dl')
     try {
       const r = await apiPost<{ downloaded: number; dir?: string }>('/system/updates/download?safe_only=true')
-      window.alert(`${r.downloaded} RPM téléchargés dans ${r.dir ?? '~/.neutroncore/updates'} — installation à faire en terminal (sudo dnf install ...).`)
+      await ask({ title: `${r.downloaded} RPM téléchargés`, body: `Dossier : ${r.dir ?? '~/.neutroncore/updates'}\nInstallation à faire en terminal (sudo dnf install ...).`, single: true })
     } finally { setSysBusy('') }
   }
 

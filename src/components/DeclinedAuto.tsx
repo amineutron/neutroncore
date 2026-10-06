@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { apiDelete, apiGet, apiPost, withConfirm } from '../lib/api'
+import { confirmDialog } from '../lib/dialog'
 import { usePoll } from '../lib/poll'
 import { Btn, Card, Chip } from './ui'
 
@@ -12,8 +13,9 @@ export function DeclinedAuto() {
   const [declBusy, setDeclBusy] = useState<number | null>(null)
   const [declMsg, setDeclMsg] = useState('')
   async function declinedAction(x: Declined, mode: 'hide' | 'delete') {
-    if (mode === 'delete' && !window.confirm(
-      `Supprimer « ${x.title} » ? Retiré de ${x.kind === 'tv' ? 'Sonarr' : 'Radarr'} et d'Overseerr (les fichiers déjà sur le disque sont gardés).`)) return
+    if (mode === 'delete' && !await confirmDialog({
+      title: 'supprimer la demande ?', ok: 'supprimer', danger: true,
+      body: `« ${x.title} » sera retiré de ${x.kind === 'tv' ? 'Sonarr' : 'Radarr'} et d'Overseerr (les fichiers déjà sur le disque sont gardés).` })) return
     setDeclBusy(x.request_id); setDeclMsg('')
     try {
       if (mode === 'hide') await apiPost(`/requests/declined-auto/${x.request_id}/hide`)

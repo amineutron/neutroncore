@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiGet, apiPost, withConfirm } from '../lib/api'
+import { confirmDialog } from '../lib/dialog'
 import { ColorPalette } from '../components/ColorPalette'
 import { DenonVolume } from '../components/DenonVolume'
 import { IronmanScene } from '../components/IronmanScene'
@@ -116,7 +117,7 @@ export function Ambiance() {
   }
 
   async function openHalo() {
-    if (!window.confirm('Lancer l’application HALO sur le PC ?')) return
+    if (!await confirmDialog({ title: 'lancer HALO ?', body: 'L’application s’ouvre sur le PC.', ok: 'lancer' })) return
     await run('halo', async () => apiPost('/launcher/halo', undefined, await withConfirm('launcher_halo')))
   }
 

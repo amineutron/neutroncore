@@ -1,5 +1,6 @@
 import { useContext, useState } from 'react'
 import { apiGet, apiPost, apiDelete, withConfirm } from '../lib/api'
+import { confirmDialog, toast } from '../lib/dialog'
 import { usePoll, fmtBytes } from '../lib/poll'
 import { setPrefill } from '../lib/prefill'
 import { NavContext } from '../App'
@@ -38,7 +39,7 @@ export function Media() {
   const match = (title: string) => !filter || norm(title).includes(norm(filter))
 
   async function remove(m: Movie) {
-    if (!window.confirm(`Supprimer « ${m.title} » et son fichier (${fmtBytes(m.size)}) ?`)) return
+    if (!await confirmDialog({ title: 'supprimer le film ?', body: `« ${m.title} » et son fichier (${fmtBytes(m.size)}) seront supprimés.`, ok: 'supprimer', danger: true })) return
     setBusy(m.id)
     try {
       await apiDelete(`/arr/movie/${m.id}`, await withConfirm('arr_delete'))
@@ -48,7 +49,7 @@ export function Media() {
   async function playOnTv(title: string) {
     await apiPost('/tv/app', { app: 'plex' })
     setPlaying(null)
-    window.alert(`Plex lancé sur la TV — cherche « ${title} » avec la télécommande ou Lyra.`)
+    toast(`Plex lancé sur la TV — cherche « ${title} » avec la télécommande ou Lyra.`)
   }
   function playOnPc(title: string) {
     window.open(`${PLEX_WEB}#!/search?query=${encodeURIComponent(title)}`, '_blank')

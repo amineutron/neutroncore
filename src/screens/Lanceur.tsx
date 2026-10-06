@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiGet, apiPost, apiPut, withConfirm } from '../lib/api'
+import { confirmDialog } from '../lib/dialog'
 import { usePoll } from '../lib/poll'
 import { Bar, Btn, Card, PageTitle, Eyebrow, Chip } from '../components/ui'
 import { Sessions } from '../components/Sessions'
@@ -47,7 +48,7 @@ export function Lanceur() {
     state.refresh()
   }
   async function removeFavorite(path: string) {
-    if (!window.confirm('Retirer ce favori ?')) return
+    if (!await confirmDialog({ title: 'retirer ce favori ?', body: path, ok: 'retirer', danger: true })) return
     const current = (state.data?.favorites ?? []).filter((f) => f.path !== path).map((f) => ({ name: f.name, path: f.path }))
     await apiPut('/launcher/favorites', current)
     state.refresh()

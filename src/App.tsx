@@ -2,6 +2,7 @@ import { createContext, useEffect, useRef, useState } from 'react'
 import { getApiKey, setApiKey, apiGet, DEMO } from './lib/api'
 import { applySettings, getSettings } from './lib/settings'
 import { LyraPanel } from './components/LyraPanel'
+import { Dialogs } from './components/Dialogs'
 import { BootSplash } from './components/BootSplash'
 import { WelcomeBack } from './components/WelcomeBack'
 import { Tour, tourSeen, markTourSeen, type TourName } from './components/Tour'
@@ -218,8 +219,15 @@ export default function App() {
 
   useEffect(() => {
     const onPop = () => {
-      const modal = document.querySelector('.pre-modal') as HTMLElement | null
-      if (modal) { (modal.querySelector('.x') as HTMLElement)?.click(); return }
+      // le dialogue de confirmation est au-dessus des autres modales : il se ferme en premier
+      const modal = (document.querySelector('.pre-modal.nc-dialog') ?? document.querySelector('.pre-modal')) as HTMLElement | null
+      if (modal) {
+        (modal.querySelector('.x') as HTMLElement)?.click()
+        // une modale n'a pas d'entrée d'historique à elle : on rend celle que ce
+        // retour vient de consommer, sinon la surcouche du dessous perd la sienne
+        history.pushState({ nc: 'modal' }, '')
+        return
+      }
       if (tourOn) { markTourSeen(); setTourOn(null); setTvMode(false); setMenuOpen(false); return }
       if (menuOpen) { setMenuOpen(false); return }
       if (lyraOpen) { setLyraOpen(false); return }
@@ -333,6 +341,7 @@ export default function App() {
       </div>
 
     </div>
+      <Dialogs />
     </NavContext.Provider>
   )
 }
