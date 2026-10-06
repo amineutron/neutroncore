@@ -90,6 +90,17 @@ export const HELP: Record<string, HelpTopic> = {
       ['docker', 'Images du stack média plus récentes que celles installées.'],
     ],
   },
+  plan: {
+    title: 'plan de pièce',
+    intro: 'La pièce vue de dessus : où sont les lampes, la TV et le ruban LED. C’est le plan que HALO utilise.',
+    points: [
+      ['déplacer', 'Glisse une lampe pour la replacer. Un carreau fait un mètre.'],
+      ['hauteur', 'Touche une lampe : le curseur règle sa hauteur depuis le sol.'],
+      ['enregistrer', 'Rien n’est écrit avant « enregistrer ». HALO recharge le plan tout seul.'],
+      ['halo', 'Associer l’Ambilight aux lampes Hue, voir les couleurs de la TV en direct, ouvrir HALO sur le PC.'],
+    ],
+    tip: 'Le ruban LED et la TV se règlent dans HALO ; ils sont affichés ici pour se repérer.',
+  },
   ambiance: {
     title: 'ambiance',
     intro: 'La maison : lumières, TV, home cinéma, écrans et scènes.',
@@ -97,6 +108,7 @@ export const HELP: Record<string, HelpTopic> = {
       ['scènes', 'Les carrés montrent un aperçu des couleurs et leur position dans la pièce.'],
       ['lumières', 'Cliquer une ampoule la bascule ; le curseur règle son intensité.'],
       ['tv et denon', 'Alimentation, volume, source, Ambilight. Le volume TV est redirigé vers le Denon.'],
+      ['routines', 'Plusieurs actions d’un seul geste (scène, TV, ampli), à la demande ou à heure fixe. Aussi dans la palette (Ctrl+K).'],
       ['télécommande', 'Flèches, validation, lecture, applications et entrée de l’ampli. Un clic dans la carte active les flèches du clavier.'],
       ['iron man', 'La scène complète : trente-trois secondes de lumière et de son synchronisés.'],
     ],

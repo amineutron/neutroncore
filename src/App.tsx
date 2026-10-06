@@ -7,6 +7,7 @@ import { Palette } from './components/Palette'
 import { NotifBell, NotifCenter } from './components/NotifCenter'
 import { CommandsContext, useCommands, type Shell } from './lib/commands'
 import { getFavs } from './lib/palette'
+import { canLeave } from './lib/navGuard'
 import type { Notif, NotifList } from './lib/notifs'
 import { BootSplash } from './components/BootSplash'
 import { WelcomeBack } from './components/WelcomeBack'
@@ -25,9 +26,10 @@ import { Outils } from './screens/Outils'
 import { Tests } from './screens/Tests'
 import { TvDashboard } from './screens/TvDashboard'
 import { Agenda } from './screens/Agenda'
+import { Plan } from './screens/Plan'
 import { LOG_TARGET } from './lib/nav'
 
-export type ScreenId = 'accueil' | 'agenda' | 'films' | 'demandes' | 'dl' | 'taches' | 'projets' | 'ambiance' | 'lanceur' | 'outils' | 'tests' | 'parametres'
+export type ScreenId = 'accueil' | 'agenda' | 'films' | 'demandes' | 'dl' | 'taches' | 'projets' | 'ambiance' | 'plan' | 'lanceur' | 'outils' | 'tests' | 'parametres'
 
 // Permet aux écrans (tuiles de l'accueil...) de naviguer vers un autre onglet
 export const NavContext = createContext<(s: ScreenId) => void>(() => {})
@@ -35,7 +37,7 @@ export const NavContext = createContext<(s: ScreenId) => void>(() => {})
 const NAV: { group: string; items: { id: ScreenId; label: string }[] }[] = [
   { group: 'pilotage', items: [{ id: 'accueil', label: 'accueil' }, { id: 'agenda', label: 'agenda' }, { id: 'taches', label: 'tâches' }, { id: 'projets', label: 'projets' }] },
   { group: 'média', items: [{ id: 'films', label: 'films & séries' }, { id: 'demandes', label: 'demandes' }, { id: 'dl', label: 'téléchargements' }] },
-  { group: 'maison', items: [{ id: 'ambiance', label: 'ambiance' }, { id: 'lanceur', label: 'lanceur' }] },
+  { group: 'maison', items: [{ id: 'ambiance', label: 'ambiance' }, { id: 'plan', label: 'plan de pièce' }, { id: 'lanceur', label: 'lanceur' }] },
   { group: 'système', items: [{ id: 'outils', label: 'outils & vms' }, { id: 'tests', label: 'tests' }, { id: 'parametres', label: 'paramètres' }] },
 ]
 
@@ -70,7 +72,7 @@ export const BUILD_ID =
 
 const SCREENS: Record<ScreenId, () => React.JSX.Element> = {
   accueil: Accueil, agenda: Agenda, films: Media, demandes: Demandes, dl: Downloads, taches: Taches,
-  projets: Projets, ambiance: Ambiance, lanceur: Lanceur, outils: Outils, tests: Tests, parametres: Parametres,
+  projets: Projets, ambiance: Ambiance, plan: Plan, lanceur: Lanceur, outils: Outils, tests: Tests, parametres: Parametres,
 }
 
 // liste à plat des écrans pour la palette (référence stable)
@@ -164,7 +166,8 @@ export default function App() {
   const [tourOn, setTourOn] = useState<TourName | null>(
     () => (intro.kind === null && !tourSeen()) ? 'main' : null)
 
-  const nav = (s: ScreenId) => { setScreen(s); setMenuOpen(false) }
+  // un écran avec un brouillon non enregistré peut refuser le départ (lib/navGuard)
+  const nav = (s: ScreenId) => { void canLeave().then((ok) => { if (ok) { setScreen(s); setMenuOpen(false) } }) }
 
   // palette de commandes (Ctrl+K) et centre de notifications
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -173,7 +176,7 @@ export default function App() {
   const shell: Shell = {
     screens: SCREEN_LIST,
     go: nav,
-    toggleTv: () => setTvMode((v) => !v),
+    toggleTv: () => { void canLeave().then((ok) => { if (ok) setTvMode((v) => !v) }) },
     openLyra: () => setLyraOpen(true),
     openNotifs: () => setNotifOpen(true),
     startTour: () => setTourOn('main'),
@@ -278,7 +281,10 @@ export default function App() {
       if (menuOpen) { setMenuOpen(false); return }
       if (lyraOpen) { setLyraOpen(false); return }
       if (tvMode) { setTvMode(false); return }
-      if (screen !== 'accueil') { setScreen('accueil') }
+      if (screen !== 'accueil') {
+        // refus de quitter : on rend l'entrée d'historique que ce retour a consommée
+        void canLeave().then((ok) => { if (ok) setScreen('accueil'); else history.pushState({ nc: 'guard' }, '') })
+      }
     }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
@@ -379,7 +385,7 @@ export default function App() {
           )}
           <button className="pl-open" aria-label="Palette de commandes" onClick={() => setPaletteOpen(true)}>chercher <kbd>ctrl k</kbd></button>
           <NotifBell data={notifs.data} open={notifOpen} onToggle={() => setNotifOpen((v) => !v)} />
-          <button data-tour="tv" className={`btn sm ${tvMode ? 'solid' : ''}`} onClick={() => setTvMode((v) => !v)}>
+          <button data-tour="tv" className={`btn sm ${tvMode ? 'solid' : ''}`} onClick={shell.toggleTv}>
             {tvMode ? 'quitter télé' : 'télé'}
           </button>
           <span className="clock"><b>{clock}</b> · {date}</span>

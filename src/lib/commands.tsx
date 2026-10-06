@@ -6,6 +6,7 @@ import { addLaunch } from './launches'
 import { LINKS } from './links'
 import type { Command } from './palette'
 import { saveSettings, THEMES } from './settings'
+import { runRoutine } from './routineRun'
 
 // Ce que les commandes pilotent dans App (navigation et surcouches)
 export type Shell = {
@@ -22,25 +23,33 @@ export const CommandsContext = createContext<CommandsApi>({ commands: [], run: a
 
 type Scene = { id: string; name: string; group: string }
 type Fav = { name: string; path: string; exists: boolean }
-type Dynamic = { scenes: Scene[]; favorites: Fav[] }
+type RoutineRef = { id: string; name: string }
+type Dynamic = { scenes: Scene[]; favorites: Fav[]; routines: RoutineRef[] }
 
-// scènes Hue et favoris du lanceur : relus au plus toutes les 5 minutes
+// scènes Hue, favoris du lanceur et routines : relus au plus toutes les 5 minutes
 const TTL_MS = 300_000
 const HUE_ROOM = '81'
 let cache: { at: number; data: Dynamic } | null = null
 
+/** À appeler quand une source change (routine créée, renommée, supprimée) : la palette la relira. */
+export function invalidateCommands(): void {
+  cache = null
+}
+
 async function loadDynamic(): Promise<Dynamic> {
   if (cache && Date.now() - cache.at < TTL_MS) return cache.data
-  const [scenes, launcher] = await Promise.allSettled([
+  const [scenes, launcher, routines] = await Promise.allSettled([
     apiGet<{ scenes: Scene[] }>('/hue/scenes'),
     apiGet<{ favorites: Fav[] }>('/launcher'),
+    apiGet<{ routines: RoutineRef[] }>('/routines'),
   ])
   const data: Dynamic = {
     scenes: scenes.status === 'fulfilled' ? scenes.value.scenes.filter((s) => s.group === HUE_ROOM) : [],
     favorites: launcher.status === 'fulfilled' ? launcher.value.favorites.filter((f) => f.exists) : [],
+    routines: routines.status === 'fulfilled' ? routines.value.routines.map(({ id, name }) => ({ id, name })) : [],
   }
   // une source en panne n'est pas mise en cache : elle reviendra à la prochaine ouverture
-  if (scenes.status === 'fulfilled' && launcher.status === 'fulfilled') cache = { at: Date.now(), data }
+  if (scenes.status === 'fulfilled' && launcher.status === 'fulfilled' && routines.status === 'fulfilled') cache = { at: Date.now(), data }
   return data
 }
 
@@ -65,6 +74,10 @@ export function buildCommands(shell: Shell, dyn: Dynamic): Command[] {
     })),
   ]
   const home: Command[] = [
+    ...dyn.routines.map((r): Command => ({
+      id: `routine:${r.id}`, label: `routine : ${r.name}`, group: 'maison', keywords: 'enchainement scenario lancer',
+      run: () => { toast(`routine « ${r.name} » lancée…`); return runRoutine(r) },
+    })),
     ...dyn.scenes.map((s): Command => ({
       id: `scene:${s.id}`, label: `scène : ${s.name}`, group: 'maison', keywords: 'hue lumiere ambiance',
       run: () => act(apiPost('/hue/scene', { scene_id: s.id })),
@@ -98,7 +111,7 @@ export function buildCommands(shell: Shell, dyn: Dynamic): Command[] {
 /** Commandes de la palette. `wanted` : charge scènes et favoris (palette ouverte ou raccourcis à afficher).
  * `opened` : chaque ouverture de la palette relit les sources (cache de 5 min, source en panne retentée). */
 export function useCommands(shell: Shell, wanted: boolean, opened: boolean): CommandsApi & { loading: boolean } {
-  const [dyn, setDyn] = useState<Dynamic>(() => cache?.data ?? { scenes: [], favorites: [] })
+  const [dyn, setDyn] = useState<Dynamic>(() => cache?.data ?? { scenes: [], favorites: [], routines: [] })
   const [loading, setLoading] = useState(false)
   useEffect(() => {
     if (!wanted) return

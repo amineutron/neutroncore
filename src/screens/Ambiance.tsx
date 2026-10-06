@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { apiGet, apiPost, withConfirm } from '../lib/api'
 import { confirmDialog } from '../lib/dialog'
 import { Remote } from '../components/Remote'
+import { Routines } from '../components/Routines'
 import { ColorPalette } from '../components/ColorPalette'
 import { DenonVolume } from '../components/DenonVolume'
 import { IronmanScene } from '../components/IronmanScene'
@@ -312,6 +313,8 @@ export function Ambiance() {
       <div style={{ marginTop: 14 }}>
         <Remote source={t?.denon_source} tvOn={t?.power === 'On'} onChange={tv.refresh} />
       </div>
+
+      <Routines scenes={(scenes.data?.scenes ?? []).filter((s) => s.group === '81')} />
 
       <Card title="gestion avancée — halo" style={{ marginTop: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>

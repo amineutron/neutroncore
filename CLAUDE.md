@@ -401,3 +401,35 @@ leur propre scope via `systemd-run --scope`) ; l'arret prend 5 s maximum
   localStorage) ; les favoris passent en tete et s'affichent en « raccourcis »
   sur l'accueil (`components/HomeShortcuts.tsx`). Ajouter une commande = une
   entree dans `buildCommands`, avec un `id` stable (c'est la cle du favori).
+
+## Lot 3 des nouveaux volets (2026-10-06)
+- **Plan de piece** (ecran `plan`, groupe maison) : `screens/Plan.tsx` +
+  `components/RoomPlan.tsx` (SVG en centimetres, glisser-deposer par pointer
+  events), geometrie pure `lib/plan.ts` (testee). Lit et ecrit GET/PUT /plan,
+  c'est-a-dire le fichier de plan de HALO, qui reste la source de verite et se
+  recharge seul. Rien n'est ecrit avant « enregistrer ». Le ruban LED et la TV
+  sont affiches mais jamais envoyes (`toPayload`). Piege de nommage herite :
+  `roomDims.h` = PROFONDEUR, `roomDims.d` = HAUTEUR. Cote API,
+  `validate_incoming` refuse NaN, infini et dimensions hors 100-3000 cm.
+- **HALO** : POST /screens/ambihue (associer l'Ambilight aux lampes Hue) et
+  GET /screens/measured (couleurs mesurees par la TV, filtrees en #rrggbb),
+  interroge toutes les 3 s seulement quand « couleurs de la tv en direct » est
+  active.
+- **Routines** : `components/Routines.tsx` + `RoutineEditor.tsx` sur l'ecran
+  ambiance, aussi dans la palette (`routine:<id>`). Cote API
+  `routers/routines.py` + `lib/routines.py` (teste) : catalogue FERME d'actions
+  (scene Hue, lumieres, TV, ampli, attente), aucune commande libre ; volume de
+  l'ampli plafonne a `DENON_MAX`. Une etape en echec n'arrete pas les
+  suivantes. Planification facultative (heure + jours) executee par un
+  planificateur du lifespan (30 s), fenetre de 10 min pour ne pas rejouer une
+  routine du matin apres un redemarrage le soir ; un passage planifie est
+  toujours trace dans le centre de notifications. Ajouter une action = une
+  entree dans `ACTIONS` + une branche dans `_execute`.
+- Apres revue du lot 3 : POST /routines/{id}/run repond aussitot et execute en
+  tache de fond (`running` puis `last` dans GET /routines, suivi par
+  `lib/routineRun.ts`) ; les routines sont REVALIDEES a chaque lecture du
+  fichier (une routine editee a la main hors bornes est mise de cote, jamais
+  executee). `components/NumField.tsx` : champ nombre valide a la sortie ou a
+  Entree — ne pas borner un champ controle a chaque frappe, la saisie devient
+  impossible. `lib/navGuard.ts` : un ecran avec un brouillon (plan) fait
+  confirmer avant tout changement d'ecran, retour ou mode tele.
