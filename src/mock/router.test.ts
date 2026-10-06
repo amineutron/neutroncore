@@ -36,7 +36,7 @@ describe('mockRequest', () => {
 
 // Chaque lecture faite par l'interface a une réponse de démo (liste relevée dans src/ le 2026-09-25).
 const GETS = [
-  '/agenda?start=2026-09-21&end=2026-10-05', '/agenda/rotation', '/arr/calendar', '/arr/incoming', '/arr/movies',
+  '/agenda?start=2026-09-21&end=2026-10-05', '/agenda/rotation', '/arr/calendar', '/arr/incoming', '/arr/missing', '/arr/movies',
   '/arr/overview', '/arr/series', '/hue/beat/status', '/hue/lights', '/hue/positions', '/hue/scenes',
   '/hue/scenes/s-soir/preview', '/ironman/status', '/launcher', '/launcher/browse?path=/home/user/dev',
   '/launcher/claude-quota', '/launcher/claude-stats', '/launcher/sessions', '/launcher/sessions/notif-settings',

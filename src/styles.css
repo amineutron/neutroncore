@@ -1226,3 +1226,19 @@ input[type=range].bri::-webkit-slider-thumb{-webkit-appearance:none;appearance:n
 .nc-toast.crit{border-left-color:var(--crit)}
 @media(prefers-reduced-motion:reduce){.pre-modal.nc-dialog,.pre-modal.nc-dialog .inner,.nc-toast{animation:none}}
 .nc-dialog-body p{user-select:text}
+
+/* ---------- télécommande TV (components/Remote.tsx) ---------- */
+.rc{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start;border-radius:10px;outline:none;padding:4px}
+.rc:focus-visible,.rc:focus{box-shadow:0 0 0 1px color-mix(in srgb,var(--gold) 55%,transparent)}
+.rc-pad{display:grid;grid-template-columns:repeat(3,46px);grid-template-rows:repeat(3,46px);gap:5px;grid-template-areas:". up ." "left ok right" ". down ."}
+.rc-key{font-family:var(--mono);font-size:12px;font-weight:600;border:1px solid var(--line2);background:var(--surface2);color:var(--text);border-radius:10px;cursor:pointer;transition:transform .08s,border-color .15s,background .15s}
+.rc-key:hover{border-color:var(--gold)}
+.rc-key:active,.rc-key.hit{transform:scale(.93);background:color-mix(in srgb,var(--gold) 22%,var(--surface2));border-color:var(--gold)}
+.rc-key.up{grid-area:up}.rc-key.down{grid-area:down}.rc-key.left{grid-area:left}.rc-key.right{grid-area:right}
+.rc-key.ok{grid-area:ok;border-radius:50%;color:var(--gold)}
+.rc-side{flex:1;min-width:200px;display:flex;flex-direction:column;gap:8px}
+.rc-row{display:flex;flex-wrap:wrap;gap:6px}
+.rc-label{font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:4px}
+@media(max-width:980px) and (pointer:coarse){.rc-pad{grid-template-columns:repeat(3,58px);grid-template-rows:repeat(3,58px)}}
+.svc.svc-btn{cursor:pointer;font:inherit;font-family:var(--mono);font-size:11px}
+.svc.svc-btn:disabled{opacity:.6;cursor:progress}

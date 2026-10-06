@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiGet, apiPost, withConfirm } from '../lib/api'
 import { confirmDialog } from '../lib/dialog'
+import { Remote } from '../components/Remote'
 import { ColorPalette } from '../components/ColorPalette'
 import { DenonVolume } from '../components/DenonVolume'
 import { IronmanScene } from '../components/IronmanScene'
@@ -12,7 +13,7 @@ const AMBILIGHT_MODES: Record<string, string> = {
   video: 'FOLLOW_VIDEO', audio: 'FOLLOW_AUDIO', lounge: 'LOUNGE_LIGHT', off: 'OFF',
 }
 
-type TvStatus = { power: string; volume: number; muted: boolean; ambilight_mode: string; denon_volume: number | null; denon_muted: boolean; denon_reachable: boolean; denon_power?: string }
+type TvStatus = { power: string; volume: number; muted: boolean; ambilight_mode: string; denon_volume: number | null; denon_muted: boolean; denon_reachable: boolean; denon_power?: string; denon_source?: string }
 type Monitor = { name: string; width: number; height: number; x: number; dpms: boolean }
 type Screens = { monitors: Monitor[]; tv_ok: boolean; ambilight: { on: boolean; style: string }; ambihue: boolean | null }
 type Light = { name: string; on: boolean; bri: number; reachable: boolean; color?: string }
@@ -306,6 +307,10 @@ export function Ambiance() {
             ambilight+hue : {screens.data?.ambihue == null ? '—' : screens.data.ambihue ? 'actif' : 'inactif'}
           </p>
         </Card>
+      </div>
+
+      <div style={{ marginTop: 14 }}>
+        <Remote source={t?.denon_source} tvOn={t?.power === 'On'} onChange={tv.refresh} />
       </div>
 
       <Card title="gestion avancée — halo" style={{ marginTop: 14 }}>

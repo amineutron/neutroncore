@@ -4,6 +4,7 @@ import { apiGet } from '../lib/api'
 import { usePoll, fmtBytes } from '../lib/poll'
 import { useVms } from '../lib/vms'
 import { VmRow } from '../components/VmRow'
+import { Services, type Service } from '../components/Services'
 import { Bar, Card, Chip, PageTitle } from '../components/ui'
 
 type Resources = {
@@ -12,7 +13,6 @@ type Resources = {
   gpu: { vram_used: number; vram_total: number; utilization: number; temperature: number } | null
   disks: { path: string; used_pct: number; free: number }[]
 }
-type Service = { name: string; display_name: string; status: string; type: string; extra: Record<string, string> }
 type BackupUnit = { state: 'ok' | 'failed' | 'running' | 'never' | 'missing'; last_run: string | null; result: string | null }
 type Backups = { borg: BackupUnit; rotation: BackupUnit & { age_days: number | null }; timeshift: BackupUnit }
 
@@ -96,19 +96,7 @@ export function Outils() {
     <>
       <PageTitle help="outils" title="outils & vms" desc="Machines virtuelles, backups, ressources et accès directs." />
 
-      <Card title="services" lite="les indisponibles en premier" style={{ marginBottom: 14 }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {[...(services.data?.services ?? [])]
-            .sort((a, b) => (a.status === 'up' ? 1 : 0) - (b.status === 'up' ? 1 : 0))
-            .map((s) => (
-              <span key={s.name} className="svc" style={s.status !== 'up' ? { borderColor: 'color-mix(in srgb, var(--crit) 45%, var(--line))' } : undefined}>
-                <span className={`dot ${s.status === 'up' ? 'ok' : s.status === 'starting' ? 'warn' : s.status === 'down' ? 'crit' : 'off'}`} />
-                {s.display_name}
-                {s.status !== 'up' && <span style={{ color: 'var(--crit)', fontFamily: 'var(--mono)', fontSize: 9.5 }}>{s.status === 'down' ? 'down' : s.status}</span>}
-              </span>
-            ))}
-        </div>
-      </Card>
+      <Services services={services.data?.services ?? []} onChange={services.refresh} />
 
       <div className="grid g3" style={{ marginBottom: 14 }}>
         <Card title="ressources">

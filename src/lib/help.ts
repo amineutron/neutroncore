@@ -42,6 +42,7 @@ export const HELP: Record<string, HelpTopic> = {
       ['filtres', 'Basculer entre films et séries, filtrer par état de téléchargement.'],
       ['fiche', 'Cliquer une affiche ouvre le détail : qualité, taille, disponibilité.'],
       ['calendrier', 'Les prochains épisodes attendus dans les sept jours.'],
+      ['manquants', 'Films et épisodes suivis mais absents du disque, avec relance de la recherche.'],
       ['suppression', 'Double confirmation obligatoire, et jeton de sécurité côté serveur.'],
     ],
   },
@@ -94,6 +95,7 @@ export const HELP: Record<string, HelpTopic> = {
       ['scènes', 'Les carrés montrent un aperçu des couleurs et leur position dans la pièce.'],
       ['lumières', 'Cliquer une ampoule la bascule ; le curseur règle son intensité.'],
       ['tv et denon', 'Alimentation, volume, source, Ambilight. Le volume TV est redirigé vers le Denon.'],
+      ['télécommande', 'Flèches, validation, lecture, applications et entrée de l’ampli. Un clic dans la carte active les flèches du clavier.'],
       ['iron man', 'La scène complète : trente-trois secondes de lumière et de son synchronisés.'],
     ],
   },
@@ -111,6 +113,7 @@ export const HELP: Record<string, HelpTopic> = {
     title: 'outils & vms',
     intro: 'Machines virtuelles, sauvegardes et raccourcis vers les interfaces web.',
     points: [
+      ['services', 'Un clic démarre ou arrête un service pilotable, après confirmation.'],
       ['vms', 'État, stockage local ou externe, démarrage et arrêt.'],
       ['clone système', 'Duplique ton PC en VM. Mode léger par défaut : sans projets, modèles ni secrets.'],
       ['sauvegardes', 'Borg et Timeshift : dernière exécution, prochaine planifiée.'],

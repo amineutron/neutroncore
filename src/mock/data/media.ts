@@ -36,6 +36,11 @@ export const media: [string, string, MockHandler][] = [
     { kind: 'episode', title: 'Flash Gordon', date: isoIn(4 * 1440), detail: 'S01E22 — The Brain Machine', has_file: false },
     { kind: 'movie', title: 'Plan 9 from Outer Space', date: isoIn(6 * 1440), detail: 'sortie film', has_file: false },
   ] })],
+  ['GET', '/arr/missing', () => ({
+    movies: MOVIES.filter((m) => !m.has_file),
+    episodes: [21, 22, 23].map((n) => ({ series_id: 2, series: 'Flash Gordon', detail: `S01E${n}`, title: '', air_date: isoAgo(n * 1440) })),
+    episode_total: 19,
+  })],
   ['GET', '/arr/incoming', () => ({
     movies: [{ id: 10, kind: 'movie', title: 'Plan 9 from Outer Space', year: 1957, release: 'released', state: 'downloading',
       queue: { count: 1, progress: 64, downloading: 1, queued: 0, import_pending: 0, import_blocked: 0, warnings: [] } }],

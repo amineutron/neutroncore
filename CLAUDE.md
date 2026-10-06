@@ -365,3 +365,19 @@ leur propre scope via `systemd-run --scope`) ; l'arret prend 5 s maximum
   `ntfy access everyone <topic> read-only` — l'écriture reste sur jeton ; le
   serveur n'est joignable que via le tailnet). Piège : après un `npm run build`,
   l'app ouverte garde l'ancien bundle jusqu'au bandeau « recharger ».
+
+## Lot 1 des nouveaux volets (2026-10-06)
+- **Dialogues maison** : plus aucun `window.confirm` / `window.alert`. `lib/dialog.ts`
+  (`confirmDialog`, `ask` avec case a cocher ou `single`, `toast`) rendu par
+  `components/Dialogs.tsx`. Entree n'est PAS interceptee : le focus demarre sur
+  « annuler » pour une action `danger`. Une meme question ne s'empile pas deux fois.
+- **Telecommande** (`components/Remote.tsx`, ecran ambiance) : POST /tv/key
+  (liste fermee `TV_KEYS` dans `routers/tv.py`), /tv/app, /tv/source (entree du
+  Denon). La carte prend le focus : fleches, Entree, Retour arriere, Espace.
+- **Manquants** (`components/Missing.tsx`, onglet de films & series) :
+  GET /arr/missing (episodes avec `series_id`, regroupes par `lib/missing.ts`)
+  et POST /arr/search. Un film pas encore sorti n'a pas de bouton « relancer ».
+- **Services** (`components/Services.tsx`, ecran outils) : clic = demarrer ou
+  arreter, seulement si `controllable` (vrai quand un jeton `service_stop_<nom>`
+  existe cote API). Toujours avec X-Confirm.
+- Volets ecartes par choix : ventilateur, pairs d'un torrent.
