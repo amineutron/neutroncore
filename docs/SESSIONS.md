@@ -31,3 +31,13 @@
 - Dans ce depot : aucun changement de code.
 - Suite (2026-10-06) : alerte ntfy du smoke MCP (`OnFailure=` -> `lyra-mcp-smoke-alert.service`, `scripts/smoke_alert.py` teste, commit lyra `74010e8`) ; drop-in local `ntfy.conf` -> fichier d'env de l'API ; CVE brace-expansion corrigee (lockfile) ; consigne : CI complete rejouee avant chaque push.
 - Ouvert : `git stash drop` dans `$DEV_ROOT/hue-mcp` (bloque par les permissions, a faire a la main) ; IP Tailscale reelle en valeur par defaut dans `config.py` de lyra-control-api (prive).
+
+## 2026-10-06 — dettes ouvertes, valeurs privees (session « neutroncore upgrade IDEA »)
+
+- Objectif : solder les dettes du journal avant d'ouvrir de nouveaux volets ; plus de secret, d'IP reelle ni de chemin absolu dans le code.
+- qBittorrent : le 502 n'etait pas un credential manquant. Blob corrige a 13:52, API demarree a 13:46 avec l'ancien mot de passe en memoire (verifie hors ligne contre le hash PBKDF2 de `qBittorrent.conf`). Fix durable cote API : `lib/creds.py`, blob relu a chaque login.
+- `lyra-control-api` : IP tailnet retiree des defauts (`NTFY_URL`, `APP_PUBLIC_URL`), adresses d'appareils et identifiant Tuya sortis de `config.py` vers le fichier d'env, chemins HALO derives de `DEV_ROOT`, unite systemd en `%h`. Test de garde `tests/test_config_secrets.py`. 329 tests verts, API redemarree, routes cles en 200.
+- Dans ce depot : audit sans resultat (seules des adresses de documentation 100.64.0.1 et `/home/user` dans la demo).
+- Dialogues maison : les 17 `window.confirm` / `window.alert` passent par `lib/dialog.ts` + `components/Dialogs.tsx` (modale a promesse, case a cocher pour « supprimer aussi les fichiers », messages non bloquants). Apres revue : Entree n'est pas interceptee et le focus demarre sur « annuler » pour une action destructive, une meme question ne s'empile pas deux fois, le retour ferme le dialogue du dessus et rend l'entree d'historique consommee.
+- Regle a la main par l'utilisateur : stash doublon de hue-mcp supprime, coredumps purges.
+- Ouvert : l'IP tailnet reste dans l'historique git de lyra-control-api (depot prive) ; `recover-qbittorrent.sh` de media-server garde un chemin absolu (depot avec des modifications en cours, non touche).

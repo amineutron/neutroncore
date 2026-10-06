@@ -81,10 +81,15 @@ leur propre scope via `systemd-run --scope`) ; l'arret prend 5 s maximum
 
 ## Etat connu / dettes
 
-- qBittorrent : mot de passe absent de l'env apres la rotation Vaultwarden ->
-  502 sur /qbit/torrents. Fix prevu : credential systemd user-scope
-  `qbt-password` (config.py le lit deja via $CREDENTIALS_DIRECTORY) — voir
-  la commande dans le rapport de session ou README.
+- qBittorrent (regle le 2026-10-06) : le 502 sur /qbit/torrents venait d'un
+  credential perime en memoire. La rotation mensuelle reecrit le blob
+  `~/.config/lyra-control/qbt-password.cred` sans redemarrer l'API, et
+  `LoadCredentialEncrypted` ne se relit qu'au demarrage. `lib/creds.py` relit
+  donc le blob a chaque login (env > blob > credential charge). Ne pas revenir
+  a une lecture seule de `$CREDENTIALS_DIRECTORY`.
+- Valeurs privees : `tests/test_config_secrets.py` (lyra-control-api) echoue si
+  une IP tailnet ou un chemin `/home/...` reapparait dans un fichier suivi.
+  Les adresses de machine n'ont plus de defaut reel dans `config.py`.
 - La maquette design de reference est publiee en artifact Claude
   (« neutroncore — maquette ») ; source dans le scratchpad de session.
 
