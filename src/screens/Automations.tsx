@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
 import { AutomationEditor } from '../components/AutomationEditor'
+import type { Lists } from '../components/BlockParams'
+import { FlowCanvas } from '../components/FlowCanvas'
+import { RunHistory } from '../components/RunDetail'
 import { Btn, Card, Chip, Eyebrow, Loader, PageTitle } from '../components/ui'
 import { ApiError, apiDelete, apiGet, apiPut, withConfirm } from '../lib/api'
 import { runAutomation } from '../lib/automationRun'
 import {
-  EMPTY_DRAFT, describeAction, describeCondition, describeTrigger, isRoutine, runLabel, triggerLabel,
-  type Automation, type AutomationDraft, type Catalogue,
+  EMPTY_DRAFT, describeAction, describeTrigger, isRoutine, layout, nodeResult, normalize, runLabel, toDraft,
+  type Automation, type AutomationDraft, type Catalogue, type Names,
 } from '../lib/automations'
 import { invalidateCommands } from '../lib/commands'
 import { confirmDialog, toast } from '../lib/dialog'
@@ -15,22 +18,31 @@ import { usePoll } from '../lib/poll'
 type Scene = { id: string; name: string; group: string }
 type Listing = { automations: Automation[]; catalogue: Catalogue; running: { id: string; name: string } | null; invalid: number }
 export const AUTOMATION_TARGET = 'automationTarget'   // sessionStorage : automatisation à ouvrir en arrivant (depuis l'agenda)
-
-const toDraft = (a: Automation): AutomationDraft =>
-  ({ name: a.name, enabled: a.enabled, trigger: a.trigger, conditions: a.conditions, actions: a.actions, cooldown_min: a.cooldown_min })
+const HUE_ROOM = '81'
 
 // Routines (un bouton) et automatisations (un déclencheur), au même endroit.
 export function Automations() {
   const list = usePoll<Listing>(() => apiGet('/automations'), 15000)
   const scenes = usePoll<{ scenes: Scene[] }>(() => apiGet('/hue/scenes'), 300000)
+  const lights = usePoll<{ lights: Record<string, { name: string }> }>(() => apiGet('/hue/lights'), 300000)
   const [busy, setBusy] = useState('')
   const [editing, setEditing] = useState<Automation | 'routine' | 'automation' | null>(null)
   const [saving, setSaving] = useState(false)
   const [open, setOpen] = useState<string | null>(null)
-  const room = (scenes.data?.scenes ?? []).filter((s) => s.group === '81')
-  const sceneNames = Object.fromEntries(room.map((s) => [s.id, s.name]))
+  // passage sélectionné repéré par son horodatage : un nouveau passage en tête ne fait pas sauter la sélection
+  const [runAt, setRunAt] = useState<number | null>(null)
   const cat = list.data?.catalogue
   const all = list.data?.automations ?? []
+
+  const lists: Lists = {
+    scenes: (scenes.data?.scenes ?? []).filter((s) => s.group === HUE_ROOM).map(({ id, name }) => ({ id, name })),
+    lights: Object.entries(lights.data?.lights ?? {}).map(([id, l]) => ({ id, name: l.name })),
+    routines: all.filter(isRoutine).map(({ id, name }) => ({ id, name })),
+  }
+  const names: Names = Object.fromEntries([
+    ...lists.scenes.map((s) => [s.id, s.name]), ...lists.lights.map((l) => [`light:${l.id}`, l.name]),
+    ...lists.routines.map((r) => [`routine:${r.id}`, r.name]),
+  ])
 
   // arrivée depuis l'agenda : on déplie l'automatisation visée
   useEffect(() => {
@@ -39,15 +51,15 @@ export function Automations() {
     if (target) setOpen(target)
   }, [])
 
-  async function run(a: Automation) {
+  async function run(a: Automation, branch: 'then' | 'else' = 'then') {
     setBusy(a.id)
     try {
-      await runAutomation(a)
+      await runAutomation(a, branch)
       toast(`« ${a.name} » terminée`)
     } catch (e) {
       const taken = e instanceof ApiError && e.status === 409
       toast(taken ? 'une automatisation est déjà en cours — attends la fin' : `« ${a.name} » : ${(e as Error).message}`, taken ? 'warn' : 'crit')
-    } finally { setBusy(''); list.refresh() }
+    } finally { setBusy(''); setRunAt(null); list.refresh() }
   }
   async function save(draft: AutomationDraft) {
     const id = editing && typeof editing === 'object' ? editing.id : 'new'
@@ -78,36 +90,30 @@ export function Automations() {
   const card = (a: Automation) => {
     const last = a.history[0]
     const isOpen = open === a.id
+    const draft = normalize(toDraft(a))
+    const flow = isOpen ? layout(draft, cat?.actions ?? [], names, false) : null
+    const runIndex = Math.max(0, a.history.findIndex((h) => h.at === runAt))
+    const run_ = isOpen ? a.history[runIndex] ?? null : null
     return (
       <div className={`au-card ${a.enabled ? '' : 'off'} ${isOpen ? 'open' : ''}`} key={a.id}>
         <div className="au-head">
-          <button className="au-title" onClick={() => setOpen(isOpen ? null : a.id)} aria-expanded={isOpen}>
+          <button className="au-title" onClick={() => { setOpen(isOpen ? null : a.id); setRunAt(null) }} aria-expanded={isOpen}>
             <b>{a.name}</b>
-            <span>{isRoutine(a) ? a.actions.map((s) => describeAction(s, cat?.actions ?? [], sceneNames)).join(' → ') : describeTrigger(a.trigger)}</span>
+            <span>{isRoutine(a) ? a.actions.map((s) => describeAction(s, cat?.actions ?? [], names)).join(' → ') : describeTrigger(a.trigger)}</span>
           </button>
           <div className="au-tools">
             {running === a.id && <Chip tone="gold">en cours…</Chip>}
             {!isRoutine(a) && <button className={`btn sm ${a.enabled ? 'solid' : ''}`} aria-pressed={a.enabled} onClick={() => toggle(a)}>{a.enabled ? 'active' : 'en pause'}</button>}
             <Btn sm onClick={() => run(a)} disabled={busy !== '' || Boolean(running)}>{busy === a.id ? '…' : isRoutine(a) ? 'lancer' : 'essayer'}</Btn>
+            {draft.otherwise.length > 0 && <Btn sm onClick={() => run(a, 'else')} disabled={busy !== '' || Boolean(running)}>essayer « sinon »</Btn>}
             <Btn sm onClick={() => setEditing(a)}>modifier</Btn>
           </div>
         </div>
-        {isOpen && (
+        {isOpen && flow && (
           <div className="au-detail">
-            <div className="au-flow">
-              <span className="au-pill when">quand</span><span>{describeTrigger(a.trigger)}</span>
-              {a.conditions.length > 0 && <><span className="au-pill if">si</span><span>{a.conditions.map(describeCondition).join(' et ')}</span></>}
-              <span className="au-pill then">alors</span><span>{a.actions.map((s) => describeAction(s, cat?.actions ?? [], sceneNames)).join(' → ')}</span>
-            </div>
-            <Eyebrow>derniers passages</Eyebrow>
-            {a.history.length === 0 && <p className="au-note">Aucun passage pour l'instant.</p>}
-            {a.history.map((h, i) => (
-              <div className="au-run" key={i}>
-                <span className={`dot ${h.skipped ? 'off' : h.success ? 'ok' : 'crit'}`} />
-                <span className="au-run-main">{runLabel(h)}{h.detail && <em> — {h.detail}</em>}</span>
-                <span className="au-run-meta">{triggerLabel(h.trigger)}{h.why && !h.skipped && h.why !== triggerLabel(h.trigger) ? ` · ${h.why}` : ''} · {ago(h.at, Date.now())}</span>
-              </div>
-            ))}
+            <FlowCanvas flow={flow} results={run_ ? Object.fromEntries(flow.nodes.map((n) => [n.id, nodeResult(n, run_)])) : undefined} />
+            <Eyebrow>derniers passages{run_ ? ' — le diagramme montre celui qui est sélectionné' : ''}</Eyebrow>
+            <RunHistory runs={a.history} selected={runIndex} onSelect={(i) => setRunAt(a.history[i]?.at ?? null)} />
           </div>
         )}
         {!isOpen && last && !isRoutine(a) && (
@@ -126,9 +132,9 @@ export function Automations() {
       {!list.data && !list.error && <Loader />}
       {list.data && cat && (
         <>
-          <Card title="automatisations" lite="quand… si… alors…" style={{ marginBottom: 14 }}>
+          <Card title="automatisations" lite="quand… si… alors… sinon…" style={{ marginBottom: 14 }}>
             {autos.map(card)}
-            {autos.length === 0 && <p className="au-note">Aucune pour l'instant. Exemples : « quand une alerte disque apparaît, notification sur le téléphone », « à 23:30 en semaine, tout éteindre », « quand plex tombe, le redémarrer ».</p>}
+            {autos.length === 0 && <p className="au-note">Aucune pour l'instant. Exemples : « quand un téléchargement se termine, notification avec son nom », « à 23:30 en semaine, si la tv est éteinte, tout éteindre », « quand plex tombe, le redémarrer, réessayer deux fois ».</p>}
             <div style={{ marginTop: 10 }}><Btn solid onClick={() => setEditing('automation')}>+ nouvelle automatisation</Btn></div>
           </Card>
           <Card title="routines" lite="plusieurs actions d'un seul geste">
@@ -141,7 +147,9 @@ export function Automations() {
               isNew={typeof editing === 'string'}
               initial={typeof editing === 'object' ? toDraft(editing)
                 : editing === 'routine' ? EMPTY_DRAFT : { ...EMPTY_DRAFT, trigger: { type: 'time', params: { time: '07:30', days: [0, 1, 2, 3, 4] } } }}
-              catalogue={cat} scenes={room} saving={saving}
+              catalogue={cat} names={names} saving={saving}
+              // une routine ne se propose pas elle-même dans « lancer une routine »
+              lists={typeof editing === 'object' ? { ...lists, routines: lists.routines.filter((r) => r.id !== editing.id) } : lists}
               onSave={save} onDelete={typeof editing === 'object' ? () => remove(editing) : undefined} onClose={() => setEditing(null)}
             />
           )}

@@ -7,9 +7,17 @@ export type ParamSpec =
   | { name: string; type: 'bool' }
   | { name: string; type: 'id' }
   | { name: string; type: 'text'; max: number }
+  | { name: string; type: 'otext'; max: number }
+  | { name: string; type: 'color' }
+  | { name: string; type: 'light' }
+  | { name: string; type: 'tool' }
+  | { name: string; type: 'args' }
 export type ActionSpec = { action: string; label: string; params: ParamSpec[] }
-export type Step = { action: string; params: Record<string, string | number | boolean> }
-export type StepResult = { action: string; label: string; ok: boolean; error: string }
+// on_error : « continue » (défaut) ou « stop » la suite ; retry : réessais avant de déclarer l'échec
+// arguments d'un outil Lyra résolu à l'édition : à plat, valeurs simples
+export type LyraArgs = Record<string, string | number | boolean>
+export type Step = { action: string; params: Record<string, string | number | boolean | LyraArgs>; on_error?: 'continue' | 'stop'; retry?: number }
+export type StepResult = { action: string; label: string; ok: boolean; error: string; ms?: number; attempts?: number; not_run?: boolean }
 export type RunResult = { success: boolean; steps: StepResult[]; failed: number }
 
 export const DAYS = ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam', 'dim']
@@ -20,18 +28,21 @@ export function defaultParams(spec: ActionSpec, firstScene = ''): Step['params']
     if (p.type === 'int') return [p.name, Math.min(p.max, Math.max(p.min, p.name === 'seconds' ? 5 : Math.round((p.min + p.max) / 2)))]
     if (p.type === 'choice') return [p.name, p.choices[0]]
     if (p.type === 'bool') return [p.name, true]
-    if (p.type === 'id') return [p.name, firstScene]
-    return [p.name, '']   // texte libre : vide, à écrire par l'utilisateur
+    if (p.type === 'id') return [p.name, p.name === 'scene_id' ? firstScene : '']
+    if (p.type === 'color') return [p.name, '#f6c177']
+    if (p.type === 'args') return [p.name, {}]
+    return [p.name, '']   // texte libre, lampe, routine : vide, à choisir par l'utilisateur
   }))
 }
 
 /** Phrase courte d'une étape : « scène hue : soirée », « attendre 5 s ». */
-export function describeStep(step: Step, catalogue: ActionSpec[], sceneNames: Record<string, string> = {}): string {
+/** `names` : noms lisibles des objets référencés — scènes par identifiant, lampes sous `light:<n>`, routines sous `routine:<id>`. */
+export function describeStep(step: Step, catalogue: ActionSpec[], names: Record<string, string> = {}): string {
   const spec = catalogue.find((a) => a.action === step.action)
   if (!spec) return step.action
   const p = step.params
   switch (step.action) {
-    case 'hue.scene': return `scène hue : ${sceneNames[String(p.scene_id)] ?? 'scène supprimée'}`
+    case 'hue.scene': return `scène hue : ${names[String(p.scene_id)] ?? 'scène supprimée'}`
     case 'hue.brightness': return `lumières à ${Math.round((Number(p.brightness) / 254) * 100)} %`
     case 'tv.power': return p.on ? 'tv : allumer' : 'tv : éteindre'
     case 'tv.app': return `tv : ouvrir ${p.app}`
@@ -39,6 +50,15 @@ export function describeStep(step: Step, catalogue: ActionSpec[], sceneNames: Re
     case 'denon.volume': return `ampli : volume ${p.level}`
     case 'denon.source': return `ampli : entrée ${String(p.source).toLowerCase()}`
     case 'wait': return `attendre ${p.seconds} s`
+    case 'hue.on': return 'lumières : tout allumer'
+    case 'hue.color': return `lumières en ${p.color}`
+    case 'hue.light': return `lampe ${names[`light:${p.light}`] ?? p.light} : ${p.on ? 'allumer' : 'éteindre'}`
+    case 'tv.key': return `tv : touche ${p.key}`
+    case 'tv.mute': return p.muted ? 'tv : couper le son' : 'tv : remettre le son'
+    case 'tv.screen': return p.on ? 'tv : écran allumé' : 'tv : écran éteint (son gardé)'
+    case 'denon.mute': return p.muted ? 'ampli : couper le son' : 'ampli : remettre le son'
+    case 'pc.screens': return p.on ? 'écrans du pc : allumer' : 'écrans du pc : éteindre'
+    case 'routine.run': return `lancer la routine « ${names[`routine:${p.id}`] ?? 'supprimée'} »`
     default: return spec.label
   }
 }

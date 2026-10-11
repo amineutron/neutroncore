@@ -9,9 +9,9 @@ const MAX_MISSES = 3              // relevés ratés d'affilée tolérés (coupu
 /** Lance une automatisation à la main et attend sa fin. L'API répond aussitôt et
  * l'exécute en tâche de fond (elle peut durer des minutes) : on suit `running`
  * puis `last`. Lève une erreur lisible si une action échoue ; un 409 remonte tel quel. */
-export async function runAutomation(a: { id: string; name: string }): Promise<void> {
+export async function runAutomation(a: { id: string; name: string }, branch: 'then' | 'else' = 'then'): Promise<void> {
   const startedSec = Date.now() / 1000 - 2   // marge : horloges du navigateur et de l'API
-  await apiPost(`/automations/${a.id}/run`)
+  await apiPost(`/automations/${a.id}/run`, { branch })
   const started = Date.now()
   let misses = 0
   for (;;) {

@@ -49,3 +49,16 @@
 - Incident de manipulation pendant le commit du moteur : une commande `git stash` parasite a mis de cote `routers/overseerr.py` et `routers/tracking.py` (modifications en cours d'une autre session) ; restaures aussitot par `git stash pop`, a l'identique, sans redemarrage de l'API entre-temps.
 - Action « phrase a Lyra » : etudiee, non construite. Voir la section Automatisations de CLAUDE.md.
 - Ouvert : l'IP tailnet reste dans l'historique git de lyra-control-api (depot prive) ; `recover-qbittorrent.sh` de media-server garde un chemin absolu (depot avec des modifications en cours, non touche).
+
+## 2026-10-07 — automatisations v2, diagramme, action Lyra (suite de la session « neutroncore upgrade IDEA »)
+
+- Objectif : rendre les automatisations plus completes (plus de blocs, d'options, de comptes rendus personnalises), ajouter une vue en diagramme gauche-droite, et construire l'action « phrase a Lyra » selon l'approche validee par l'utilisateur (resoudre a l'edition, executer le resolu).
+- Fait, API (`$DEV_ROOT/mobile/lyra-control-api`) : catalogue etendu (22 actions, 14 declencheurs, 9 conditions), branche « sinon », reessais, plafond par jour, gabarits, comptes rendus, evenement externe ; correctifs de revue (conditions a trois etats, intervalle, duree maximale d'un passage, seuils, sondages) ; action `lyra.tool` et route `/automations/analyze`. 697 tests verts apres revues.
+- Fait, interface : editeur a deux vues sur le meme brouillon (blocs / diagramme), detail d'un passage, composant de phrase Lyra. 275 tests verts, builds reel et demo propres.
+- Fait, Lyra (`$DEV_ROOT/lyra`) : message `analyze`, option `unattended`, test de fumee du demon. Suites unit + installeur 1648 verts ; banc des regles 151/152, identique au 2026-09-27 (cas « youtube video » deja en echec).
+- Verifie en reel : cinq phrases analysees par le demon, une automatisation d'essai en lecture seule (`denon.get_status`) creee, lancee (210 ms), puis supprimee ; un outil hors famille est refuse a l'enregistrement.
+- Revues independantes (securite du volet Lyra, moteur) : aucun chemin trouve pour executer un outil dangereux sans humain. Durcissements appliques : volume plafonne a 60 aussi par phrase, `catt.cast_browser` / `cast_browser_dual` / `cast_url` refuses, adresses limitees a YouTube en https, options mal formees tolerees par le demon ; les « non lance » ne chassent plus les vrais passages de l'historique (regroupes, compteur `times`), un passage abandonne garde le detail de ce qui a tourne. Etat final : 697 tests API, 275 interface, 96 sur le demon.
+- Non fait : `make bench-daemon` (il lance de vraies commandes et mesure des latences sans rapport avec `analyze`) ; `bench_recall` (mesure le RAG, que `analyze` n'utilise pas).
+- Commits : rien n'a ete commite avant l'accord de l'utilisateur (2026-10-11) ; ce depot part alors en PR depuis `feat/automations`. 
+- Ouvert : 4 tests de `tests/integration` de Lyra echouent sur des fichiers non touches par cette session (`test_pipeline.py`, `test_vm_clone_running.py` : `nom_de_spec` recoit un Mock) — a regarder cote Lyra. Volets restants : manga, hors-ligne, decoupage des gros fichiers, tests frontend dans l'ecran « tests », VMs dans l'app, camera/OBS.
+

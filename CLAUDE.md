@@ -481,11 +481,54 @@ leur propre scope via `systemd-run --scope`) ; l'arret prend 5 s maximum
   `lib/automations.py`, une branche dans `_execute` / `matches` /
   `conditions_ok`, sa phrase dans `lib/automations.ts`, et le catalogue de
   demo (`src/mock/data/home.ts`).
-- **Action « phrase a Lyra » : PAS ENCORE FAITE.** L'etude du demon Lyra
-  (2026-10-06) montre qu'envoyer une phrase brute sans humain n'est pas fiable
-  aujourd'hui. Approche retenue a valider avec l'utilisateur : resoudre la
-  phrase a l'edition (nouveau message `analyze` du demon), stocker l'appel
-  resolu, l'executer par la route `tool`. Demande des changements dans Lyra
-  avec ses propres tests, e2e, fumee et bancs.
 - **Plan de piece** : dans la vue 3D, glisser une lampe de haut en bas regle
   sa hauteur (`heightDelta` dans `lib/plan3d.ts`) ; glisser le fond tourne.
+
+## Automatisations v2 (2026-10-07) — plus de blocs, diagramme, Lyra
+- **Catalogue** (`lib/automations.py` cote API) : 22 actions, 14 declencheurs
+  (intervalle, seuil de ressource, demande, agenda, lumieres, evenement externe
+  `POST /automations/event/{nom}`, demarrage...), 9 conditions. Conditions
+  « toutes / au moins une », chacune inversable. Branche SINON. Par action :
+  continuer ou arreter la suite, reessais (0 a 2). Plafond par jour, gabarits
+  `{titre} {heure} {jour} {nom}...` dans les messages, compte rendu reglable
+  (quand, ou, texte). Le catalogue de demo
+  `src/mock/data/automationCatalogue.ts` est GENERE depuis `au.catalogue()` :
+  le regenerer quand un bloc change, ne pas l'editer.
+- **Deux vues, un brouillon** : `lib/useAutomationDraft.ts` porte l'etat ;
+  `AutomationEditor.tsx` bascule entre « blocs » (`AutomationParts.tsx`,
+  `AutomationOptions.tsx`) et « diagramme » gauche-droite (`FlowCanvas.tsx`,
+  `AutomationDiagram.tsx`, disposition pure `layout()` testee). Sur la liste,
+  le diagramme se colore d'apres le passage choisi (`nodeResult`,
+  `RunDetail.tsx`).
+- **Etat inconnu = aucune branche** : `conditions_ok` rend vrai, faux ou
+  `None`. Un appareil injoignable ne lance ni « alors » ni « sinon » (sinon
+  « si la tv est allumee... sinon l'allumer » agirait sur une TV muette).
+- **Ne se rejouent pas** (`NO_RETRY`) : touche de telecommande, routine,
+  attente, action Lyra. Un passage est abandonne apres `MAX_RUN_SECONDS`
+  (10 min). L'intervalle n'est pas freine par le delai minimal. Une routine ne
+  peut ni s'appeler elle-meme ni en appeler une en pause.
+- **Action « demander a lyra »** (`lyra.tool`) : on n'envoie JAMAIS une phrase
+  brute a executer sans humain. A l'edition, `POST /automations/analyze`
+  interroge le demon (message `analyze`, regles seules, rien n'est execute) ;
+  `lyra_verdict` n'accepte qu'un outil trouve, complet, des familles tv / hue /
+  denon / catt, classe sans confirmation par Lyra, et une seule action par
+  phrase. L'appel resolu (outil + arguments) est stocke ; a l'execution il est
+  rejoue par la route `tool` avec `unattended` : le demon refuse lui-meme tout
+  outil hors de `PERFORMANCE_TOOLS` et ne pose aucune question. Session du
+  demon dediee `automation`. UI : `components/LyraPhrase.tsx` (modifier la
+  phrase efface l'appel resolu : il faut la faire analyser de nouveau).
+- **Cote Lyra** (`$DEV_ROOT/lyra`, non commite) : `lyra/daemon/analysis.py`,
+  `handle_analyze` et l'option `unattended` dans `lyra/daemon/server.py`,
+  `scripts/smoke_daemon.py` (`make smoke-daemon` : hello, ping, health,
+  analyze, refus sans humain ; n'execute rien). Un demon pas encore redemarre
+  repond « type de message inconnu: analyze » : l'UI l'affiche tel quel.
+- **Plafonds d'un appel Lyra** (`lyra_call_error`, reverifie a chaque lecture du
+  fichier) : volume <= `DENON_MAX`, `catt.cast_browser` / `cast_browser_dual` /
+  `cast_url` refuses, seules les adresses https de YouTube en argument. Une
+  phrase ne doit jamais permettre ce qu'un bloc natif interdit.
+- **Historique** : les « non lance » identiques d'affilee sont regroupes
+  (`times`) et partent les premiers quand la liste deborde — la cadence et le
+  plafond du jour se comptent dans cet historique.
+- Limite connue : `analyze` ne connait que les regles. Une phrase qui passerait
+  par le modele dans le chat est « non reconnue » ici (ex. « monte le son a
+  40 »). Un mode profond demanderait un pipeline sans effet de bord cote Lyra.
