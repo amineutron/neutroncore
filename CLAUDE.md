@@ -64,6 +64,11 @@ restart requis si le backend change) :
 systemctl --user restart lyra-control-api.service
 ```
 
+L'API tourne dans son propre environnement `.venv` (depuis le 2026-10-15, `requirements.txt` +
+`requirements-dev.txt` pour les tests) : le Python du systeme epinglait `cryptography` 44 (failles
+connues) et `pyOpenSSL` de Fedora interdit de le monter au-dela de 45. Ses tests se lancent avec
+`.venv/bin/python -m pytest -q`.
+
 Un restart ne tue plus les kitty ouvertes par le lanceur (elles tournent dans
 leur propre scope via `systemd-run --scope`) ; l'arret prend 5 s maximum
 (`timeout_graceful_shutdown`).
