@@ -291,3 +291,20 @@ describe('passages regroupés', () => {
     expect(runLabel({ ...run, times: 12 })).toBe('non lancée (×12) — état inconnu (la tv allumée)')
   })
 })
+
+describe('blocs du 2026-10-13', () => {
+  const B = (type: string, params: Record<string, string | number>) => ({ type, params })
+  it('se lisent en phrases', () => {
+    expect(describeTrigger(B('atelier', { when: 'waiting', contains: 'batterie' }))).toContain('boucle de l’atelier 3d')
+    expect(describeTrigger(B('atelier', { when: 'verdict', contains: '' }))).toBe('quand une boucle de l’atelier 3d rend un verdict')
+    expect(describeTrigger(B('session_stuck', { minutes: 20, contains: '' }))).toBe('quand une session claude au travail ne bouge plus depuis 20 min')
+    expect(describeCondition(B('presence', { state: 'away' }))).toBe('tu es absent (écrans du pc éteints)')
+    expect(describeAction({ action: 'service.start', params: { name: 'trigger' } }, [])).toBe('redémarrer le service qui vient de tomber')
+    expect(describeAction({ action: 'tests.run', params: { suite: 'atelier' } }, [])).toBe('lancer les tests : modelisation-3d — tests rapides')
+    expect(describeAction({ action: 'tv.show', params: { source: 'hdmi1', screen: 'tele' } }, [])).toBe('afficher le tableau du mode télé sur la télé (entrée hdmi 1)')
+    expect(describeAction({ action: 'tv.restore', params: {} }, [])).toBe('remettre sur la télé ce qu’elle affichait')
+    expect(describeAction({ action: 'camera.power', params: { on: true } }, [])).toBe('allumer la caméra')
+    expect(describeAction({ action: 'camera.standby', params: { on: false } }, [])).toBe('sortir la caméra de veille')
+    expect(describeAction({ action: 'camera.background', params: { fond: 'or' } }, [])).toBe('fond de la caméra : or et braise')
+  })
+})

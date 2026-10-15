@@ -6,6 +6,7 @@ import { mainProject, useProjects } from '../components/Projects'
 import { getSettings } from '../lib/settings'
 import { MascotChain } from '../components/Mascot'
 import { HomeSessions } from '../components/HomeSessions'
+import { HomeAtelier } from '../components/HomeAtelier'
 import { HomeShortcuts } from '../components/HomeShortcuts'
 import { Reactor, type SubSystem } from '../components/Reactor'
 import { Btn, Dot, PageTitle, Eyebrow, serviceTone } from '../components/ui'
@@ -84,6 +85,7 @@ export function Accueil() {
         </div>
       )}
 
+      {getSettings().homeAtelier && <HomeAtelier />}
       {getSettings().homeSessions && <HomeSessions />}
 
       <HomeShortcuts />

@@ -24,3 +24,5 @@ ntfy/cache/
 ntfy/server.yml
 ntfy/docker-compose.yml
 dist-demo
+# sorties de test du navigateur (captures, journaux de console)
+.playwright-mcp/

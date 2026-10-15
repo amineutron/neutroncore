@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { apiGet, apiPost, apiPut, sessionEvents, withConfirm } from '../lib/api'
 import { usePoll } from '../lib/poll'
 import { getSettings } from '../lib/settings'
+import { useSmoothOrder } from '../lib/smoothOrder'
 import type { LiveSession, RecentSession, SessionMeta } from '../lib/sessions'
-import { OTHERS_KEY, displayName, fmtAge, fmtClock, glyphState, stateLabel, tone } from '../lib/sessions'
+import { OTHERS_KEY, horsAtelier, ordreStable, displayName, fmtAge, fmtClock, glyphState, stateLabel, tone } from '../lib/sessions'
 import { Btn, Chip, Eyebrow } from './ui'
 import { SessionChat } from './SessionChat'
 import { SessionMetaEditor } from './SessionMeta'
@@ -100,7 +101,16 @@ export function Sessions({ onCounts }: { onCounts?: (byRepo: Record<string, numb
     return () => clearTimeout(t)
   }, [toast])
 
-  const sessions = (list.data?.sessions ?? []).map((s) => (metaOverride[s.sessionId] ? { ...s, meta: metaOverride[s.sessionId] } : s))
+  // les boucles de l'atelier 3d se suivent dans l'atelier : elles ne sont pas listées ici
+  const recues = horsAtelier(list.data?.sessions ?? []).map((s) => (metaOverride[s.sessionId] ? { ...s, meta: metaOverride[s.sessionId] } : s))
+  // ordre stable : le serveur trie par activité, ce qui déplacerait les cartes (et la page) à chaque message
+  const urgentes = recues.filter((s) => s.waiting && s.state !== 'parked').map((s) => s.sessionId)
+  const rang = useRef<{ ordre: string[]; attendaient: string[] }>({ ordre: [], attendaient: [] })
+  const ordre = ordreStable(rang.current.ordre, rang.current.attendaient, recues.map((s) => ({ sessionId: s.sessionId, urgent: urgentes.includes(s.sessionId) })))
+  useEffect(() => { rang.current = { ordre, attendaient: urgentes } })
+  const sessions = [...recues].sort((a, b) => ordre.indexOf(a.sessionId) - ordre.indexOf(b.sessionId))
+  const hote = useRef<HTMLDivElement>(null)
+  useSmoothOrder(hote, sessions.map((s) => `${s.sessionId}:${s.state}`).join(','), open)
 
   useEffect(() => {
     if (!list.data || launches.length === 0) return
@@ -182,9 +192,14 @@ export function Sessions({ onCounts }: { onCounts?: (byRepo: Record<string, numb
 
   const anim = getSettings().lyraAnim
   const waiting = list.data?.waiting ?? 0
+  const recentes = horsAtelier(recent.data?.sessions ?? [])
   const active = sessions.filter((s) => !s.state)
   const closingList = sessions.filter((s) => s.state === 'closing')
   const parked = sessions.filter((s) => s.state === 'parked')
+
+  // les cartes restent dans le MEME ordre dans la page (par identifiant) et c'est `order` qui les place :
+  // déplacer un élément dans la page remet à zéro le défilement de sa conversation
+  const parId = (l: LiveSession[]) => [...l].sort((a, b) => a.sessionId.localeCompare(b.sessionId))
 
   const renderCard = (s: LiveSession) => {
     const isOpen = open === s.sessionId
@@ -196,7 +211,7 @@ export function Sessions({ onCounts }: { onCounts?: (byRepo: Record<string, numb
       fl?.kind === 'done' ? 'anim-done' : '', fl?.kind === 'arrive' ? 'anim-arrive' : ''].filter(Boolean).join(' ')
     const color = s.meta.color
     return (
-      <div key={s.sessionId} className={cls} style={color ? ({ '--sc': color } as React.CSSProperties) : undefined}>
+      <div key={s.sessionId} data-sid={s.sessionId} className={cls} style={{ ...(color ? { '--sc': color } : {}), order: ordre.indexOf(s.sessionId) + 1 } as React.CSSProperties}>
         {s.meta.comment && <div className="cs-comment">{s.meta.comment}</div>}
         <div className="cs-head" onClick={() => select(s.sessionId)}>
           <span className="cs-glyph-wrap"><SessionGlyph meta={s.meta} fallback={s.repo ?? s.name} state={g} /><i className={`cs-dot ${g === 'err' ? 'wait' : g}`} /></span>
@@ -277,7 +292,7 @@ export function Sessions({ onCounts }: { onCounts?: (byRepo: Record<string, numb
         </div>
       )}
       <p className="cs-hint">Une carte = une session Claude Code ouverte sur le PC. Le nom du dossier est en couleur ; touche la carte pour lire la conversation et répondre.</p>
-      <div className="cs-list">
+      <div className="cs-list" ref={hote}>
         {launches.map((l) => {
           const late = launchExpired(l)
           return (
@@ -292,19 +307,19 @@ export function Sessions({ onCounts }: { onCounts?: (byRepo: Record<string, numb
             </div>
           )
         })}
-        {active.map(renderCard)}
+        {parId(active).map(renderCard)}
         {closingList.length > 0 && (
           <div className="cs-group" style={{ margin: '4px 0 0' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0' }}>
               <Eyebrow>en fermeture</Eyebrow><span style={{ fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--faint)' }}>{closingList.length} — vérifie, puis termine</span>
             </div>
-            <div className="cs-list" style={{ margin: 0 }}>{closingList.map(renderCard)}</div>
+            <div className="cs-list" style={{ margin: 0 }}>{parId(closingList).map(renderCard)}</div>
           </div>
         )}
         {parked.length > 0 && (
           <details className="cs-group">
             <summary><Eyebrow>en veille</Eyebrow><span>{parked.length} mise{parked.length > 1 ? 's' : ''} de côté — « réveiller » pour la remettre en tête</span></summary>
-            <div className="cs-list" style={{ margin: 0 }}>{parked.map(renderCard)}</div>
+            <div className="cs-list" style={{ margin: 0 }}>{parId(parked).map(renderCard)}</div>
           </details>
         )}
         {list.data && sessions.length === 0 && (
@@ -317,11 +332,11 @@ export function Sessions({ onCounts }: { onCounts?: (byRepo: Record<string, numb
       </div>
       {maxi && open && <div className="cs-backdrop" onClick={() => setMaxi(false)} />}
 
-      {(recent.data?.sessions.length ?? 0) > 0 && (
+      {recentes.length > 0 && (
         <details className="cs-recent">
-          <summary><Eyebrow>récentes à reprendre</Eyebrow><span>{recent.data!.sessions.length}</span></summary>
+          <summary><Eyebrow>récentes à reprendre</Eyebrow><span>{recentes.length}</span></summary>
           <div className="cs-recent-list">
-            {recent.data!.sessions.map((r) => (
+            {recentes.map((r) => (
               <div key={r.sessionId} className="cs-recent-row" style={r.meta.color ? ({ '--sc': r.meta.color } as React.CSSProperties) : undefined}>
                 <SessionGlyph meta={r.meta} fallback={r.repo} />
                 <div className="cs-title">

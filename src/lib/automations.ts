@@ -55,12 +55,24 @@ const KIND: Record<string, string> = {
   memory: 'mémoire', agenda: 'rappel d’agenda',
 }
 const METRIC: Record<string, string> = { cpu: 'processeur', ram: 'mémoire vive', vram: 'mémoire du gpu', gpu_temp: 'température du gpu', disk: 'disque le plus rempli' }
+// Batteries de tests : miroir des libellés de lib/test_suites.py (côté API), où vit la liste fermée
+const SUITES: Record<string, string> = {
+  lyra: 'lyra — tests (unitaires, intégration, bout en bout)', 'lyra-smoke': 'lyra — serveurs MCP joignables', 'lyra-demon': 'lyra — démon en marche',
+  api: 'lyra-control-api — tests', neutroncore: 'neutroncore — tests de l’écran', tracking: 'tracking — tests', 'tracking-smoke': 'tracking — service joignable',
+  atelier: 'modelisation-3d — tests rapides', 'atelier-complet': 'modelisation-3d — tous les tests (long)',
+  'fedora-agents': 'fedora-agents — tests', 'fedora-agents-lint': 'fedora-agents — relecture automatique du code',
+  'hue-mcp': 'hue-mcp — tests', 'pylips-mcp': 'pylips-mcp — tests', 'denon-mcp': 'denon-mcp — tests', 'catt-mcp': 'catt-mcp — tests',
+}
 const CHOICES: Record<string, Record<string, string>> = {
   kind: KIND,
   metric: METRIC,
-  when: { raised: 'apparaît', resolved: 'est résolue', waiting: 'attend une réponse', done: 'a fini de répondre' },
-  state: { on: 'allumé', off: 'éteint', down: 'tombe', up: 'revient', yes: 'oui', no: 'non' },
-  name: { any: 'n’importe lequel' },
+  when: { raised: 'apparaît', resolved: 'est résolue', waiting: 'attend une réponse', done: 'a fini de répondre', verdict: 'rend un verdict' },
+  state: { on: 'allumé', off: 'éteint', down: 'tombe', up: 'revient', yes: 'oui', no: 'non', here: 'là', away: 'absent' },
+  name: { any: 'n’importe lequel', trigger: 'celui qui vient de tomber' },
+  suite: SUITES,
+  fond: { aucun: 'caméra telle quelle', flou: 'flouté', aubergine: 'aubergine', or: 'or et braise', rose: 'rose du soir', nuit: 'nuit bleue', foret: 'forêt', studio: 'studio gris', papier: 'papier clair' },
+  source: { hdmi1: 'hdmi 1', hdmi2: 'hdmi 2', hdmi3: 'hdmi 3', hdmi4: 'hdmi 4' },
+  screen: { tele: 'le tableau du mode télé', accueil: 'l’accueil', atelier: 'l’atelier 3d', taches: 'les tâches', lanceur: 'le lanceur', agenda: 'l’agenda' },
   level: { any: 'tous niveaux', warn: 'avertissement', crit: 'critique' },
   op: { above: 'au-dessus de', below: 'en dessous de' },
   category: { any: 'toutes catégories', perso: 'perso', systeme: 'système', sauvegardes: 'sauvegardes' },
@@ -118,6 +130,8 @@ export function describeTrigger(t: Block): string {
     case 'lights': return `quand les lumières ${p.state === 'on' ? 's’allument' : 's’éteignent'}`
     case 'event': return `quand l’événement « ${p.name || '…'} » est reçu`
     case 'startup': return 'au démarrage de neutroncore'
+    case 'atelier': return `quand une boucle de l’atelier 3d${filter(p)} ${p.when === 'verdict' ? 'rend un verdict' : 'attend ta décision'}`
+    case 'session_stuck': return `quand une session claude${filter(p)} au travail ne bouge plus depuis ${p.minutes} min`
     default: return t.type
   }
 }
@@ -134,6 +148,7 @@ function conditionText(c: Block): string {
     case 'session_waiting': return p.state === 'yes' ? 'une session claude attend' : 'aucune session claude n’attend'
     case 'alert_active': return p.kind === 'any' ? 'une alerte est en cours' : `une alerte « ${KIND[String(p.kind)] ?? p.kind} » est en cours`
     case 'resource': return `${METRIC[String(p.metric)] ?? p.metric} ${p.op === 'above' ? 'au-dessus de' : 'en dessous de'} ${p.value}${unit(p.metric)}`
+    case 'presence': return p.state === 'away' ? 'tu es absent (écrans du pc éteints)' : 'tu es là (un écran du pc allumé)'
     default: return c.type
   }
 }
@@ -147,7 +162,13 @@ export function describeAction(step: Step, catalogue: ActionSpec[], names: Names
     switch (step.action) {
       case 'notify.app': return `notification dans l’app : « ${p.message} »`
       case 'notify.phone': return `notification sur le téléphone : « ${p.message} »`
-      case 'service.start': return `démarrer ${p.name}`
+      case 'service.start': return p.name === 'trigger' ? 'redémarrer le service qui vient de tomber' : `démarrer ${p.name}`
+      case 'camera.power': return p.on ? 'allumer la caméra' : 'éteindre la caméra'
+      case 'camera.standby': return p.on ? 'mettre la caméra en veille' : 'sortir la caméra de veille'
+      case 'camera.background': return `fond de la caméra : ${choiceLabel('fond', String(p.fond))}`
+      case 'tv.show': return `afficher ${choiceLabel('screen', String(p.screen))} sur la télé (entrée ${choiceLabel('source', String(p.source))})`
+      case 'tv.restore': return 'remettre sur la télé ce qu’elle affichait'
+      case 'tests.run': return `lancer les tests : ${SUITES[String(p.suite)] ?? p.suite}`
       case 'lyra.tool': return p.tool ? `lyra : « ${p.phrase} »` : 'lyra : phrase à faire analyser'
       default: return describeStep(step, catalogue, names)
     }
@@ -242,6 +263,7 @@ export function runLabel(r: Run): string {
 const TRIGGER_SHORT: Record<string, string> = {
   manual: 'à la main', time: 'heure prévue', interval: 'intervalle', alert: 'alerte', resource: 'ressource', download_done: 'téléchargement',
   request: 'demande', agenda: 'agenda', session: 'session claude', service: 'service', tv: 'tv', lights: 'lumières', event: 'événement externe', startup: 'démarrage',
+  atelier: 'atelier 3d', session_stuck: 'session immobile',
 }
 export function triggerLabel(trigger: string): string {
   return TRIGGER_SHORT[trigger] ?? trigger

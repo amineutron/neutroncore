@@ -62,3 +62,39 @@
 - Commits : rien n'a ete commite avant l'accord de l'utilisateur (2026-10-11) ; ce depot part alors en PR depuis `feat/automations`. 
 - Ouvert : 4 tests de `tests/integration` de Lyra echouent sur des fichiers non touches par cette session (`test_pipeline.py`, `test_vm_clone_running.py` : `nom_de_spec` recoit un Mock) — a regarder cote Lyra. Volets restants : manga, hors-ligne, decoupage des gros fichiers, tests frontend dans l'ecran « tests », VMs dans l'app, camera/OBS.
 
+## 2026-10-11 — PR des automatisations, atelier 3d (suite de la session « neutroncore upgrade IDEA »)
+
+- Objectif : mettre le travail des automatisations en PR, puis faire entrer le projet `modelisation-3d` dans neutroncore (vue 3D, pieces, controles, iterations avec prompts conserves, materiaux, montage).
+- PR ouverte : neutroncore #12 (`feat/automations`, lots 1 a 3 + automatisations v2). Le garde-fou de commit a bloque une constante nommee comme un secret : renommee, pas contournee. Les depots `lyra-control-api` et `lyra` attendent la decision de l'utilisateur.
+- Constat en arrivant : une autre session avait ecrit le jour meme, cote API, `routers/modelisation.py` et `lib/modelisation.py`. L'ecran est construit dessus ; seul le lancement d'une iteration a ete ajoute, dans des fichiers a part.
+- Fait : ecran « atelier 3d » (three.js charge a la demande), trois etats par piece, selection multiple, focus, eclate autour d'une selection, coupe, mesure, controles repliables, iterations avec demande et pieces designees, comparaison facultative des controles, materiaux avec indice de prix, montage pas a pas, export image et video. Rendu des reponses de Claude refait (tableaux, schemas, propositions). 356 tests cote interface, 748 cote API.
+- Verifie : demo (bureau, tablette 820, telephone 390, sans debordement) ; vraie app sur le vrai modele `batterie_support` (55 pieces, 568 controles, total materiaux en fourchette).
+- NON verifie : le lancement reel d'une boucle d'agents depuis l'ecran (il ouvrirait une session qui modifie le modele pendant l'absence de l'utilisateur). Mecanisme teste par des tests unitaires seulement ; a essayer ensemble.
+- Cote `modelisation-3d` : depot git local initialise (aucun distant), premier instantane ; `specs/batterie_support.prix.yaml` ajoute (prix constates le 2026-10-11, vides quand rien n'a ete trouve).
+- Ouvert : comparaison de deux iterations en superposition 3D (seuls les controles sont compares) ; plusieurs references de la nomenclature n'existent pas telles quelles dans le commerce (cellule LP9065113, enrouleur nu de 45 mm, module a elements deportes) — c'est un sujet de conception, pas d'interface.
+
+
+## 2026-10-12 — atelier 3d, deuxieme passe ; PR Lyra
+
+- Retours de l'utilisateur traites : video de montage refaite en notice (un plan par geste, chaque piece arrive a sa place), video de presentation (travelling, plongee, vue eclatee), montage decoupe en gestes courts avec image et animation en boucle (pause, 0,5 x, 1 x, 2 x), curseur d'eclate toujours visible, bulle de la boucle sur le flanc droit, selection multiple depuis la liste (clic, Maj + clic, famille), echecs de controle dits avec des mots, creation et retrait de projet (deux confirmations, corbeille).
+- Lyra : branche `feat/daemon-analyze` creee avec les seuls fichiers de l'analyse et de l'option `unattended`, CI rejouee sur l'arbre indexe (1939 tests), PR #34 ouverte. Les fichiers non commites d'une autre session sont restes en place.
+- Verifie : demo et vraie app sur `batterie_support` (20 gestes tires des 8 phrases de la fiche, 3 echecs lisibles, eclate, film de presentation de 25 s) ; les deux videos regardees image par image ; creation, masquage, remise et suppression d'un projet jetable contre la vraie API ; telephone 390 et tablette 820 sans debordement.
+- Revues : securite (2 moyens corriges : nom finissant par un saut de ligne, nom de projet qui s'appropriait un fichier commun) et TypeScript (2 critiques corriges : une erreur pendant un tournage figeait l'ecran, quitter l'ecran laissait le film tourner sur une scene detruite).
+- NON verifie : le lancement reel d'une boucle d'agents depuis l'ecran, et donc la bulle avec une vraie conversation ; les videos sur telephone ; la video de montage complete sur le vrai modele (75 s, seule celle de presentation a ete tournee en reel).
+- Ouvert : l'attribution des pieces aux gestes reste une deduction quand la fiche ne les nomme pas (3 pieces signalees sur le vrai modele) ; la voie exacte est une fiche structuree produite par la boucle. La reduction du materiel est une demande de conception a lancer avec l'utilisateur.
+- Suite du 2026-10-12 : `lyra-control-api` en trois commits separes puis PR #1 (depot prive) ; onglet « plans » dans l'atelier ; materiaux nommes en clair ; une branche par session Claude Code sur les huit projets suivis (lyra, fedora-agents, MCP/tracking, neutroncore, hue-mcp, pylips-mcp, denon-mcp, catt-mcp) et carte « branches & pr » avec rappel du lundi. Essai reel : session separee lancee sur MCP/tracking, vue par l'app, puis retiree ; refus de Claude Code sur un dossier jamais approuve, desormais prevu.
+- Essai de bout en bout : projet `boite_rangement_lego` cree par l'API puis premiere iteration lancee comme depuis l'ecran. Claude Code a demande la confiance pour le dossier modelisation-3d : validee par l'assistant apres inspection du dossier (quatre agents, une commande, aucun hook), a signaler a l'utilisateur.
+
+
+## 2026-10-13 / 14 — atelier range, automatisations, camera, ruban, lumiere 3d
+
+- Atelier 3d : outils en sections repliables, boucles distinctes du lanceur, chat des sessions (bloc « execution », durees, derniere commande en haut), atelier sur l'accueil et en mode tele, questions illustrees (mini-plans, vue 3D des pieces, mode fantome, fenetre avec zoom).
+- Lanceur : les cartes ne bougent plus quand une session change d'etat (ordre CSS, defilement ancre).
+- Automatisations : declencheurs `atelier` et `session_stuck`, condition `presence`, actions `tests.run`, `tv.show` / `tv.restore`, `camera.*`, `service.start` sur le service qui vient de tomber.
+- Camera : reprise d'obs-virtual-bg sans OBS (moteur separe, detourage sur carte graphique, camera virtuelle, flux d'apercu), 60 images/s apres trois passes de mise au point.
+- Plan de piece : ruban Hue a 7 segments, reglable comme les lampes (position, angle, longueur, hauteur).
+- Lumiere 3d : ecran dedie, moteur d'effets en double (ecran et huebeat), pad, sets, vraies lampes par huebeat ; puis lancement en un geste, choix du peripherique audio, extinction au silence, legendes et apercus animes, pad personnalisable (nom, ordre, couleurs libres), mode 2d / 3d, blocs repliables, bloc « respiration » simplifie.
+- Defauts trouves et corriges en route : huebeat ne demarrait pas (Python sans numpy, PyYAML absent de hue-mcp, adresse du pont et identifiant perimes dans la config locale) ; les reglages communs n'arrivaient plus aux lampes apres un redemarrage de l'API ; les lampes ne reagissaient qu'a un temps sur trois (compteur de temps et horloge de huebeat).
+- Erreurs de ma part, signalees a l'utilisateur : un `pkill -f` sur le relais de test ; le fichier pid de huebeat retire a la main (deux instances) ; un essai sur les lampes alors que l'utilisateur s'en servait.
+- NON verifie a l'oeil : le mode 2d et l'avance de 120 ms sur les vraies lampes ; le rallumage au retour du son ; la camera et la lumiere 3d sur telephone.
+- Ouvert : `test_plafond_par_jour_applique` (API) echoue dans les dix minutes apres minuit ; restes d'obs-virtual-bg et routes `/media/obs/*` a retirer ; decisions n8n ; rendu « volumes pleins » a integrer dans modelisation-3d ; HALO dessine encore le ruban a 1,80 m.

@@ -63,6 +63,22 @@ export const projects: [string, string, MockHandler][] = [
     repo('neutroncore', 3, 1, 20), repo('lyra', 0, 0, 180), repo('mcp-tracking', 0, 0, 1440), repo('fedora-agents', 0, 0, 2880),
     repo('denon-mcp', 0, 0, 600), repo('notes', 2, 0, 9000),
   ] })],
+  ['GET', '/branches', () => ({
+    par_session: true, dernier_rappel: '2026-10-12T09:00:00', releve_le: '2026-10-12T09:00:00',
+    resume: { sans_pr: 1, conflits: 1, fusionnees: 1, prs: 2, illisibles: 0, phrase: '2 PR ouvertes, 1 branche sans PR, 1 conflit avec la branche principale, 1 branche déjà fusionnée à supprimer' },
+    depots: [
+      { depot: 'hub-demo', github: 'exemple/hub-demo', principale: 'main', courante: 'main', modifies: 0, sessions: [{ dossier: '.claude/worktrees/s1012-090000', branche: 'worktree-s1012-090000' }],
+        prs: [{ numero: 12, titre: 'feat: automations', branche: 'feat/automations', url: '', conflit: false, brouillon: false, maj: '2026-10-11T18:00:00Z' }, { numero: 13, titre: 'feat: atelier', branche: 'feat/atelier', url: '', conflit: true, brouillon: false, maj: '2026-10-12T08:00:00Z' }],
+        branches: [
+          { nom: 'feat/atelier', le: '2026-10-12T08:00:00+02:00', avance: 4, poussee: true, conflit: true, etat: 'pr', pr: 13 },
+          { nom: 'feat/automations', le: '2026-10-11T18:00:00+02:00', avance: 2, poussee: true, conflit: false, etat: 'pr', pr: 12 },
+          { nom: 'worktree-s1012-090000', le: '2026-10-12T09:10:00+02:00', avance: 1, poussee: false, conflit: false, etat: 'sans_pr', pr: null },
+          { nom: 'fix/ancien', le: '2026-09-20T10:00:00+02:00', avance: 0, poussee: true, conflit: false, etat: 'fusionnee', pr: null },
+        ] },
+      { depot: 'assistant-demo', github: 'exemple/assistant-demo', principale: 'main', courante: 'main', modifies: 0, sessions: [], prs: [], branches: [] },
+    ],
+  })],
+  ['PUT', '/branches/reglages', () => ({ success: true })],
   ['GET', '/projects/stats', () => ({ days: 7, active_projects: 5, total_projects: 6, commits: 64, pushed_commits: 63, files_touched: 188,
     busiest_day: 'jeu.', top: [{ name: 'lyra', commits: 24, pushed: 24 }, { name: 'neutroncore', commits: 19, pushed: 18 },
       { name: 'denon-mcp', commits: 9, pushed: 9 }] })],

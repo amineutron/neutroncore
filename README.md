@@ -45,17 +45,28 @@ demo a chaque push sur `main`, apres les tests et `check:demo`.
 
 ## Ce que ca fait
 
-| Ecran | Contenu |
-|---|---|
-| accueil | "etat du reacteur" (sante globale), alertes a traiter, mascottes des modeles Lyra, sessions Claude Code en cours |
-| taches | tracking temps reel (sessions Lyra, conversions DV, scripts), journal, timers systemd |
-| projets / lanceur | ouvrir un dossier ou lancer Claude Code sur le PC depuis le telephone, suivre et repondre aux sessions |
-| films & series | mediatheque, calendrier des sorties, espace disque, demandes |
-| pipeline media | telechargement, sous-titres, conversion : avancement en direct |
-| ambiance | lumieres Hue, TV, ampli |
-| outils & vms | services, ressources (CPU/RAM/VRAM/disques), VMs KVM (démarrage / arrêt confirmés en deux clics), backups Borg/Timeshift, journaux |
-| tests | batterie de tests Lyra |
-| parametres | 7 themes, densite, notifications, mascottes, mode tele |
+Les ecrans sont ranges en quatre groupes, comme dans le menu. Chacun a un bouton `?` qui l'explique.
+
+| Groupe | Ecran | Contenu |
+|---|---|---|
+| pilotage | accueil | "etat du reacteur" (sante globale), alertes a traiter, mascottes des modeles Lyra, sessions Claude Code et boucles de l'atelier en cours |
+| | agenda | evenements, rotations, automatisations planifiees |
+| | automatisations | QUAND / SI / ALORS en blocs ou en diagramme, catalogue ferme d'actions, historique de chaque passage |
+| | taches | tracking temps reel (sessions Lyra, conversions DV, scripts), journal, timers systemd |
+| | projets | projets suivis, mises a jour, branches & PR des depots |
+| | atelier 3d | modeles d'un pipeline de modelisation : vue 3D (eclate, coupe, fantome), controles, iterations d'une boucle d'agents, plans, materiaux, montage pas a pas, videos |
+| media | films & series | mediatheque, calendrier des sorties, manquants, espace disque |
+| | demandes / telechargements | demandes, watchlist, telechargement, sous-titres, conversion : avancement en direct |
+| maison | ambiance | lumieres Hue, TV (telecommande), ampli, routines |
+| | camera | webcam detouree (flou, fond prefait ou importe) publiee comme camera de l'ordinateur pour la visio |
+| | lumiere 3d | effets de lumiere dans l'espace (onde, mur, maree, phare, raz de maree...) cales sur la musique : pad de scenes, sets, reglages propres a chaque effet, apercu sur une piece 3D, puis les vraies lampes Hue |
+| | plan de piece | position des lampes, de la TV et du ruban LED, vue de dessus et en 3D |
+| | lanceur | ouvrir un dossier ou lancer Claude Code sur le PC depuis le telephone, suivre et repondre aux sessions |
+| systeme | outils & vms | services, ressources (CPU/RAM/VRAM/disques), VMs KVM (démarrage / arrêt confirmés en deux clics), backups Borg/Timeshift, journaux |
+| | tests | batteries de tests des projets |
+| | parametres | 7 themes, densite, notifications, mascottes, mode tele, tutoriels |
+
+Un tutoriel guide la premiere ouverture (relancable depuis les parametres), et `Ctrl+K` ouvre une palette de commandes.
 
 <p align="center">
   <img src="docs/screenshots/outils.jpg" width="900" alt="Outils et VMs : ressources, VMs, backups, journaux">
@@ -89,6 +100,30 @@ npm run dev                       # proxy /api -> http://127.0.0.1:9876
 npm run build                     # dist/ servi par lyra-control-api sur /app/
 ./neutroncore-app.sh              # fenetre bureau flottante (chrome --app)
 ```
+
+### Elements facultatifs
+
+Seuls le frontend et `lyra-control-api` sont necessaires. Tout le reste est facultatif : sans lui, l'ecran
+concerne le dit et le reste de l'app fonctionne (verifie en lancant l'API dans un dossier vide : aucune
+route ne repond en erreur 500).
+
+Ranges par groupe du menu :
+
+| Groupe | Element | Ce qu'il apporte | Ce qu'il lui faut | Sans lui |
+|---|---|---|---|---|
+| tous | Daemon Lyra | chat, TV, ampli, Hue, VMs, action « demander a lyra » des automatisations | `LYRA_SOCKET` | « daemon Lyra injoignable », ecrans vides |
+| pilotage | Tracking | taches de fond | service sur le port 8765 | service affiche « arrete » |
+| pilotage | Branches & PR | etat des depots suivis | depots sous `DEV_ROOT`, `gh` | seuls les depots presents sont suivis |
+| pilotage | Atelier 3d | modeles, iterations, plans | projet de modelisation (`MODELISATION_ROOT`), Claude Code et kitty pour lancer la boucle | liste de projets vide |
+| media | Stack media | films, series, demandes, telechargements | conteneurs *arr, qBittorrent | « cle API introuvable » sur ces ecrans |
+| maison | Camera | detourage, camera virtuelle | `CAMERA_PYTHON` (torch, OpenCV), module v4l2loopback (`CAMERA_SORTIE`), webcam (`CAMERA_SOURCE`) | bandeau « pas installee », bouton sans effet |
+| maison | Lumiere 3d sur les vraies lampes | effets cales sur la musique | pont Hue avec une zone Entertainment, hue-mcp et huebeat (`HUE_BEAT_PYTHON`, avance reglable par `HUE_BEAT_AVANCE_MS`) | pad, sets et apercu sur la piece 3D restent utilisables |
+| maison | Plan de piece | positions des lampes et du ruban | fichier de plan de HALO | piece par defaut, sans lampes |
+| maison | Sessions Claude Code | lanceur, reponses, notifications | Claude Code, kitty, hooks | liste vide |
+| tous | Notifications telephone | push quand Claude attend | ntfy (`NTFY_URL`, `NTFY_TOKEN`) | pas de push, le reste inchange |
+
+Les automatisations, l'agenda, les parametres et la palette de commandes n'ont besoin de rien d'autre que l'API.
+Les variables se mettent dans l'environnement du service qui les lit (`lyra-control-api`, ou hue-mcp pour celles de huebeat), jamais dans ce depot.
 
 ### APK Android
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { apiGet, apiPost, withConfirm } from '../lib/api'
 import type { ChatMsg, LiveSession, Pending } from '../lib/sessions'
-import { fmtClock } from '../lib/sessions'
+import { commandes, dureeTour, fmtClock, fmtDuree, mergeTail, resumeCommandes, userText } from '../lib/sessions'
 import { Btn } from './ui'
 import { Markdown } from './Markdown'
 
@@ -13,21 +13,38 @@ const KEYS: { key: string; label: string }[] = [
   { key: 'up', label: 'haut' }, { key: 'down', label: 'bas' }, { key: 'tab', label: 'tab' }, { key: 'ctrl+c', label: 'ctrl+c' },
 ]
 
-function Tools({ tools }: { tools: string[] }) {
-  const [open, setOpen] = useState(false)
-  const shown = open ? tools : tools.slice(0, 2)
+const VISIBLES = 4       // commandes montrées d'office quand l'exécution est dépliée
+
+// Exécution d'un tour : une ligne de résumé (combien de commandes, lesquelles), dépliable en liste
+// rangée, la plus récente en haut. Dépliée d'office tant que le tour est en cours.
+function Execution({ m, live }: { m: ChatMsg; live: boolean }) {
+  const [choix, setChoix] = useState<boolean | null>(null)
+  const [tout, setTout] = useState(false)
+  const cmds = commandes(m)
+  const open = choix ?? live
+  const shown = tout ? cmds : cmds.slice(0, VISIBLES)
   return (
-    <div className="cs-tools">
-      {shown.map((t, i) => {
-        const sep = t.indexOf(': ')
-        const name = sep > 0 ? t.slice(0, sep) : t
-        const arg = sep > 0 ? t.slice(sep + 2) : ''
-        return <div key={i} className="cs-tool"><span className="cs-tool-name">{name}</span>{arg && <code>{arg}</code>}</div>
-      })}
-      {tools.length > 2 && (
-        <button className="cs-tools-more" onClick={() => setOpen((o) => !o)}>
-          {open ? 'replier' : `+ ${tools.length - 2} outils`}
-        </button>
+    <div className={`cs-exec ${open ? 'open' : ''} ${live ? 'live' : ''}`}>
+      <button type="button" className="cs-exec-head" aria-expanded={open} onClick={() => setChoix(!open)}>
+        <span className="cs-exec-chev" aria-hidden />
+        <b>{live ? 'en cours' : 'exécution'}</b>
+        <span>{cmds.length} commande{cmds.length > 1 ? 's' : ''}</span>
+        <i>{open ? '' : live ? `${cmds[0].nom}${cmds[0].arg ? ` · ${cmds[0].arg}` : ''}` : resumeCommandes(cmds)}</i>
+      </button>
+      {open && (
+        <ol className="cs-exec-list">
+          {shown.map((c, i) => (
+            <li key={cmds.length - i} className={i === 0 && live ? 'now' : ''}>
+              <time>{fmtClock(c.at)}</time>
+              <span className="cs-tool-name">{c.nom}</span>
+              {c.arg && <code title={c.arg}>{c.arg}</code>}
+            </li>
+          ))}
+          {cmds.length > VISIBLES && (
+            <li className="more"><button type="button" className="cs-tools-more" onClick={() => setTout(!tout)}>
+              {tout ? 'ne garder que les dernières' : `voir les ${cmds.length - VISIBLES} précédentes`}</button></li>
+          )}
+        </ol>
       )}
     </div>
   )
@@ -43,6 +60,7 @@ export function SessionChat({ session, onSent }: { session: LiveSession; onSent:
   const setText = (v: string) => { setTextState(v); saveDraft(session.sessionId, v) }
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const [touches, setTouches] = useState(false)       // touches du terminal : repliées, la zone de réponse reste nette
   const [loadErr, setLoadErr] = useState('')
   // session neuve : Claude Code n'a pas encore écrit de transcript
   const [empty, setEmpty] = useState(false)
@@ -85,21 +103,31 @@ export function SessionChat({ session, onSent }: { session: LiveSession; onSent:
   }
 
   const ro = !session.controllable
+  const visibles = msgs.filter((m) => m.who === 'claude' || userText(m.text))
+  // tour en cours : le registre dit « busy » et Claude n'attend rien
+  const enCours = (session.status === 'busy' || session.status === 'running') && !session.waiting
   return (
     <div className="cs-chat">
       <div className="cs-scroll" ref={scroller}>
         {truncated && <div className="cs-more">… début de la conversation dans le terminal</div>}
-        {msgs.map((m, i) => (
-          <div key={i} className={`msg ${m.who === 'me' ? 'me' : 'ly'}`}>
-            {m.who === 'claude' && <div className="who">claude · {fmtClock(m.at)}</div>}
-            {m.who === 'claude' ? (
-              <div className="bub">
-                {m.text && <Markdown text={m.text} />}
-                {m.tools && m.tools.length > 0 && <Tools tools={m.tools} />}
+        {visibles.map((m, i) => {
+          if (m.who !== 'claude') return <div key={i} className="msg me"><div className="cs-text">{userText(m.text)}</div></div>
+          const live = enCours && i === visibles.length - 1
+          const tour = dureeTour(m)
+          return (
+            <div key={i} className="msg ly">
+              <div className="who">
+                claude · {fmtClock(m.at)}
+                {m.think_s !== undefined && m.think_s >= 1 && <span className="cs-temps" title="Temps passé à réfléchir pendant ce tour">réflexion {fmtDuree(m.think_s)}</span>}
+                {tour !== null && <span className="cs-temps" title="Durée du tour, commandes comprises">{live ? 'depuis' : 'tour'} {fmtDuree(tour)}</span>}
               </div>
-            ) : <div className="cs-text">{m.text}</div>}
-          </div>
-        ))}
+              <div className="bub">
+                {m.tools && m.tools.length > 0 && <Execution m={m} live={live} />}
+                {m.text && <Markdown text={m.text} />}
+              </div>
+            </div>
+          )
+        })}
         {msgs.length === 0 && !loadErr && <div className="cs-more">{empty ? 'session neuve : aucun message pour l\'instant' : 'chargement…'}</div>}
         {session.waiting && (
           <div className="cs-wait-banner">
@@ -115,10 +143,12 @@ export function SessionChat({ session, onSent }: { session: LiveSession; onSent:
           lecture seule : fenêtre kitty injoignable (terminal lancé avant l'activation du pilotage, ou hors kitty). Relance la session depuis le lanceur pour répondre d'ici.
         </div>
       )}
-      <div className="cs-keys">
-        {['y', 'n'].map((k) => <Btn key={k} sm disabled={ro || busy} onClick={() => send({ text: k })}>{k}</Btn>)}
-        {KEYS.map((k) => <Btn key={k.key} sm disabled={ro || busy} onClick={() => send({ key: k.key })}>{k.label}</Btn>)}
-      </div>
+      {touches && (
+        <div className="cs-keys">
+          {['y', 'n'].map((k) => <Btn key={k} sm disabled={ro || busy} onClick={() => send({ text: k })}>{k}</Btn>)}
+          {KEYS.map((k) => <Btn key={k.key} sm disabled={ro || busy} onClick={() => send({ key: k.key })}>{k.label}</Btn>)}
+        </div>
+      )}
       <form className="cs-form" onSubmit={(e) => { e.preventDefault(); if (text.trim()) send({ text }) }}>
         <textarea
           value={text} disabled={ro || busy} rows={2}
@@ -126,7 +156,10 @@ export function SessionChat({ session, onSent }: { session: LiveSession; onSent:
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (text.trim()) send({ text }) } }}
         />
-        <Btn sm solid disabled={ro || busy || !text.trim()}>{busy ? '…' : 'envoyer'}</Btn>
+        <div className="cs-form-btns">
+          <Btn sm solid disabled={ro || busy || !text.trim()}>{busy ? '…' : 'envoyer'}</Btn>
+          <button type="button" className={`btn sm ${touches ? 'solid' : ''}`} aria-expanded={touches} title="Touches du terminal : entrée, échap, flèches, y / n" onClick={() => setTouches(!touches)}>touches</button>
+        </div>
       </form>
       {(err || loadErr) && <div className="cs-err">{err || loadErr}</div>}
     </div>
@@ -142,9 +175,19 @@ function PendingPanel({ p, disabled, onPick }: { p: Pending; disabled: boolean; 
       <div className="cs-pending-head"><b>{p.title}</b>{p.kind === 'permission' && <code>{p.tool}</code>}</div>
       {p.kind === 'question' && p.questions?.map((q, qi) => (
         <div key={qi} className="cs-pending-q">
-          <div className="cs-pending-qt">{q.header && <code>{q.header}</code>}{q.question}</div>
-          <ul>{q.options.map((o, i) => <li key={i}><b>{i + 1}. {o.label}</b>{o.description && <span> — {o.description}</span>}</li>)}</ul>
-          {qi === 0 && p.questions!.length > 1 && <small>les choix ci-dessous répondent à la 1re question ; enchaîne au clavier (touches) pour les suivantes</small>}
+          <div className="cs-pending-qt">{q.header && <code>{q.header}</code>}<Markdown text={q.question} /></div>
+          {/* les choix de la 1re question sont des cartes à toucher ; ceux des suivantes se lisent, puis se saisissent au clavier */}
+          <div className="cs-choices">
+            {q.options.map((o, i) => {
+              const keys = qi === 0 && q.options.length === p.options.length ? p.options[i]?.keys : undefined
+              const body = <><b><i>{i + 1}</i>{o.label}</b>{o.description && <Markdown text={o.description} />}</>
+              return keys
+                ? <button key={i} type="button" className="cs-choice" disabled={disabled} onClick={() => onPick(keys)}>{body}</button>
+                : <div key={i} className="cs-choice static">{body}</div>
+            })}
+          </div>
+          {q.multi && <small>plusieurs réponses possibles : touche la première ici, complète dans la fenêtre</small>}
+          {qi === 0 && p.questions!.length > 1 && <small>{p.questions!.length} questions : les cartes répondent à la première, les suivantes se répondent au clavier</small>}
         </div>
       ))}
       {p.detail && (
@@ -152,11 +195,14 @@ function PendingPanel({ p, disabled, onPick }: { p: Pending; disabled: boolean; 
           ? (p.kind === 'plan' ? <div className="cs-pending-plan"><Markdown text={p.detail} /></div> : <pre className="cs-pending-detail">{p.detail}</pre>)
           : <button className="cs-tools-more" onClick={() => setOpenDetail(true)}>voir le détail ({p.detail.length} car.)</button>
       )}
-      <div className="cs-pending-opts">
-        {p.options.map((o, i) => (
-          <Btn key={i} sm solid={i === 0} disabled={disabled} onClick={() => onPick(o.keys)}>{o.label}</Btn>
-        ))}
-      </div>
+      {/* une question dont les cartes ne correspondent pas aux touches connues garde ses boutons : on peut toujours répondre */}
+      {(p.kind !== 'question' || (p.questions?.[0]?.options.length ?? 0) !== p.options.length || p.options.length === 0) && (
+        <div className="cs-pending-opts">
+          {p.options.map((o, i) => (
+            <Btn key={i} sm solid={i === 0} disabled={disabled} onClick={() => onPick(o.keys)}>{o.label}</Btn>
+          ))}
+        </div>
+      )}
       <small className="cs-pending-hint">les boutons envoient les touches du dialogue ({p.options.map((o) => o.keys.join('+')).join(' / ')})</small>
     </div>
   )
@@ -168,21 +214,4 @@ function loadDraft(sid: string): string {
 }
 function saveDraft(sid: string, v: string) {
   try { v ? localStorage.setItem(DRAFT_KEY + sid, v) : localStorage.removeItem(DRAFT_KEY + sid) } catch { /* stockage indisponible */ }
-}
-
-// Ajoute les nouveaux messages ; si le dernier affiché et le premier reçu sont
-// tous deux de claude (tour encore en cours), on les fusionne.
-function mergeTail(prev: ChatMsg[], fresh: ChatMsg[]): ChatMsg[] {
-  const last = prev[prev.length - 1]
-  const first = fresh[0]
-  if (last && first && last.who === 'claude' && first.who === 'claude') {
-    const merged: ChatMsg = {
-      ...last,
-      text: [last.text, first.text].filter(Boolean).join('\n'),
-      at: first.at ?? last.at,
-      tools: [...(last.tools ?? []), ...(first.tools ?? [])],
-    }
-    return [...prev.slice(0, -1), merged, ...fresh.slice(1)]
-  }
-  return [...prev, ...fresh]
 }

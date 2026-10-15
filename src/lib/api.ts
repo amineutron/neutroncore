@@ -59,6 +59,14 @@ export async function apiGet<T = unknown>(path: string): Promise<T> {
   return handle<T>(await fetch(path, { headers: headers() }))
 }
 
+/** Contenu binaire (pièces STL de l'atelier 3D) : même authentification que le reste. */
+export async function apiBinary(path: string): Promise<ArrayBuffer> {
+  if (DEMO) return (await import('../mock/data/atelier')).demoStl(path)
+  const r = await fetch(path, { headers: { Authorization: `Bearer ${getApiKey()}` } })
+  if (!r.ok) throw new ApiError(r.status, r.statusText)
+  return r.arrayBuffer()
+}
+
 export async function apiPost<T = unknown>(path: string, body?: unknown, extra?: Record<string, string>): Promise<T> {
   if (DEMO) return demoRequest<T>('POST', path, body)
   return handle<T>(
@@ -74,6 +82,14 @@ export async function apiPut<T = unknown>(path: string, body: unknown): Promise<
 export async function apiDelete<T = unknown>(path: string, extra?: Record<string, string>): Promise<T> {
   if (DEMO) return demoRequest<T>('DELETE', path)
   return handle<T>(await fetch(path, { method: 'DELETE', headers: headers(extra) }))
+}
+
+/** Envoi d'un fichier (fond de la caméra) en formulaire ; le navigateur pose lui-même le type du corps. */
+export async function apiUpload<T = unknown>(path: string, champ: string, fichier: File): Promise<T> {
+  if (DEMO) throw new ApiError(400, 'envoi de fichier indisponible en démonstration')
+  const corps = new FormData()
+  corps.append(champ, fichier)
+  return handle<T>(await fetch(path, { method: 'POST', headers: { Authorization: `Bearer ${getApiKey()}` }, body: corps }))
 }
 
 // Actions destructives : token HMAC 30 s renvoyé dans X-Confirm

@@ -9,6 +9,7 @@ export type Launch = {
   cwd: string         // dossier lancé
   repo: string        // nom affiché
   sessionId?: string  // reprise : on attend précisément cette session
+  expect?: string     // dossier où la session apparaîtra, s'il diffère du dossier lancé (session sur sa propre branche)
 }
 
 export const LAUNCH_TIMEOUT_MS = 60_000
@@ -44,7 +45,7 @@ export function removeLaunch(id: string) {
  *  (tolérance 5 s : l'horloge du registre est celle du PC). */
 export function matchLaunch(session: { sessionId: string; cwd: string; startedAt: number }, launches: Launch[]): Launch | undefined {
   return launches.find((l) =>
-    l.sessionId ? l.sessionId === session.sessionId : (l.cwd === session.cwd && session.startedAt >= l.at - 5000))
+    l.sessionId ? l.sessionId === session.sessionId : ((l.expect ?? l.cwd) === session.cwd && session.startedAt >= l.at - 5000))
 }
 
 export function launchExpired(l: Launch, now = Date.now()): boolean {

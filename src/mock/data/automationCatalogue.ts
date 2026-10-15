@@ -226,6 +226,42 @@ export const AUTOMATION_CATALOGUE = {
       "type": "startup",
       "label": "au démarrage de neutroncore",
       "params": []
+    },
+    {
+      "type": "atelier",
+      "label": "une boucle de l'atelier 3d",
+      "params": [
+        {
+          "name": "when",
+          "type": "choice",
+          "choices": [
+            "waiting",
+            "verdict"
+          ]
+        },
+        {
+          "name": "contains",
+          "type": "otext",
+          "max": 60
+        }
+      ]
+    },
+    {
+      "type": "session_stuck",
+      "label": "une session claude ne bouge plus",
+      "params": [
+        {
+          "name": "minutes",
+          "type": "int",
+          "min": 5,
+          "max": 180
+        },
+        {
+          "name": "contains",
+          "type": "otext",
+          "max": 60
+        }
+      ]
     }
   ],
   "conditions": [
@@ -383,6 +419,20 @@ export const AUTOMATION_CATALOGUE = {
           "type": "int",
           "min": 0,
           "max": 110
+        }
+      ]
+    },
+    {
+      "type": "presence",
+      "label": "je suis",
+      "params": [
+        {
+          "name": "state",
+          "type": "choice",
+          "choices": [
+            "here",
+            "away"
+          ]
         }
       ]
     }
@@ -671,6 +721,7 @@ export const AUTOMATION_CATALOGUE = {
           "name": "name",
           "type": "choice",
           "choices": [
+            "trigger",
             "lyra",
             "n8n",
             "tracking",
@@ -678,6 +729,107 @@ export const AUTOMATION_CATALOGUE = {
             "radarr",
             "sonarr",
             "bazarr"
+          ]
+        }
+      ]
+    },
+    {
+      "action": "tests.run",
+      "label": "lancer les tests d'un projet",
+      "params": [
+        {
+          "name": "suite",
+          "type": "choice",
+          "choices": [
+            "lyra",
+            "lyra-smoke",
+            "lyra-demon",
+            "api",
+            "neutroncore",
+            "tracking",
+            "tracking-smoke",
+            "atelier",
+            "atelier-complet",
+            "fedora-agents",
+            "fedora-agents-lint",
+            "hue-mcp",
+            "pylips-mcp",
+            "denon-mcp",
+            "catt-mcp"
+          ]
+        }
+      ]
+    },
+    {
+      "action": "tv.show",
+      "label": "tv : afficher neutroncore",
+      "params": [
+        {
+          "name": "source",
+          "type": "choice",
+          "choices": [
+            "hdmi1",
+            "hdmi2",
+            "hdmi3",
+            "hdmi4"
+          ]
+        },
+        {
+          "name": "screen",
+          "type": "choice",
+          "choices": [
+            "tele",
+            "accueil",
+            "atelier",
+            "taches",
+            "lanceur",
+            "agenda"
+          ]
+        }
+      ]
+    },
+    {
+      "action": "tv.restore",
+      "label": "tv : remettre ce qu'elle affichait",
+      "params": []
+    },
+    {
+      "action": "camera.power",
+      "label": "caméra : allumer / éteindre",
+      "params": [
+        {
+          "name": "on",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "action": "camera.standby",
+      "label": "caméra : veille",
+      "params": [
+        {
+          "name": "on",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "action": "camera.background",
+      "label": "caméra : fond",
+      "params": [
+        {
+          "name": "fond",
+          "type": "choice",
+          "choices": [
+            "aucun",
+            "flou",
+            "aubergine",
+            "or",
+            "rose",
+            "nuit",
+            "foret",
+            "studio",
+            "papier"
           ]
         }
       ]
@@ -713,6 +865,9 @@ export const AUTOMATION_CATALOGUE = {
     "tv.key",
     "routine.run",
     "wait",
-    "lyra.tool"
+    "lyra.tool",
+    "tests.run",
+    "tv.show",
+    "tv.restore"
   ]
 }

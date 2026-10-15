@@ -83,3 +83,26 @@ describe('cohérence avec les types de l interface', () => {
     }
   })
 })
+
+describe('lumière 3d de démonstration', () => {
+  type Etat = { scenes: { id: string; nom: string; reglages?: unknown }[]; sets: { pas: { scene: string }[] }[] }
+  const lire = () => mockRequest(ROUTES, 'GET', '/spatial') as Etat
+  it('le pad de départ est celui de l’API, avec un exemple de réglages propres à chaque effet', () => {
+    const { scenes } = lire()
+    expect(scenes.map((s) => s.id)).toContain('depart11')
+    expect(scenes.find((s) => s.nom === 'vague de fond')?.reglages).toBeTruthy()
+  })
+  it('une scène gardée, renommée, rangée puis retirée est retenue', () => {
+    const { id } = mockRequest(ROUTES, 'PUT', '/spatial/scenes/new', { scene: { nom: 'essai', effets: ['onde'] } }) as { id: string }
+    mockRequest(ROUTES, 'PUT', `/spatial/scenes/${id}`, { scene: { nom: 'essai 2', effets: ['onde'] } })
+    expect(lire().scenes.find((s) => s.id === id)?.nom).toBe('essai 2')
+    mockRequest(ROUTES, 'PUT', '/spatial/scenes/ordre', { ordre: [id, ...lire().scenes.map((s) => s.id).filter((x) => x !== id)] })
+    expect(lire().scenes[0].id).toBe(id)
+    mockRequest(ROUTES, 'DELETE', `/spatial/scenes/${id}`)
+    expect(lire().scenes.some((s) => s.id === id)).toBe(false)
+  })
+  it('retirer une scène l’enlève aussi des sets', () => {
+    mockRequest(ROUTES, 'DELETE', '/spatial/scenes/depart05')
+    expect(lire().sets.flatMap((j) => j.pas).some((p) => p.scene === 'depart05')).toBe(false)
+  })
+})

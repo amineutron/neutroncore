@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fromSvg, heightFromFloor, isDirty, moveLight, moveSeg, normAngle, resizeRoom, rotateSeg, segEnds, setHeight, toPayload, toSvg, zFromHeight, type Plan } from './plan'
+import { fromSvg, heightFromFloor, isDirty, moveLight, moveSeg, normAngle, resizeRoom, rotateSeg, segEnds, setHeight, toPayload, toSvg, zFromHeight, type Plan, addSeg, removeSeg, resampleStrip, segHeight, setSegHeight, setSegLength } from './plan'
 
 const dims = { w: 500, h: 600, d: 270 }
 const plan = (): Plan => ({
@@ -122,8 +122,11 @@ describe('ruban LED', () => {
     expect(rotateSeg(before, 1, Number.NaN)).toBe(before)
   })
 
-  it('l’envoi ne porte que position et angle du ruban, pas sa longueur', () => {
-    expect(toPayload(withStrip()).strip).toEqual({ segs: [{ pos: { x: 0, y: 180 }, angle: -90 }, { pos: { x: 50, y: 120 }, angle: 0 }] })
+  it('l’envoi porte position, angle et longueur du ruban ; la hauteur seulement si elle a été réglée', () => {
+    const envoye = toPayload(withStrip()).strip!.segs
+    expect(envoye.map((s) => [s.pos, s.angle])).toEqual([[{ x: 0, y: 180 }, -90], [{ x: 50, y: 120 }, 0]])
+    expect(envoye.every((s) => typeof s.length === 'number' && !('z' in s))).toBe(true)
+    expect(toPayload(setSegHeight(withStrip(), 0, 150, false)).strip!.segs.map((s) => s.z)).toEqual([150, undefined])
     expect(isDirty(withStrip(), rotateSeg(withStrip(), 0, 10))).toBe(true)
     expect(isDirty(withStrip(), withStrip())).toBe(false)
   })
@@ -157,5 +160,57 @@ describe('ruban LED', () => {
 
   it('rétrécir la pièce ramène aussi le ruban à l’intérieur', () => {
     expect(resizeRoom(withStrip(), 'h', 300).strip?.segs?.[0].pos.y).toBe(145)
+  })
+})
+
+describe('ruban : hauteur, longueur, nombre de segments', () => {
+  const dims = { w: 500, h: 400, d: 250 }
+  const plan: Plan = { roomDims: dims, configs: {}, strip: { segments: 2, segs: [
+    { pos: { x: 0, y: -100 }, angle: 90, length: 100, z: null },      // descend le long de y, de -150 à -50
+    { pos: { x: 50, y: -50 }, angle: 0, length: 100 },                // puis part vers la droite, de 0 à 100
+  ] } }
+
+  it('une hauteur jamais réglée vaut 1,80 m, ou 20 cm sous un plafond bas', () => {
+    expect(segHeight(plan.strip!.segs![0], dims)).toBe(180)
+    expect(segHeight(plan.strip!.segs![0], { ...dims, d: 150 })).toBe(130)
+    expect(segHeight({ ...plan.strip!.segs![0], z: 999 }, dims)).toBe(250)
+  })
+
+  it('monter un segment monte tout le ruban du même écart, ou ce segment seul', () => {
+    const tout = setSegHeight(plan, 0, 200, true).strip!.segs!
+    expect(tout.map((s) => s.z)).toEqual([200, 200])
+    const seul = setSegHeight(plan, 1, 90, false).strip!.segs!
+    expect(seul.map((s) => s.z ?? null)).toEqual([null, 90])
+    expect(setSegHeight(plan, 0, 9999, true).strip!.segs![0].z).toBe(250)
+    expect(setSegHeight(plan, 0, NaN, true)).toBe(plan)
+  })
+
+  it('longueur bornée', () => {
+    expect(setSegLength(plan, 0, 42.26).strip!.segs![0].length).toBe(42.3)
+    expect(setSegLength(plan, 0, 0).strip!.segs![0].length).toBe(3)
+    expect(setSegLength(plan, 1, 99999).strip!.segs![1].length).toBe(1000)
+  })
+
+  it('ajouter prolonge le segment choisi, retirer en laisse toujours un', () => {
+    const plus = addSeg(plan, 1).strip!
+    expect(plus.segments).toBe(3)
+    expect(addSeg(plan, 0).strip!.segs![1].pos).toEqual({ x: 0, y: 0 })      // inséré juste après le segment choisi
+    expect(plus.segs![2]).toMatchObject({ pos: { x: 150, y: -50 }, angle: 0, length: 100 })
+    const un = removeSeg(removeSeg(plan, 0), 0).strip!
+    expect(un.segments).toBe(1)
+  })
+
+  it('redécoupe en gardant le tracé : le vrai découpage du ruban Hue', () => {
+    const parts = [1, 1, 3, 3, 3, 1, 1]
+    const r = resampleStrip(plan, parts).strip!
+    expect(r.segments).toBe(7)
+    expect(r.segs!.reduce((t, s) => t + s.length, 0)).toBeCloseTo(200, 0)
+    expect(r.segs!.map((s) => Math.round(s.length))).toEqual([15, 15, 46, 46, 46, 15, 15])
+    // le quatrième a son milieu pile sur l'angle : il reste sur le premier morceau
+    expect(r.segs!.map((s) => s.angle)).toEqual([90, 90, 90, 90, 0, 0, 0])
+    expect(r.segs![0].pos).toEqual({ x: 0, y: -142.3 })
+    expect(r.segs![6].pos.x).toBeCloseTo(92.3, 1)
+    expect(resampleStrip(plan, [])).toBe(plan)
+    expect(resampleStrip(plan, [1, -1])).toBe(plan)
   })
 })

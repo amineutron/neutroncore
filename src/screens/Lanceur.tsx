@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiGet, apiPost, apiPut, withConfirm } from '../lib/api'
-import { confirmDialog } from '../lib/dialog'
+import { confirmDialog, toast } from '../lib/dialog'
 import { usePoll } from '../lib/poll'
 import { Bar, Btn, Card, PageTitle, Eyebrow, Chip } from '../components/ui'
 import { Sessions } from '../components/Sessions'
@@ -26,8 +26,10 @@ export function Lanceur() {
   async function claude(path: string) {
     setBusy(path)
     try {
-      await apiPost('/launcher/claude', { path }, await withConfirm('launcher_claude'))
-      addLaunch({ cwd: path, repo: path.split('/').filter(Boolean).pop() ?? path })
+      const r = await apiPost<{ cwd?: string; separe?: boolean; branche?: string; note?: string }>('/launcher/claude', { path }, await withConfirm('launcher_claude'))
+      addLaunch({ cwd: path, repo: path.split('/').filter(Boolean).pop() ?? path, expect: r.separe ? r.cwd : undefined })
+      if (r.separe) toast(`session sur sa propre branche : ${r.branche}`)
+      else if (r.note) toast(r.note, 'warn')
     } finally { setBusy('') }
   }
   async function folder(path: string) {

@@ -532,3 +532,568 @@ leur propre scope via `systemd-run --scope`) ; l'arret prend 5 s maximum
 - Limite connue : `analyze` ne connait que les regles. Une phrase qui passerait
   par le modele dans le chat est « non reconnue » ici (ex. « monte le son a
   40 »). Un mode profond demanderait un pipeline sans effet de bord cote Lyra.
+
+## Atelier 3d (2026-10-11) — le projet modelisation-3d dans neutroncore
+Non commite (branche `feat/atelier-3d`) : l'utilisateur valide d'abord.
+- **But** : `$DEV_ROOT/modelisation-3d` (pipeline build123d + boucle d'agents
+  `/boucle-3d`) devient une section du hub, comme les MCP. neutroncore lit ses
+  sorties, il ne les recalcule pas.
+- **API** : `routers/modelisation.py` + `lib/modelisation.py` (ecrits par une
+  autre session : modeles, jeu d'une iteration, fichiers, archive, pipeline,
+  decoupe) et `routers/modelisation_boucle.py` + `lib/modelisation_boucle.py`
+  (lancer une iteration). Racine : variable `MODELISATION_ROOT`.
+- **Ecran** `screens/Atelier.tsx`, composants `components/atelier/` :
+  `Viewer` (vue 3D), `PieceList`, `ControlsBar`, `IterationsPanel`,
+  `Materials`, `Montage`. Logique pure et testee dans `lib/atelier.ts` ;
+  tout three.js est dans `lib/atelierScene.ts`, charge a l'ouverture de
+  l'ecran seulement (bloc separe d'environ 570 Ko).
+- **Trois etats par piece** : affichee, fantome (opacite faible, aretes a la
+  couleur de la piece), cachee. Clic sur une piece = menu sur place ; Ctrl,
+  Maj ou « selection multiple » pour en prendre plusieurs. Focus = selection
+  nette, reste en fantome. Eclate global ou autour de la selection. Une piece
+  fantome laisse passer le clic vers une piece affichee derriere elle.
+- **Familles** : les composants sont regroupes par cle de nomenclature
+  (`familyOf` : `vis_bcd` -> `vis`). Les gabarits de controle sont caches au
+  depart.
+- **Controles** : bandeau d'une ligne (decomptes par nature), deployable en
+  liste filtrable. « voir » retrouve les pieces nommees dans le controle.
+- **Iterations** : chaque demande est conservee dans
+  `sorties/<modele>/demandes.json` avec les pieces designees et les iterations
+  de reference. Lancer = `POST /modelisation/{modele}/boucle` (jeton
+  `modelisation_boucle`) : le texte est ecrit dans un fichier, et la commande
+  ne contient que des chemins valides (`$(cat fichier)`), jamais le texte.
+  La session Claude Code s'ouvre dans une kitty rangee sur l'espace Hyprland
+  `special:atelier` (visible a la demande : `POST /modelisation/atelier/
+  montrer`) et se suit dans l'ecran par `SessionChat`.
+- **Materiaux** : `specs/<modele>.prix.yaml` (cote modelisation-3d) =
+  `{releve_le, devise, note, articles: {<cle>: {nom_recherche, conditionnement,
+  prix_lot_min, prix_lot_max, plateformes, confiance, remarque, inclus}}}`.
+  Un prix non constate reste `null` : on n'estime jamais. Le total est une
+  fourchette de lots, hors impression et hors port.
+- **Montage pas a pas** : `montageSteps` fait apparaitre les pieces que chaque
+  etape de la fiche cite ; celles qu'aucune etape ne nomme arrivent a la fin.
+- **Videos** : « video (tour) » et « video (montage) » enregistrent la toile
+  (MediaRecorder, webm) telle qu'elle est, coupe et eclate compris.
+- **Reponses de Claude** : `lib/markdown.ts` (analyse pure, testee) +
+  `components/Markdown.tsx`. Tableaux dans un cadre defilant, schemas et
+  arborescences en chasse fixe sans cesure, listes avec leur numero d'origine,
+  liens limites a http(s). Les propositions d'une question sont des cartes a
+  toucher (`.cs-choice`). Tout nouveau cas mal rendu = un test d'abord.
+- **Piege de verification** : pour charger la vraie app dans un navigateur de
+  test sans exposer la cle, passer par un relais local en lecture seule qui
+  ajoute l'en-tete (jamais la cle dans un script de test).
+
+
+## Atelier 3d, deuxieme passe (2026-10-12) — montage anime, videos, projets
+Non commite (branche `feat/atelier-3d`).
+- **Montage en gestes courts** (`lib/atelierMontage.ts`, teste sur la vraie fiche) :
+  `splitEtape` coupe une phrase de la fiche sur « puis », « ; » et les verbes
+  qui s'enchainent ; parentheses et suite de « : » deviennent l'astuce.
+  `montageSteps` place chaque piece au geste qui la nomme le mieux (nom propre
+  = 2, objet du geste = 3, precision = 1) ; a egalite, une piece imprimee va a
+  sa premiere mention, un composant pres des pieces sures de l'etape ; une piece
+  que rien ne nomme rejoint celle qu'elle touche et est signalee « deduite ».
+  La fiche peut aussi donner des etapes structurees `{titre, astuce, pieces}` :
+  elles sont prises telles quelles (c'est la voie exacte, a faire produire par
+  la boucle). Une fiche mal formee ne casse rien.
+- **Geste rejoue en boucle** : `insertionDir` dit d'ou arrive une piece (axe le
+  plus mince de la piece de base, ou face exterieure contre laquelle elle est
+  posee) ; `AtelierScene.setAnim` la fait glisser en boucle, pause et vitesse
+  par `setAnimPlayback`. Vignette par geste : `thumbnails`.
+- **Videos** : `lib/atelierFilm.ts` (scenario pur : plans, camera, fondus) +
+  `lib/atelierDirector.ts` (tournage). La scene est pilotee image par image
+  (`beginFilm` / `filmFrame` / `endFilm`), recopiee sur une toile 1280x720 avec
+  decor et textes, et c'est cette toile qu'on enregistre (mp4 si le navigateur
+  sait, sinon webm). « video de montage » = notice sur fond clair, un plan par
+  geste ; « video de presentation » = travelling, plongee, vue eclatee, pose
+  finale, sans l'outil imprime pose a cote (`piecesProduit`). Temps reel :
+  l'onglet doit rester au premier plan. Pendant un film, tout reglage qui
+  arrive (etats, selection) est garde pour la fin, pas applique.
+- **Controles dits avec des mots** (`lib/atelierControle.ts`) : titre, phrase
+  et consequence par famille (le mot avant « : »). Le sens d'une limite est
+  deduit des nombres d'un echec. Famille inconnue = formulation generale, rien
+  d'invente. Ajouter une famille = une entree dans `FAMILLES`.
+- **Bulle de la boucle** (`components/atelier/LoopBubble.tsx`) : languette sur
+  le flanc droit, s'ouvre seule quand Claude attend. Piege CSS : `all:unset`
+  sur un enfant remet `pointer-events` a la valeur heritee (`none` ici).
+- **Selection dans la liste** : un clic ajoute ou retire, Maj + clic prend la
+  plage (`rangeSelection`), « toutes » une famille. L'ancre se lit AVANT
+  `setSelection` : la mise a jour d'etat s'execute apres.
+- **Projets** (`components/atelier/ProjectBar.tsx`, API
+  `routers/modelisation_projets.py` + `lib/modelisation_projets.py`) : creer
+  (spec de depart + dossier de sorties), retirer de l'atelier (liste
+  `$NEUTRONCORE_STATE/atelier_masques.json`, fichiers intacts, « remettre »), ou
+  supprimer = DEPLACER spec, releve de prix, code du modele, son test et ses
+  sorties dans `$NEUTRONCORE_STATE/atelier_corbeille/<nom>-<date>/`. L'API
+  n'efface jamais rien : la corbeille se vide a la main. Jeton
+  `modelisation_supprimer`, deux confirmations dans l'ecran. Ce routeur est
+  inclus avant `modelisation` : son GET /modelisation remplace la liste brute.
+- **Identites stables** : le releve periodique rend un objet neuf toutes les
+  8 s ; `pieces` et les gestes ne sont recalcules que si leur contenu change,
+  sinon l'animation repartirait de zero a chaque releve.
+
+## Plans, noms en clair, branches par session (2026-10-12, suite)
+Non commite (branche `feat/atelier-3d`).
+- **Onglet « plans »** (`components/atelier/Plans.tsx`) : les planches PNG du
+  pipeline (plans cotes, coupes, vues d'usage) chargees par l'API authentifiee,
+  agrandissables et telechargeables ; la fiche de fabrication rendue en
+  Markdown ; l'archive des fichiers a imprimer.
+- **Materiaux en clair** : `nature` dans `specs/<modele>.prix.yaml` dit ce qu'est
+  la piece (« batterie (cellule lithium-polymere) ») et devient le titre de la
+  ligne ; la reference passe en dessous. Consigne de l'utilisateur : toujours
+  dire ce qu'est une piece avant sa reference.
+- **Une branche par session** : a la racine d'un projet suivi, POST
+  /launcher/claude lance `claude --worktree <sAAMM-HHMMSS>` ; la session vit
+  dans `<projet>/.claude/worktrees/<nom>` sur la branche `worktree-<nom>`
+  (partie de la branche par defaut distante). La reponse donne `cwd` : le
+  lanceur l'attend la (`Launch.expect`). `.claude/worktrees/` est ajoute a
+  `.git/info/exclude` (local). Claude Code REFUSE `--worktree` dans un dossier
+  jamais approuve : l'API lit `hasTrustDialogAccepted` et, sinon, lance une
+  session normale avec une note. Dans un dossier de session il n'y a ni
+  `node_modules` ni `.venv` : `npm ci` une fois ; et le build qui deploie reste
+  celui du dossier principal, apres fusion.
+- **Branches & PR** (ecran projets, `components/Branches.tsx`, `lib/branches.ts`
+  teste ; API `routers/git_branches.py` + `lib/git_branches.py`) : par depot
+  suivi, branches sans PR, en PR, deja contenues dans une PR, deja fusionnees,
+  conflits (`git merge-tree`, calcul en memoire : rien n'est ecrit), PR ouvertes
+  (`gh pr list`). Lecture seule. Depots suivis et reglage dans
+  `$NEUTRONCORE_STATE/branches.json` (chemins relatifs a `DEV_ROOT`). Rappel :
+  chaque lundi a partir de 9 h, un resume dans le centre de notifications.
+
+## Atelier 3d : essai de bout en bout sur un projet neuf (2026-10-12, soir)
+Non commite. Essai reel : projet `boite_rangement_lego` cree depuis l'API, premiere
+iteration lancee, puis tout l'ecran verifie sur ses sorties. Ce que l'essai a appris :
+- **Plusieurs sessions** : `GET /modelisation/sessions` dit sur quel modele travaille
+  chaque session de boucle (lu dans son premier message, `/boucle-3d <modele>`) et liste
+  les sessions terminees a reprendre. `components/atelier/useBoucles.ts` le lit une fois
+  pour l'ecran ; la bulle liste toutes les sessions, marque celles du projet affiche, et
+  revient a la session du projet quand on en change (logique pure : `lib/atelierSessions.ts`).
+- **Bandeau d'avancement** (`components/atelier/LoopStatus.tsx`) : visible des le lancement,
+  une mascotte par etape, temps ecoule, derniere phrase de l'agent ; « n'a pas demarre »
+  si aucune session n'apparait en 90 s.
+- **Commande de boucle** : lancee avec la demande en message initial, le parametre
+  positionnel de la commande prenait le premier mot de la demande pour le nom du modele.
+  La commande lit maintenant le premier mot des arguments.
+- **Messages de l'utilisateur** : `lib/sessions.userText` retire l'emballage des commandes
+  (`<command-name>`, `<command-args>`) et les rappels systeme avant affichage.
+- **Axe vertical** : un modele peut etre dessine Z vers le haut (pose sur le plateau).
+  Reglage « vertical » par projet (`neutroncore_atelier_haut`), defaut pris dans
+  `resume.json` (`haut`). La rotation est faite dans la geometrie au chargement : tout le
+  reste (centres, boites, coupe, camera, films) parle un seul repere.
+- **Eclate** : un ecart commun (un cinquieme de la plus grande dimension) s'ajoute au
+  decalage proportionnel, sinon un bac et son couvercle ne se separent presque pas.
+- **Montage** : une etape structuree qui renomme une piece deja posee la « reprend »
+  (`reprises`) : elle est rejouee et citee, sans etre posee deux fois.
+- **Materiaux** : `consommable: true` dans la nomenclature (filament, ruban) est affiche
+  comme tel ; une designation identique au nom de recherche n'est plus ecrite deux fois.
+- Pendant que le pipeline reecrit ses sorties, des fichiers manquent quelques secondes
+  (404) : la vue se recharge seule au releve suivant ; un tournage lance a ce moment
+  s'interrompt avec un message.
+- Fin de boucle sur « arbitrage humain » (iteration 2, 155/161) : le bandeau passe a
+  « attend ta reponse », la bulle s'ouvre seule. Repondre repasse a « au travail » en
+  quelques secondes. `lireControle` cherche la famille aussi APRES le nom de la piece
+  (`couvercle:jeu:pire_cas`) ; familles `regle` et `empilement` ajoutees. La phrase citee
+  dans le bandeau est debarrassee de sa mise en forme Markdown.
+- Fin de l'essai (verdict « escalader », 189/194) et relectures independantes :
+  - une session se rattache a son modele par le DEBUT de son transcript
+    (`claude_sessions.first_messages`) ; lire les derniers messages la perdait apres un
+    redemarrage de l'API, et aucune session terminee n'etait proposee a la reprise ;
+  - le registre de Claude Code ecrit `busy`, `idle` ou `shell` (il ne reste qu'une commande
+    de fond) : seul `busy` veut dire « au travail ». Le bandeau a un etat « en pause », qui
+    sert aussi quand l'API a redemarre et oublie qu'une session attendait ;
+  - apres un lancement, la session d'une iteration precedente n'est pas prise pour la
+    nouvelle (`sessionDuProjet`) ;
+  - `userText` retire la balise de collage d'une longue reponse et masque le resume
+    automatique de contexte ;
+  - branches : nom de branche commencant par « - » ignore, git lance sans `core.fsmonitor`
+    ni hooks du depot, « frais » au plus une fois toutes les 30 s.
+  - Laisses tels quels (choix) : PUT /branches/reglages sans jeton X-Confirm, comme les
+    autres reglages ; `cwd` absolu dans deux reponses (le lanceur s'en sert pour reconnaitre
+    la session) ; une piece illisible au chargement de la vue n'est pas signalee.
+
+## Atelier range, chat des sessions, atelier sur l'accueil (2026-10-13)
+Non commite (branche `feat/atelier-3d`).
+- **Outils de la vue 3D en sections repliables** (`components/atelier/ViewerTools.tsx`) :
+  vue, eclate et coupe, selection et mesure, image et videos. Chaque en-tete dit l'etat
+  du reglage ; les sections ouvertes sont retenues (`neutroncore_atelier_outils`). Les
+  boutons d'export ne sont plus dans l'en-tete de l'ecran. Le bandeau d'avancement se
+  replie aussi (`neutroncore_atelier_avance_plie`).
+- **Lanceur et atelier distincts** : `GET /launcher/sessions` et `/recent` portent
+  `atelier` (le modele sur lequel la session boucle, `""` sinon). Le lanceur, les
+  sessions de l'accueil et le badge de navigation les ecartent (`horsAtelier`) ; le
+  compteur `waiting` ne les compte pas. Une boucle tout juste lancee, sans transcript,
+  peut apparaitre quelques secondes dans le lanceur.
+- **Chat des sessions** (`SessionChat.tsx`, logique dans `lib/sessions.ts`) : les
+  commandes d'un tour sont un bloc « execution » en tete de la reponse, replie en une
+  ligne de resume, deplie d'office pendant le tour ; la plus recente est en haut. La
+  ligne « claude » donne le temps de reflexion et la duree du tour. Les touches du
+  terminal sont derriere un bouton « touches ».
+  Cote API, `claude_sessions.parse_lines` ajoute `think_s` (ecart entre un bloc de
+  reflexion et la ligne d'avant : le texte de la reflexion n'est pas dans le
+  transcript), `from` (arrivee de la demande) et `tools_at`. La duree `turn_duration`
+  ecrite par Claude Code n'est PAS reprise : elle couvre les commandes de fond et a
+  donne 3 h pour un tour de 23 s.
+- **Atelier sur l'accueil et en mode tele** (`components/HomeAtelier.tsx`, logique
+  `bouclesEnCours` testee) : une ligne par projet qui a une boucle ouverte (etat,
+  iteration, etape, mascotte de l'etape). `GET /modelisation/sessions` rend `courants`
+  pour eviter de lire chaque modele. Reglage `homeAtelier` ; source tele `atelier`.
+  Toucher une ligne ouvre l'atelier sur ce projet (`PROJET_ATELIER` en sessionStorage).
+- **Questions illustrees** (`components/atelier/Questions.tsx`, logique `lireAttente`,
+  `piecesCitees`, `piecesDuPoint` dans `lib/atelier.ts`) : un point de l'attente est une
+  phrase, ou `{texte, pieces, image, recommande, options: [{nom, texte, image}]}` ecrit
+  par la boucle (`instantane.py --points-json`, images png ou gif dans
+  `sorties/<modele>/questions/`, validees a l'ecriture). L'ecran montre le mini-plan de
+  la boucle ; a defaut, une vue 3D des pieces concernees (les autres en fantome),
+  celles que le point designe ou, sinon, celles que son texte nomme (approximatif :
+  « fiche fabricant » designe a tort la piece « fiche »). L'API sert les `.gif`.
+- **Cartes du lanceur stables** (`lib/smoothOrder.ts`, `ordreStable` teste) : le serveur
+  trie par activite, ce qui deplacait les cartes et la page a chaque message. L'ecran
+  garde son propre ordre : seules remontent une session qui se met a attendre et une
+  session nouvelle ; « attend » vers « en pause » ne deplace rien. La carte lue garde
+  sa place a l'ecran (le defilement compense), les cartes deplacees glissent.
+  `overflow-anchor:none` sur `.cs-list` : l'ancrage natif du navigateur se battait
+  avec cette compensation et ramenait la page en haut.
+- Suite du meme jour : la vignette 3D d'une question montre les pieces seules, sous
+  l'angle isometrique d'ou elles se voient (`camIso`, teste : la camera se place du cote
+  de l'objet ou elles sont) ; « avec le contexte » ajoute le reste en fantome. Un point
+  peut porter `detail` (plan cote, ouvert a la demande) en plus de `image` (vue simple).
+  Cartes du lanceur : elles gardent leur place dans la page et c'est la propriete CSS
+  `order` qui les range — deplacer un element remet a zero le defilement de sa
+  conversation. Vue 3D : si son code est introuvable (page ouverte avant un build),
+  le message le dit et propose « recharger ».
+- Images des questions : vignettes petites dans la carte (rendues en 1200 x 800 pour le zoom) ; ouvertes dans une fenetre moyenne (« agrandir » = plein ecran) par
+  `components/ImageZoom.tsx` (molette, pincement, boutons, touches + - 0 ; glisser pour
+  se deplacer ; double clic ; logique pure `lib/zoom.ts` testee). Pour une vue 3D, la
+  barre de la fenetre porte « vue fantome » (reste de l objet en transparence, pieces en question mises en avant), proposee pour TOUTE image d une question qui nomme des pieces, celles de la boucle comprises ; le zoom est garde quand
+  on le bascule.
+- Fenetre d'une image de question (`ImageZoom` + `components/atelier/Mini3D.tsx`) : a
+  cote de l'image, le texte de la question (et de l'option) tant qu'on n'est pas en
+  plein ecran ; bascule « image / 3d » : la vue 3D est une vraie scene qu'on fait
+  tourner (deuxieme `AtelierScene`, pieces rechargees a l'ouverture) ; « mode fantome »
+  y met le reste de l'objet en transparence et les pieces en question en avant.
+  `piecesEnAvant` (teste) : si la boucle designe aussi le corps qui porte les autres
+  pieces, il passe en decor, sinon il les cacherait. La camera se place du cote de ces
+  pieces (`camIso`, `AtelierScene.orbit(cam, cible)`).
+
+## Automatisations : blocs du 2026-10-13
+Non commite. Cote API : `lib/automations.py`, `routers/automations.py`,
+`lib/test_suites.py`, `lib/test_runner.py`.
+- **Declencheur `atelier`** (une boucle de l'atelier 3d attend / rend un verdict, filtre
+  sur le nom du projet) : sonde `_poll_atelier`, comparaison pure `atelier_changes` ; le
+  premier releve ne declenche rien.
+- **Declencheur `session_stuck`** (une session au travail ne bouge plus depuis N min) :
+  registre a `busy`, pas en attente, et ni le transcript ni l'etat du registre n'ont
+  bouge. Une alerte par arret (`stuck_sessions`). Une commande longue et silencieuse
+  (tests de 30 min) y ressemble : regler le seuil au-dessus.
+- **Condition `presence`** (je suis la / absent) : la = au moins un ecran du PC allume
+  (DPMS, lu par le script de HALO) ; etat illisible = inconnu, aucune branche.
+- **`service.start` avec `trigger`** : relance le service que le declencheur vient de
+  voir tomber (lu en tete du titre de l'evenement, verifie contre `SERVICES`).
+- **Action `tests.run`** : batterie d'un projet, liste FERMEE `test_suites.SUITES` (la
+  commande que le projet declare : cible make, script npm, commande de sa CI). Lancee en
+  tache de fond, une a la fois par batterie, 50 min au plus ; fin = notification +
+  evenement externe `tests_ok` / `tests_echec` pour enchainer. Exclus : ce qui deploie
+  (`npm run build`) et la campagne Lyra (GPU). Les libelles sont recopies dans
+  `SUITES` de `src/lib/automations.ts` : ajouter une batterie = les deux fichiers.
+- Le filtre « contient » du declencheur session FONCTIONNE (applique en tete de
+  `matches`, teste) : je l'avais cru absent en ne lisant que la branche `session`.
+- **Afficher neutroncore sur la tele, puis remettre** (actions `tv.show` / `tv.restore`,
+  routes POST /tv/afficher, /tv/remettre, GET /tv/affichage ; `routers/tv_display.py`,
+  logique pure `lib/tv_display.py` testee). La tele est aussi un ecran du PC (moniteur
+  dont la description contient `TV_MONITOR_MATCH`, defaut « Philips »). Afficher :
+  memorise l'etat (allumee ou non, application en cours) dans
+  `$NEUTRONCORE_STATE/tv_avant.json`, allume la tele, la passe sur l'entree HDMI du PC
+  (parametre de l'action), ouvre l'app en plein ecran sur cet ecran (`?tele=1` : mode
+  tele pour cette fenetre seulement, sans toucher au reglage ni jouer l'intro). Un second
+  affichage n'ecrase pas le souvenir. Remettre : ferme la fenetre, relance l'application
+  memorisee ; rien en memoire ou autre chose qu'une application = menu d'accueil ; tele
+  eteinte avant = reeteinte ; elle etait deja sur une entree = on n'y touche pas (on ne
+  sait pas lire laquelle).
+  Cote pylips-mcp (non commite) : outils `current_app` et `set_source` (hdmi1 a hdmi4,
+  home), appeles par le demon sous `tv.current_app` / `tv.set_source`. Ici : PC sur
+  HDMI 1, ampli (ARC) sur HDMI 2, lu par `dumpsys hdmi_control`.
+- « demarrer un service : celui qui vient de tomber » lancee A LA MAIN (aucun
+  declencheur) relance ce qui est arrete a cet instant ; rien d'arrete = reussi. Un
+  service non demarrable d'ici (`services_checker.demarrable` : pas d'unite utilisateur,
+  ou service du systeme) est signale dans le centre de notifications sans faire echouer.
+  Lyra, surveille par son processus, demarre par son unite `lyra-daemon`. Tracking est
+  un service du SYSTEME : l'API ne peut pas le demarrer. n8n n'a ni unite ni conteneur
+  sur cette machine (constate le 2026-10-13).
+
+## Camera avec detourage (2026-10-13) — reprise d'obs-virtual-bg, sans OBS
+Non commite. Pas encore essayee avec la vraie webcam.
+- **Moteur** : `camera/moteur.py` dans lyra-control-api, lance par l'API avec le Python
+  qui porte torch et OpenCV (`CAMERA_PYTHON`, par defaut l'environnement d'obs-virtual-bg).
+  Webcam (`CAMERA_SOURCE`) -> detourage sur la carte graphique -> camera virtuelle
+  v4l2loopback (`CAMERA_SORTIE`, `/dev/video10`, vue par les applications sous le nom
+  « OBS Virtual Camera » tant que le module n'est pas recharge avec un autre libelle).
+  Il relit `$NEUTRONCORE_STATE/camera.json` deux fois par seconde, publie apercu et etat
+  dans `$XDG_RUNTIME_DIR/neutroncore-camera/`, s'arrete sur SIGTERM (jamais de pkill :
+  l'API verifie que le pid est bien le moteur). Essai sans webcam : `--source mire
+  --sortie aucune --images 90`.
+- **Modeles** : `rvm` (Robust Video Matting, fait pour la visio, charge par torch.hub au
+  premier lancement, licence GPL-3 : charge a l'execution, pas livre dans le depot) ;
+  `deeplab` en repli ; `auto` essaie le premier. Sans fond de remplacement ou en veille,
+  aucun modele ne tourne.
+- **Reglages** (`lib/camera.py`, pur, teste, lu par l'API ET le moteur) : fond `aucun`,
+  `flou` (intensite), `prefait` (degrades dessines par le moteur et par l'ecran) ou
+  `fichier` (image ou video importee dans `$NEUTRONCORE_STATE/camera_fonds/`) ; detourage
+  `durete`, `marge`, `stabilite`, traduits en grandeurs par `parametres()` ; `veille`.
+  Le flou ignore la personne (sinon ses couleurs bavent en halo).
+- **API** `routers/camera.py` : GET /camera, POST /camera/demarrer|arreter, PUT
+  /camera/reglages (fusion), GET /camera/apercu (JPEG, 204 sans image), POST /camera/fonds
+  (formulaire), DELETE /camera/fonds/{nom} (jeton `camera_fond_supprimer`).
+- **Ecran** `screens/Camera.tsx` (groupe maison), logique `lib/camera.ts` testee.
+  Automatisations : `camera.power`, `camera.standby`, `camera.background`.
+- Reste de l'ancien : routes `/media/obs/start|stop` de l'API (lancent l'ancien pipeline,
+  avec `pkill`) et le dossier `obs-virtual-bg` (mot de passe OBS en clair dans
+  `scripts/obs_control.py`) : a retirer une fois la nouvelle camera validee.
+- Camera, apres le premier essai reel (2026-10-13) : l'image saccadait parce que la
+  webcam (Elgato Facecam) ne donne que 20 images/s en mode 30, et 60 en mode 60 (mesure
+  dans tous les formats). Capture en mode 60 (`CAMERA_FPS_CAPTURE`), sortie a 30 : le
+  moteur attend une image NEUVE au lieu de retraiter la derniere (l'ancien compteur
+  affichait 29,9 en repetant des images). `etat.json` donne `fps_webcam` et `ms_tour`.
+  Apercu : demandes enchainees (une quinzaine d'images/s en local) au lieu d'une toutes
+  les 250 ms. Boutons : anneau d'attente (`.tourne`) sur allumer/eteindre jusqu'a l'etat
+  reel, sur le fond et la veille le temps que le moteur relise ses reglages.
+- Camera, deuxieme passe du meme jour : pyfakewebcam convertissait chaque image ligne par
+  ligne en Python (boucle sur 720 lignes) ; `SortieVirtuelle` fait la conversion YUYV sur
+  la carte graphique et ecrit d'un bloc (cout d'un tour : 13 ms -> 8 ms, 60 images/s
+  tenables avec detourage, ecart maximal entre deux images publie dans `ecart_max_ms`).
+  Reglages `virtuelle` (publier ou non comme camera de l'ordinateur, a chaud) et
+  `cadence` (30 ou 60). Apercu : GET /camera/flux (MJPEG, 30 images/s), lisible par une
+  balise image grace a un jeton court `camera_flux` passe dans l'adresse (le filtre
+  d'adresses s'applique aussi). Le nom « OBS Virtual Camera » vient de
+  `/etc/modprobe.d` : le changer demande les droits administrateur.
+- Camera, troisieme passe : la camera virtuelle etait BLOQUEE pour les applications
+  (« Device or resource busy ») : pyfakewebcam laisse son descripteur ouvert quand son
+  reglage de format echoue, et le moteur reessayait a chaque image ; dix descripteurs
+  ouverts atteignent `max_openers` de v4l2loopback. `SortieVirtuelle` ouvre et regle le
+  peripherique elle-meme, referme TOUJOURS en cas d'echec, ne reessaie que toutes les 2 s,
+  et annonce la cadence (VIDIOC_S_PARM). Verifie avec ffmpeg : 60 images distinctes/s.
+  Diagnostic : compter les descripteurs du moteur sur le peripherique dans /proc/<pid>/fd.
+- L'apercu n'est fabrique que si un ecran le regarde : le flux tient a jour le fichier
+  `spectateur` du dossier d'execution, le moteur le consulte deux fois par seconde.
+
+## Plan de piece : ruban reglable comme les lampes (2026-10-13)
+Non commite.
+- Le ruban Hue (gradient lightstrip) a 7 segments pilotables, de tailles inegales (1, 1, 3,
+  3, 3, 1, 1 pixels sur 13) : GET /plan/ruban-hue le lit sur le pont (API v2, ressource
+  `entertainment` ; `lib/hue_strip.py` pur, teste). Le plan de HALO n'en avait que 3.
+- PUT /plan accepte maintenant, par segment : position, angle, LONGUEUR et HAUTEUR (`z`,
+  metres dans le fichier, cm cote app ; `None` = jamais reglee), et un NOMBRE different
+  (1 a 40). Meme nombre : chaque segment reste a sa place dans le fichier et garde ses
+  cles inconnues ; nombre different : la liste est reconstruite. `segments` et `length_m`
+  suivent. HALO conserve la cle `z` (il fusionne par Object.assign) mais dessine encore
+  le ruban a 1,80 m dans sa propre vue 3D.
+- Ecran : `lib/plan.ts` (`segHeight`, `setSegHeight`, `setSegLength`, `addSeg`,
+  `removeSeg`, `resampleStrip`, testes). `resampleStrip` redecoupe en gardant le trace.
+  Vue 3d : glisser un segment regle sa hauteur (tout le ruban si la case est cochee).
+- Applique le 2026-10-13 sur le plan reel : 7 segments ; copie d'avant dans
+  `~/.config/halo_plan.json.avant-ruban-7`.
+
+## Lumiere 3d (2026-10-13) — effets dans l'espace, pad, sets, vraies lampes par huebeat
+Non commite. Ecran dedie `lumiere` (groupe maison) ; le plan de piece y renvoie par un bouton.
+- **Moteur pur** `lib/spatialFx.ts` (teste) : un effet est une forme dans la piece ; chaque
+  appareil prend ce qui passe a sa position. `apport` puis `evaluer` (effets superposes).
+  Effets : onde de choc, mur de lumiere (3 sens), source mobile, maree, phare. Le temps est en
+  PULSATIONS (float). Repere : cm, x/y centres, z depuis le sol.
+- **Le meme calcul en Python** dans huebeat : `~/dev/ironman-hue/spatial_fx.py` (memes cas de
+  test). Changer un effet = les DEUX fichiers, sinon le banc d'essai ment.
+- **Lieux** `lib/spatialVenues.ts` : `pieceReelle(plan)` (vraies lampes), et deux scenes
+  simulees FIXES (`salonEquipe`, `club`). Rendu `lib/spatialScene.ts` (three.js, sans decision).
+- **Vraies lampes** : c'est huebeat qui les pilote (flux temps reel vers le pont, detection
+  des temps). L'API ecrit `/tmp/lyra_hue_beat.spatial.json` (scene + position de chaque canal
+  dans la piece) ; huebeat le relit 5 fois par seconde et, tant qu'il est actif, remplace ses
+  layouts band/full par l'effet spatial. `{"actif": false}` lui rend la main.
+  Position des canaux : `lib/spatial.positions_canaux` (zone Entertainment la plus fournie du
+  pont, API v2) ; une lampe prend sa place du plan par son nom (`associer` : noms identiques
+  d'abord), un canal du ruban le milieu de ses segments. Ici : 7 canaux, zone « Coin tele ».
+- **Horloge** : `positionDansLeTemps` (TS) = `position_dans_le_temps` (Python). Chaque temps
+  detecte repart d'un entier ; sans musique, l'effet tourne librement a 120. L'etat de huebeat
+  donne `beat_count`, `beat_ts`, `bpm` ; l'ecran mesure le decalage d'horloge avec l'API.
+- **Pad et sets** : `$NEUTRONCORE_STATE/spatial.json`, `lib/spatial.py` (valide, teste),
+  `routers/spatial.py` (GET /spatial, PUT /spatial/scenes|sets/{id|new}, DELETE avec jeton
+  `spatial_supprimer`, POST /spatial/reel). Scene : source en POURCENTAGE de la piece. Set :
+  etapes `{scene, mesures}`. Scenes de depart a identifiants FIXES (`depart01`...).
+  C'est l'ECRAN qui fait avancer un set (`etapeDuSet`) : ecran ferme, le set s'arrete sur sa
+  scene. Enregistrer un set = `frappesEnSet` (frappes du pad arrondies a la mesure).
+- **Trois pannes de huebeat trouvees en route** (aucune liee a ce volet) : hue-mcp le lancait
+  avec son propre Python, sans numpy (-> `HUE_BEAT_PYTHON`, non commite dans hue-mcp) ;
+  hue-mcp n'avait pas PyYAML, donc ne lisait pas `secrets.yaml` (-> dependance ajoutee) ;
+  dans la config locale de Lyra, adresse du pont perimee et `beat_username` qui n'etait pas
+  l'identifiant appaire avec `clientkey` (DTLS refuse : « bad record mac »).
+- PIEGE : ne jamais retirer `/tmp/ironman_hue.pid` a la main. Je l'ai fait pendant le
+  diagnostic : hue-mcp a cru huebeat arrete et en a lance un second ; deux instances sur la
+  meme zone se marchent dessus, et arreter l'une coupe le flux de l'autre.
+- Ajouts du soir : effet `raz` (raz de maree : le front s'eloigne du point source en plan,
+  et derriere lui la lumiere remplit la hauteur depuis `depart` = bas, centre — la hauteur
+  du point, vers le haut et le bas — ou haut ; une vague par mesure). Palette `arcenciel` :
+  la couleur ne vient plus de l'effet mais de l'endroit (`arcEnCiel` : teinte selon la
+  distance au point source, qui defile) ; huebeat recoit le drapeau `arc_en_ciel`. Le point
+  source se pose aussi au double-clic sur le sol de la scene (`SpatialScene.onPlace`).
+  Les trois existent en TS, en Python (huebeat) et dans la validation de l'API.
+- Lumiere 3d, reglages communs et boule a la main : `commun` dans `spatial.json` (PUT
+  /spatial/commun) = intensite generale, sensibilite, et forme de la pulsation (attaque,
+  retombee, profondeur, plancher), appliques a TOUTES les scenes par `gainPulsation` /
+  `gain_pulsation` (TS et Python, memes tests). Profondeur 0 par defaut : rien ne change
+  tant qu'on n'y touche pas. La sensibilite regle la detection des temps de huebeat
+  (curseur 0-100 -> multiplicateur 3,0-0,5 ; 68 = son reglage d'origine) et ne sert donc
+  que sur les vraies lampes. Changer un reglage commun rejoue la scene en cours sur les lampes.
+  Le point source se glisse a la souris dans la scene (boule : a sa hauteur ; fleche
+  au-dessus : hauteur ; double clic : pose au sol) et se saisit en centimetres (mur gauche,
+  mur de la tv, hauteur), stocke au dixieme de pour-cent de la piece. Les erreurs de console
+  vues en test viennent d'evenements de pointeur fabriques (OrbitControls), pas d'un vrai usage.
+
+## Lumiere 3d : lancement en un geste, peripherique du tempo (2026-10-13, nuit)
+Non commite.
+- **Grand bouton** `.lu-direct` (ecran lumiere) : POST /spatial/direct {scene} lance huebeat s'il ne
+  tourne pas puis joue la scene en cours ; POST /spatial/arret arrete tout. L'ancien bouton
+  « piloter les vraies lampes » restait grise tant que huebeat n'etait pas lance a part : c'est ce
+  qui donnait l'impression qu'il ne marchait pas. L'ecran rouvert pendant que les lampes jouent
+  reprend l'etat « en direct » (`reel` + `huebeat.actif`).
+- **Peripherique du tempo** : GET /spatial renvoie `peripheriques` (sorties d'abord, puis micros ;
+  `actif` = du son en ce moment) et `peripherique` ('' = reglage d'origine de huebeat). PUT
+  /spatial/peripherique {nom} ecrit le choix (lu par `hue_beat.py` au demarrage) et relance huebeat
+  s'il tourne. Un nom sans marque lisible est affiche « carte son interne ».
+- **Scene « neutron »** : palette `neutron` (bleu reacteur, rouge armure, blanc), onde + phare, source
+  a la position de la tele. Meme palette en Python et en TS.
+
+## Lumiere 3d : silence, legendes animees, pad personnalisable (2026-10-14)
+Non commite.
+- **Rien ne joue = rien ne s'allume** : huebeat faisait tourner l'effet en roue libre a 120 sans son.
+  `spatial_fx.gain_silence` (teste) : plein tant qu'il y a du son, fondu vers 0 apres 1,2 s de silence
+  sur le peripherique ecoute, rallumage au premier son. L'etat de huebeat publie `silence`, relaye par
+  GET /spatial ; l'ecran eteint alors aussi le banc d'essai et le dit. Ne vaut que pour les effets dans
+  l'espace, pas pour les layouts habituels de huebeat.
+- **Legende + apercu anime** de chaque reglage commun : `lib/spatialApercu.ts` (pur, teste : balayage
+  mini -> maxi, lampe temoin calculee par le vrai `gainPulsation`, textes `LEGENDES`, bornes `BORNES`)
+  et `components/lumiere/ApercuReglage.tsx` (bulle au survol ou au focus de « voir l'effet » ; la toile
+  ne tourne que bulle ouverte). Ajouter un reglage commun = une entree dans `BORNES` et `LEGENDES`.
+- **Pad** : « renommer » (nom du champ), fleches pour deplacer la touche (PUT /spatial/scenes/ordre
+  {ordre}, `sp.ranger` : memes scenes exactement), palette `libre` = 1 a 6 couleurs `#rrggbb` portees
+  par la scene (`couleurs`, `couleursDe` / `couleurs_de`). huebeat recevait deja des couleurs, pas un nom.
+- Test fragile vu au passage (lyra-control-api) : `test_plafond_par_jour_applique` echoue dans les dix
+  minutes apres minuit (son historique « il y a 10 min » tombe la veille). Non corrige.
+
+## Lumiere 3d : mode 2d, blocs repliables, reglages communs fiables (2026-10-14, suite)
+Non commite.
+- **2d ou 3d** (champ `mode` d'une scene, `3d` par defaut) : en 3d la lumiere voyage depuis le point
+  source, donc une lampe eloignee s'allume APRES le temps — c'est ce qui donnait l'impression d'un
+  tempo decale par rapport au huebeat d'origine. En 2d (`evaluer2d` / `evaluer_2d`, memes tests) il
+  n'y a pas de trajet : sur chaque temps les lampes s'allument d'un coup puis retombent selon la
+  pulsation (attaque, retombee, plancher ; la « force » ne sert pas en 2d). `groupe` = `tous` ou
+  `alterne` (une lampe sur deux, l'autre moitie au temps suivant : la scene Iron Man). Les voisins
+  sont definis par `rangs` (appareils ranges de gauche a droite), calcule par huebeat a la lecture
+  de la config et par `SceneView` pour le banc d'essai. La scene de depart « neutron » est en 2d alterne.
+- **Reglages communs qui n'arrivaient plus aux lampes** : PUT /spatial/commun rejouait un souvenir en
+  memoire (`_derniere`), perdu a chaque redemarrage de l'API. Il repart maintenant du fichier que
+  huebeat lit (`sp.avec_commun`, teste). Sous un curseur, une ligne rose dit quand il est sans effet
+  (attaque, retombee, plancher tant que la force de la pulsation est a 0, en 3d).
+- **Blocs repliables** (`components/lumiere/Bloc.tsx`) : pad, sets, musique, pulsation, reglages de la
+  scene ; etat retenu dans `neutroncore_lumiere_blocs`. Replies au depart : sets, musique, pulsation.
+- huebeat ne relit pas son code a chaud : apres une modification de `spatial_fx.py`, il faut
+  l'arreter et le relancer (grand bouton), sinon il joue l'ancienne version.
+
+## Lumiere 3d : horloge au tempo, bloc « respiration » simplifie (2026-10-14, nuit)
+Non commite.
+- **Les lampes reagissaient a un temps sur trois** (mesure : 8 temps comptes en 18 s a 94 par minute).
+  Deux causes. (1) `beat_count` de huebeat ne compte pas un temps plus faible que le fade en cours, et
+  ce fade ne redescend jamais pendant que les effets dans l'espace jouent : compteur propre
+  `spatial_count` (chaque detection, plus les temps qu'elle a manques : `temps_ecoules`). (2) Entre deux
+  detections l'horloge attendait au bord du temps suivant : `position_dans_le_temps` continue maintenant
+  au tempo mesure des qu'il est connu, et chaque detection la recale. Le banc d'essai faisait deja le
+  metronome, d'ou l'ecart avec les lampes. Memes regles en TS ; GET /spatial rend `spatial_count` sous
+  le nom `beat_count`.
+- **Avance** : l'horloge des lampes est en avance de `HUE_BEAT_AVANCE_MS` (120 par defaut, 0 a 400) pour
+  compenser capture, analyse, pont et ampoules. N'agit qu'une fois le tempo trouve.
+- **2d sans gamma** : le niveau y est deja une enveloppe au carre ; le carre de plus retardait la montee.
+- **Bloc « respiration et intensite »** : intensite, « la lumiere arrive », « la lumiere repart » ; en 3d
+  s'ajoute la force de la respiration (toucher arrive ou repart quand elle est a 0 la met a 70, avec un
+  message). Plancher et sensibilite sont dans « reglages fins ».
+
+## Installation : elements facultatifs (verifie le 2026-10-14)
+Non commite.
+- Essai : l'API lancee dans un dossier vide (aucun projet, aucun reglage, aucun appareil) repond sur ses
+  74 routes de lecture sans une seule erreur 500 ; les actions des elements absents echouent avec une
+  phrase (« environnement Python de la camera introuvable », « pont Hue injoignable »...). Le tableau des
+  elements facultatifs est dans le README.
+- Deux retouches : au depart, « branches & PR » ne suit que les depots presents sous `DEV_ROOT`
+  (`lire_reglages(etat, racine)`) ; GET /camera rend `installee` et l'ecran le dit.
+- PIEGE : une copie de test de l'API n'est pas isolee de huebeat. `routers/spatial.py` lit et ecrit les
+  fichiers communs `/tmp/lyra_hue_beat.*` : y appeler /spatial/arret ou /spatial/reel agit sur les vraies
+  lampes. N'y faire que des lectures.
+- Installeur de Lyra (`lyra/installer/core/catalog.yaml`) : chaque MCP est une case a cocher ; neutroncore
+  et lyra-control-api n'y figurent pas (installation a la main, voir README).
+- **Ce que huebeat entend** (2026-10-14) : `components/lumiere/Ecoute.tsx` sous la sensibilite, dans le bloc
+  « musique ». huebeat publie six fois par seconde `/tmp/lyra_hue_beat.ecoute.json` (niveaux du son, seuil
+  a depasser, temps pris, sur 3,6 s) tant qu'une scene de neutroncore joue ; GET /spatial/ecoute le valide
+  (`sp.lire_ecoute`, teste) ; l'ecran le releve toutes les 180 ms (`echelleEcoute`, teste). Une barre rose
+  passe le seuil mais est ecartee : huebeat ne prend pas deux temps a moins de 500 ms.
+  Verifie sur des donnees simulees seulement, pas encore sur de la vraie musique.
+- PIEGE corrige (2026-10-14) : `test_hue_beat_ctrl.py` (ironman-hue) effacait le VRAI fichier pid et le vrai
+  fichier d'etat de huebeat pour simuler son absence. Lance pendant que huebeat tourne, hue-mcp le croyait
+  arrete : plus moyen de l'arreter depuis l'app, et risque de seconde instance. Le test travaille maintenant
+  sur des chemins a part. Si le fichier pid manque alors que le processus vit, le reecrire avec son pid.
+- **Rien de pris = rien d'allume** (2026-10-14) : l'horloge au tempo comblait les temps manques sans limite,
+  donc les lampes pulsaient encore avec la sensibilite a 0. `gain_sans_temps` (huebeat, teste) : quatre temps
+  combles au plus, puis extinction en un temps ; jamais rien pris = eteint. Le drapeau `silence` de l'etat
+  couvre maintenant les deux cas (aucun son, ou aucun temps pris).
+- **Sensibilite automatique** (2026-10-14) : bouton « auto » a cote du curseur (`commun.auto`, PUT /spatial/commun).
+  huebeat recalcule alors son multiplicateur quatre fois par seconde, d'un coup, d'apres ce qu'il vient
+  d'entendre (`sensibilite_auto`, teste) : seuil a 40 % du chemin entre le niveau courant de la musique
+  (mediane des sons audibles) et ses coups (ses 4 % les plus forts), donc independant du volume. Trop peu de
+  son pour juger (silence, debut de piste) = reglage tres ouvert, pour prendre les premiers coups. Il le
+  rejoint vite vers le bas, doucement vers le haut. Une premiere version par tatonnement (6 % par demi-seconde)
+  mettait dix secondes a converger, oscillait et ratait les debuts : ne pas y revenir.
+  Le releve d'ecoute porte `multiplicateur`, rendu par l'API en position de curseur (`sensibilite`) : le
+  curseur, grise, montre ou le reglage s'est pose. Mesure sur de la musique : premier temps pris apres 2 s
+  d'ecoute, curseur entre 68 et 74, 6 a 9 temps pris par fenetre de 3,6 s.
+- **Horloge des effets refaite** (2026-10-14, nuit) : symptome « micro-eclairs, noir puis reprise ». Chaque coup
+  detecte remettait la phase a zero ; avec l'horloge en avance de 120 ms, le flash etait deja parti et repartait.
+  Desormais c'est l'horloge qui porte la lumiere (`avancer`), un coup la corrige sans la relancer (`recaler` :
+  demi-correction s'il est sur la grille, ignore s'il est a contretemps, grille refaite au troisieme d'affilee).
+  Son tempo est a part (`tempo_stable` : ecarts ramenes dans l'octave 80-160, mediane, un quart du chemin par
+  coup) : `current_bpm` de huebeat sautait entre un tempo et son double. L'etat publie `spatial_pos`,
+  `spatial_ts`, `spatial_bpm`, que GET /spatial rend sous `beat_count` (decimal), `beat_ts`, `bpm`.
+  Mesure : 1 correction de plus d'un huitieme de temps sur 26 coups, contre une remise a zero a chaque coup.
+- **Moins de clignotement quand peu de temps sont pris** : l'horloge comble 8 temps (au lieu de 4), l'extinction
+  prend deux temps, et la lumiere revient en fondu d'une demi-seconde (`_presence` dans huebeat).
+- `temps_ecoules` et `position_dans_le_temps` restent dans `spatial_fx.py` mais huebeat ne s'en sert plus.
+- **Duree de vie d'une pulsation** (2026-10-14) : reglage commun `vie` (curseur 0-100 -> 1, 2, 4 ou 8 temps,
+  `tempsDeVie` / `temps_de_vie`). Avant, une pulsation tenait dans UN temps (environ 0,55 s a 108 par minute) :
+  meme « arrive » et « repart » au maximum ne donnaient que des flashs. `phaseDeVie` / `phase_de_vie` rendent le
+  numero de la pulsation et sa phase ; arrive et repart se partagent cette duree. En 2d, le groupe allume (alterne)
+  et la couleur changent a chaque pulsation, plus a chaque temps ; le stroboscope reste sur le temps. Un ancien
+  fichier sans `vie` vaut un temps (comportement d'avant).
+- **Aperçu et pause** (2026-10-14) : barre `.lu-transport` au-dessus de la pièce 3d. Hors direct, « aperçu de
+  l'animation » joue la scène depuis le début au tempo réglé ici (l'aperçu est à l'arrêt au départ ; lancer un set
+  ou un enregistrement le démarre). « pause » fige l'aperçu ; en direct elle fige AUSSI les lampes : POST
+  /spatial/pause {pause} écrit `pause` dans le fichier lu par huebeat (`sp.avec_pause`), qui garde la position de
+  l'horloge du moment (`_pause_beat`). L'horloge continue de suivre la musique : à la reprise, les lampes retombent
+  sur le temps. Une retouche pendant la pause reste figée (`sp.garder_pause`) ; un nouveau lancement (/direct) non.
+  GET /spatial rend `reel.pause`.
+- **Pièce 3d et lampes mieux reliées** : l'aperçu en direct calcule l'heure exactement comme huebeat. Deux écarts
+  corrigés : l'avance des lampes (`spatial_avance`, rendue `huebeat.avance`) n'était pas ajoutée, et sans tempo
+  l'écran repartait en roue libre à 120 alors que huebeat attend le coup suivant (`positionDansLeTemps` = `avancer`).
+  Restent non montrés dans l'aperçu : le fondu de retour de huebeat (`_presence`) et ses corrections entre deux
+  relevés de l'API (toutes les 1,5 s).
+- **Reglages propres a chaque effet** (2026-10-14) : une scene peut porter `reglages: {<effet>: {palette, couleurs,
+  intensite, source, axe, depart, respiration: {attaque, retombee, profondeur, plancher, vie}, tempo}}` ; ce qui manque
+  suit la scene (couleurs, intensite, point source) ou les reglages communs (respiration). `tempo` multiplie celui de
+  la musique pour cet effet (`TEMPOS` : 0,25 0,5 1 2). Valide par `sp.valider_scene` (`_valider_surcharge`), envoye a
+  huebeat en `couches` (`_couche_huebeat`, cm et 0..1). La respiration y reste PARTIELLE : huebeat la complete avec
+  les reglages communs du moment (`couche_de`), sinon changer un reglage commun en jouant laisserait l'effet sur
+  l'ancienne base. Calcul (`evaluer` TS et Python, memes tests) : la lumiere = somme des apports plafonnee x moyenne
+  des forces (intensite x respiration) ponderee par les apports ; sans reglage propre on retrouve EXACTEMENT
+  l'ancien calcul. Ecran : `components/lumiere/ReglagesEffet.tsx`, un panneau par effet actif dans « reglages de la
+  scene » (3d seulement : en 2d il n'y a pas d'effets). Point source propose pour onde, source mobile, raz, phare.
+
+## Preparation du push (2026-10-15)
+- Demo : la lumiere 3d a son propre fichier de donnees `src/mock/data/lumiere.ts`, qui RETIENT les
+  modifications du pad, des sets et des reglages communs (en memoire, jusqu'au rechargement). Le pad de
+  depart recopie `lib/spatial.scenes_de_depart` de l'API (memes identifiants), plus un exemple de reglages
+  propres a chaque effet sur « vague de fond ». Changer le pad de depart = les deux fichiers.
+- Tutoriel : page « les sections » (les quatre groupes du menu et les nouveaux ecrans), entre l'accueil et
+  le mode tele. Le texte de bureau doit tenir dans 900 px de haut : verifie a 1400x900 et 390x844.
+- README : tableau des ecrans et elements facultatifs ranges par groupe du menu.

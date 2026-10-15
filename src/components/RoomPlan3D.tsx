@@ -1,13 +1,12 @@
 import { useId, useRef } from 'react'
-import { segEnds, type Plan } from '../lib/plan'
+import { segEnds, segHeight, type Plan } from '../lib/plan'
 import { heightFromFloor } from '../lib/plan'
 import { backWalls, heightDelta, orbit, project, wallCorners, type P3, type View } from '../lib/plan3d'
 import type { Measured } from './RoomPlan'
-import { segId } from './RoomPlan'
+import { segId, segIndex } from './RoomPlan'
 
 const SIZE = 600            // unités du dessin (le SVG s'adapte à sa carte)
 const TV_W = 100, TV_H = 57 // téléviseur 45 pouces, en cm
-const STRIP_H = 180         // hauteur du ruban, comme dans HALO (il n'a pas de hauteur propre dans le plan)
 const TAP_PX = 5            // en dessous, un appui est un toucher (sélection), pas une rotation
 
 // Vue 3D de la pièce : sol quadrillé, murs du fond, TV, ruban LED et lampes sur
@@ -29,14 +28,15 @@ export function RoomPlan3D({ plan, colors, selected, measured, view, onView, onS
   const pts = (list: P3[]) => list.map(pr).map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
   const hw = dims.w / 2, hh = dims.h / 2
   const floor: P3[] = [{ x: -hw, y: -hh, z: 0 }, { x: hw, y: -hh, z: 0 }, { x: hw, y: hh, z: 0 }, { x: -hw, y: hh, z: 0 }]
-  const stripZ = Math.min(STRIP_H, Math.max(0, dims.d - 20))
 
   function onPointerDown(e: React.PointerEvent<SVGSVGElement>) {
     const pick = picked.current   // posé juste avant par l'objet touché (l'événement remonte jusqu'ici)
     picked.current = null
     if (!e.isPrimary || e.button !== 0) return
     const lamp = pick ? plan.configs[pick] : undefined
-    drag.current = { pointer: e.pointerId, x: e.clientX, y: e.clientY, moved: 0, pick, lift: lamp ? heightFromFloor(lamp.pos.z, dims) : null }
+    const seg = pick ? plan.strip?.segs?.[segIndex(pick)] : undefined
+    // une lampe ou un segment du ruban se règle en hauteur ; le fond fait tourner la vue
+    drag.current = { pointer: e.pointerId, x: e.clientX, y: e.clientY, moved: 0, pick, lift: lamp ? heightFromFloor(lamp.pos.z, dims) : seg ? segHeight(seg, dims) : null }
     try { e.currentTarget.setPointerCapture(e.pointerId) } catch { drag.current = null }
   }
   function onPointerMove(e: React.PointerEvent) {
@@ -103,11 +103,20 @@ export function RoomPlan3D({ plan, colors, selected, measured, view, onView, onS
   }
 
   ;(plan.strip?.segs ?? []).forEach((sg, i) => {
-    const [a, b] = segEnds(sg).map((e) => pr({ ...e, z: stripZ }))
+    const haut = segHeight(sg, dims)
+    const [a, b] = segEnds(sg).map((e) => pr({ ...e, z: haut }))
+    const pied = pr({ x: sg.pos.x, y: sg.pos.y, z: 0 }), milieu = pr({ x: sg.pos.x, y: sg.pos.y, z: haut })
     items.push({
       depth: (a.depth + b.depth) / 2,
       node: (
-        <g key={segId(i)} {...pickable(segId(i), `Segment ${i + 1} du ruban LED`)}>
+        <g key={segId(i)} {...pickable(segId(i), `Segment ${i + 1} du ruban LED, à ${Math.round(haut)} centimètres du sol. Flèches haut et bas pour régler la hauteur.`)}
+          className={`rp3-pick ${selected === segId(i) ? 'sel' : ''}`}
+          onKeyDown={(e) => {
+            const step = e.key === 'ArrowUp' ? 5 : e.key === 'ArrowDown' ? -5 : 0
+            if (step) { e.preventDefault(); onHeight(segId(i), Math.round(haut) + step * (e.shiftKey ? 4 : 1)) }
+            else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(segId(i)) }
+          }}>
+          {selected === segId(i) && <line className="rp3-stem" x1={pied.x} y1={pied.y} x2={milieu.x} y2={milieu.y} />}
           {/* trait épais invisible : cible tactile */}
           <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="transparent" strokeWidth={26} strokeLinecap="round" />
           <line className="rp-strip" x1={a.x} y1={a.y} x2={b.x} y2={b.y} strokeWidth={5} />

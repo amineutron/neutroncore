@@ -5,6 +5,7 @@ import { getSettings } from '../lib/settings'
 import { MascotChain } from '../components/Mascot'
 import { Reactor, type SubSystem } from '../components/Reactor'
 import { HomeSessions } from '../components/HomeSessions'
+import { HomeAtelier } from '../components/HomeAtelier'
 import { Bar, Card, Chip, Dot } from '../components/ui'
 
 // Tableau de bord "ecran du matin" : tout l'essentiel, dense mais lisible du lit.
@@ -46,13 +47,14 @@ export function TvDashboard() {
 
 
   // ---- personnalisation : sections activables et ordonnables ----
-  type SectionId = 'reactor' | 'alertes' | 'systeme' | 'mascottes' | 'sessions' | 'encours' | 'automatisations' | 'sorties' | 'films' | 'quota' | 'semaine' | 'demandes' | 'soustitres' | 'lumieres'
+  type SectionId = 'reactor' | 'alertes' | 'systeme' | 'mascottes' | 'sessions' | 'atelier' | 'encours' | 'automatisations' | 'sorties' | 'films' | 'quota' | 'semaine' | 'demandes' | 'soustitres' | 'lumieres'
   const ALL: { id: SectionId; label: string }[] = [
     { id: 'reactor', label: 'état du cœur' },
     { id: 'alertes', label: 'alertes' },
     { id: 'systeme', label: 'système' },
     { id: 'mascottes', label: 'mascottes' },
     { id: 'sessions', label: 'sessions claude code' },
+    { id: 'atelier', label: 'atelier 3d' },
     { id: 'encours', label: 'en cours' },
     { id: 'automatisations', label: 'automatisations' },
     { id: 'sorties', label: 'prochaines sorties' },
@@ -110,6 +112,8 @@ export function TvDashboard() {
   const sessionsFormat = (layout.sizes.sessions ?? 2) === 1 ? 'short' : (layout.sizes.sessions ?? 2) === 3 ? 'long' : 'medium'
   const SECTIONS: Record<SectionId, () => React.JSX.Element> = {
     sessions: () => <HomeSessions tv format={sessionsFormat} />,
+    // comme les sessions : s/m/l = glyphes seuls, détail, détail avec la dernière phrase
+    atelier: () => <HomeAtelier tv format={(layout.sizes.atelier ?? 2) === 1 ? 'short' : (layout.sizes.atelier ?? 2) === 3 ? 'long' : 'medium'} />,
     reactor: () => <Reactor systems={systems} alertCount={(alerts.data?.alerts ?? []).length} />,
     alertes: () => (
       <Card title="alertes">
@@ -314,7 +318,7 @@ export function TvDashboard() {
             onDragEnd={() => { dragFrom.current = null; setDragging(null) }}
             onDrop={(e) => { e.preventDefault(); dragFrom.current = null; setDragging(null) }}
             style={{
-              zoom: id === 'sessions' ? 1 : (layout.sizes[id] ?? 2) === 1 ? 0.82 : (layout.sizes[id] ?? 2) === 3 ? 1.28 : 1,
+              zoom: id === 'sessions' || id === 'atelier' ? 1 : (layout.sizes[id] ?? 2) === 1 ? 0.82 : (layout.sizes[id] ?? 2) === 3 ? 1.28 : 1,
               ...(editing ? {
                 outline: dragging === id ? '2px solid var(--rose)' : '2px dashed var(--gold)',
                 outlineOffset: 3, borderRadius: 12, cursor: 'grab', position: 'relative',

@@ -94,8 +94,16 @@ export const home: [string, string, MockHandler][] = [
     if (Number.isFinite(level)) denonVolume = Math.max(0, Math.min(98, Math.round(level)))
     return { success: true, demo: true, volume: denonVolume }
   }],
+  // caméra : éteinte en démonstration (pas de webcam), réglages et fonds préfaits visibles
+  ['GET', '/camera', () => ({
+    moteur: { actif: false, demarre: false }, fonds: [], limites: { taille_fond: 314572800, formats: ['.png', '.jpg', '.jpeg', '.webp', '.mp4', '.webm', '.mkv', '.mov'] },
+    reglages: { fond: { mode: 'flou', nom: '', flou: 55 }, detourage: { durete: 60, marge: 0, stabilite: 40 }, veille: false, modele: 'auto', virtuelle: true, cadence: 30 },
+    prefaits: [{ nom: 'aubergine', label: 'aubergine', couleurs: ['#0e0a10', '#3a1f3d'], angle: 135 }, { nom: 'or', label: 'or et braise', couleurs: ['#2a1a0c', '#f6c177'], angle: 160 },
+      { nom: 'nuit', label: 'nuit bleue', couleurs: ['#070b16', '#2b4a7a'], angle: 120 }],
+  })],
   ['GET', '/hue/lights', () => ({ lights: LIGHTS })],
   ['GET', '/plan', () => ({ ...demoPlan, rev: 'demo' })],
+  ['GET', '/plan/ruban-hue', () => ({ success: true, nom: 'gradient lightstrip', pixels: 13, segments: [1, 1, 3, 3, 3, 1, 1].map((n) => n / 13) })],
   ['PUT', '/plan', ({ body }) => {
     const b = body as { roomDims: typeof demoPlan.roomDims; configs: Record<string, { pos: { x: number; y: number; z: number } }>; strip?: { segs: { pos: { x: number; y: number }; angle: number }[] } }
     const segs = demoPlan.strip.segs.map((sg, i) => ({ ...sg, ...(b.strip?.segs[i] ?? {}) }))

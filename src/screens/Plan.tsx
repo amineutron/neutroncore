@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import { apiGet, apiPost, apiPut, withConfirm } from '../lib/api'
 import { confirmDialog, toast } from '../lib/dialog'
-import { heightFromFloor, isDirty, moveLight, moveSeg, resizeRoom, rotateSeg, setHeight, toPayload, type Plan as RoomPlanData, type RoomDims } from '../lib/plan'
+import { heightFromFloor, isDirty, moveLight, moveSeg, resizeRoom, rotateSeg, setHeight, toPayload, type Plan as RoomPlanData, type RoomDims, SEG_MIN_CM, addSeg, removeSeg, resampleStrip, segHeight, setSegHeight, setSegLength } from '../lib/plan'
 import { usePoll } from '../lib/poll'
 import { NumField } from '../components/NumField'
-import { RoomPlan, segIndex, type Measured } from '../components/RoomPlan'
+import { RoomPlan, segId, segIndex, type Measured } from '../components/RoomPlan'
+import { NavContext } from '../App'
 import { RoomPlan3D } from '../components/RoomPlan3D'
 import { DEFAULT_VIEW, TILT_MAX, TILT_MIN, type View } from '../lib/plan3d'
 import { setNavGuard } from '../lib/navGuard'
@@ -30,6 +31,30 @@ export function Plan() {
   const [view, setView] = useState<View>(DEFAULT_VIEW)
   // glisser un segment déplace tout le ruban (il garde sa forme) ou ce segment seul
   const [wholeStrip, setWholeStrip] = useState(true)
+  const navigate = useContext(NavContext)
+  // le vrai découpage du ruban, lu sur le pont Hue (parts de la longueur par segment)
+  const [ruban, setRuban] = useState<{ nom: string; segments: number[] } | null>(null)
+  useEffect(() => {
+    let dead = false
+    void apiGet<{ success: boolean; nom?: string; segments?: number[] }>('/plan/ruban-hue')
+      .then((r) => { if (!dead && r.success && r.segments) setRuban({ nom: r.nom ?? 'ruban', segments: r.segments }) }).catch(() => { /* pont injoignable : le bouton réessaiera */ })
+    return () => { dead = true }
+  }, [])
+  async function reprendreRuban() {
+    setBusy('ruban')
+    try {
+      let r = ruban
+      if (!r) {
+        const x = await apiGet<{ success: boolean; nom?: string; segments?: number[]; error?: string }>('/plan/ruban-hue')
+        if (!x.success || !x.segments) throw new Error(x.error ?? 'pont Hue injoignable')
+        r = { nom: x.nom ?? 'ruban', segments: x.segments }
+      }
+      const parts = r.segments
+      setRuban(r)
+      setDraft((d) => (d ? resampleStrip(d, parts) : d))
+      setSelected(null)
+    } catch (e) { setError((e as Error).message) } finally { setBusy('') }
+  }
   const lights = usePoll<{ lights: Record<string, Light> }>(() => apiGet('/hue/lights'), 15000)
   const screens = usePoll<Screens>(() => apiGet('/screens'), 20000)
   const measured = usePoll<Measured & { ok: boolean }>(() => apiGet('/screens/measured'), 3000, live)
@@ -99,6 +124,7 @@ export function Plan() {
       {draft && (
         <div className="grid pl-layout">
           <Card title={mode === '2d' ? 'vue de dessus' : 'vue 3d'} lite={dirty ? 'modifié — non enregistré' : `${Math.round(draft.roomDims.w)} × ${Math.round(draft.roomDims.h)} cm`}>
+            <button type="button" className="btn sm pl-banc" onClick={() => navigate('lumiere')} title="Effets de lumière dans l'espace de cette pièce, pad de scènes et sets">lumière 3d</button>
             <div className="pl-modes" role="group" aria-label="Type de vue">
               <button className={`btn sm ${mode === '2d' ? 'solid' : ''}`} aria-pressed={mode === '2d'} onClick={() => setMode('2d')}>dessus</button>
               <button className={`btn sm ${mode === '3d' ? 'solid' : ''}`} aria-pressed={mode === '3d'} onClick={() => setMode('3d')}>3d</button>
@@ -112,7 +138,7 @@ export function Plan() {
               : (
                 <>
                   <RoomPlan3D plan={draft} colors={colors} selected={selected} measured={liveColors} view={view} onView={setView} onSelect={setSelected}
-                    onHeight={(id, h) => { setSelected(id); setDraft((d) => (d ? setHeight(d, id, h) : d)) }} />
+                    onHeight={(id, h) => { setSelected(id); setDraft((d) => (d ? (segIndex(id) >= 0 ? setSegHeight(d, segIndex(id), h, wholeStrip) : setHeight(d, id, h)) : d)) }} />
                   <label className="pl-field pl-tilt">inclinaison
                     <input type="range" className="bri" min={TILT_MIN} max={TILT_MAX} value={Math.round(view.tilt)} aria-label="Inclinaison de la vue 3D"
                       onChange={(e) => setView((v) => ({ ...v, tilt: Number(e.target.value) }))} />
@@ -122,22 +148,47 @@ export function Plan() {
             <div className="pl-actions">
               <Btn solid disabled={!dirty || busy === 'save'} onClick={save}>{busy === 'save' ? 'enregistrement…' : 'enregistrer'}</Btn>
               <Btn disabled={!dirty} onClick={() => { setDraft(saved); setSelected(null) }}>annuler les changements</Btn>
-              <span className="pl-hint">{mode === '2d' ? 'glisse une lampe ou le ruban pour les déplacer · un carreau = 1 m' : 'glisse une lampe de haut en bas pour régler sa hauteur · glisse le fond pour tourner autour'}</span>
+              <span className="pl-hint">{mode === '2d' ? 'glisse une lampe ou le ruban pour les déplacer · un carreau = 1 m' : 'glisse une lampe ou le ruban de haut en bas pour régler leur hauteur · glisse le fond pour tourner autour'}</span>
             </div>
           </Card>
           <div className="pl-side">
             {seg && (
-              <Card title={`ruban led — segment ${segI + 1}`} lite={`${Math.round(seg.length)} cm`}>
+              <Card title={`ruban led — segment ${segI + 1} sur ${draft.strip?.segs?.length ?? 0}`} lite={`${Math.round(seg.length)} cm`}>
+                <label className="pl-field">hauteur depuis le sol
+                  <span className="num">{Math.round(segHeight(seg, draft.roomDims))} cm</span>
+                </label>
+                <input type="range" className="bri" min={0} max={Math.round(draft.roomDims.d)} step={5} value={Math.round(segHeight(seg, draft.roomDims))} aria-label={`Hauteur du segment ${segI + 1}`}
+                  onChange={(e) => setDraft((d) => (d ? setSegHeight(d, segI, Number(e.target.value), wholeStrip) : d))} />
                 <label className="pl-field">angle
                   <span className="num">{Math.round(seg.angle)}°</span>
                 </label>
                 <input type="range" className="bri" min={-180} max={180} step={1} value={Math.round(seg.angle)} aria-label={`Angle du segment ${segI + 1}`}
                   onChange={(e) => setDraft((d) => (d ? rotateSeg(d, segI, Number(e.target.value)) : d))} />
+                <label className="pl-field">longueur
+                  <span className="num">{Math.round(seg.length)} cm</span>
+                </label>
+                <input type="range" className="bri" min={SEG_MIN_CM} max={150} step={1} value={Math.min(150, Math.round(seg.length))} aria-label={`Longueur du segment ${segI + 1}`}
+                  onChange={(e) => setDraft((d) => (d ? setSegLength(d, segI, Number(e.target.value)) : d))} />
                 <label className="rt-check" style={{ marginTop: 10 }}>
                   <input type="checkbox" checked={wholeStrip} onChange={(e) => setWholeStrip(e.target.checked)} />
-                  déplacer tout le ruban d'un bloc
+                  déplacer et monter tout le ruban d'un bloc
                 </label>
-                <p className="pl-note">Décoche pour replacer ce segment seul. Sa longueur et le nombre de segments se règlent dans HALO.</p>
+                <p className="pl-note">Décoche pour régler ce segment seul. En vue 3d, glisse un segment de haut en bas pour régler sa hauteur.</p>
+                <div className="pl-actions" style={{ marginTop: 8 }}>
+                  <Btn sm onClick={() => { setDraft((d) => (d ? addSeg(d, segI) : d)); setSelected(segId(segI + 1)) }}>ajouter un segment après</Btn>
+                  <Btn sm disabled={(draft.strip?.segs?.length ?? 0) <= 1} onClick={() => { setDraft((d) => (d ? removeSeg(d, segI) : d)); setSelected(null) }}>retirer ce segment</Btn>
+                </div>
+              </Card>
+            )}
+            {draft.strip?.segs && (
+              <Card title="ruban led" lite={`${draft.strip.segs.length} segments · ${Math.round(draft.strip.segs.reduce((t, sg) => t + sg.length, 0))} cm`}>
+                <p className="pl-note" style={{ marginTop: 0 }}>
+                  {ruban ? `Le ruban « ${ruban.nom} » a ${ruban.segments.length} segments pilotables sur le pont Hue${ruban.segments.length === draft.strip.segs.length ? ' : le plan en a autant.' : `, le plan en montre ${draft.strip.segs.length}.`}`
+                    : 'Le pont Hue donne le vrai découpage du ruban.'}
+                </p>
+                <Btn sm disabled={busy === 'ruban'} onClick={() => void reprendreRuban()}>
+                  {busy === 'ruban' && <i className="tourne" aria-hidden />}reprendre le découpage du ruban hue</Btn>
+                <p className="pl-note">Le tracé actuel est gardé : seuls le nombre et la longueur des segments changent. Rien n'est écrit avant « enregistrer ».</p>
               </Card>
             )}
             {!seg && (

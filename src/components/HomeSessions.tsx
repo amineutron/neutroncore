@@ -3,7 +3,7 @@ import { apiGet } from '../lib/api'
 import { usePoll } from '../lib/poll'
 import { NavContext } from '../App'
 import type { LiveSession } from '../lib/sessions'
-import { displayName, fmtClock, glyphState, stateLabel } from '../lib/sessions'
+import { displayName, fmtClock, glyphState, horsAtelier, stateLabel } from '../lib/sessions'
 import { SessionGlyph } from './SessionGlyph'
 import { Eyebrow } from './ui'
 
@@ -22,7 +22,7 @@ export function visibleOnHome(s: LiveSession): boolean {
 export function HomeSessions({ format = 'medium', tv = false }: { format?: HomeFormat; tv?: boolean }) {
   const navigate = useContext(NavContext)
   const list = usePoll<{ sessions: LiveSession[] }>(() => apiGet('/launcher/sessions'), 5000)
-  const sessions = (list.data?.sessions ?? []).filter(visibleOnHome)
+  const sessions = horsAtelier(list.data?.sessions ?? []).filter(visibleOnHome)
   if (sessions.length === 0) return tv ? <div className="card home-sess"><Eyebrow>sessions claude code</Eyebrow><div className="home-sess-empty">aucune session ouverte</div></div> : null
 
   function open(s: LiveSession) {

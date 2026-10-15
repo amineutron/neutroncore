@@ -28,17 +28,20 @@ import { TvDashboard } from './screens/TvDashboard'
 import { Agenda } from './screens/Agenda'
 import { Plan } from './screens/Plan'
 import { Automations } from './screens/Automations'
+import { Atelier } from './screens/Atelier'
+import { Camera } from './screens/Camera'
+import { Lumiere } from './screens/Lumiere'
 import { LOG_TARGET } from './lib/nav'
 
-export type ScreenId = 'accueil' | 'agenda' | 'automatisations' | 'films' | 'demandes' | 'dl' | 'taches' | 'projets' | 'ambiance' | 'plan' | 'lanceur' | 'outils' | 'tests' | 'parametres'
+export type ScreenId = 'accueil' | 'agenda' | 'automatisations' | 'atelier' | 'camera' | 'lumiere' | 'films' | 'demandes' | 'dl' | 'taches' | 'projets' | 'ambiance' | 'plan' | 'lanceur' | 'outils' | 'tests' | 'parametres'
 
 // Permet aux écrans (tuiles de l'accueil...) de naviguer vers un autre onglet
 export const NavContext = createContext<(s: ScreenId) => void>(() => {})
 
 const NAV: { group: string; items: { id: ScreenId; label: string }[] }[] = [
-  { group: 'pilotage', items: [{ id: 'accueil', label: 'accueil' }, { id: 'agenda', label: 'agenda' }, { id: 'automatisations', label: 'automatisations' }, { id: 'taches', label: 'tâches' }, { id: 'projets', label: 'projets' }] },
+  { group: 'pilotage', items: [{ id: 'accueil', label: 'accueil' }, { id: 'agenda', label: 'agenda' }, { id: 'automatisations', label: 'automatisations' }, { id: 'taches', label: 'tâches' }, { id: 'projets', label: 'projets' }, { id: 'atelier', label: 'atelier 3d' }] },
   { group: 'média', items: [{ id: 'films', label: 'films & séries' }, { id: 'demandes', label: 'demandes' }, { id: 'dl', label: 'téléchargements' }] },
-  { group: 'maison', items: [{ id: 'ambiance', label: 'ambiance' }, { id: 'plan', label: 'plan de pièce' }, { id: 'lanceur', label: 'lanceur' }] },
+  { group: 'maison', items: [{ id: 'ambiance', label: 'ambiance' }, { id: 'camera', label: 'caméra' }, { id: 'lumiere', label: 'lumière 3d' }, { id: 'plan', label: 'plan de pièce' }, { id: 'lanceur', label: 'lanceur' }] },
   { group: 'système', items: [{ id: 'outils', label: 'outils & vms' }, { id: 'tests', label: 'tests' }, { id: 'parametres', label: 'paramètres' }] },
 ]
 
@@ -49,7 +52,12 @@ const ABSENCE_LONGUE = 4 * 3600 * 1000          // au-dela : sequence complete
 type Intro = { kind: 'boot' | 'welcome' | null; awayMs: number }
 
 /** Quelle intro jouer a cette ouverture ? Marque la visite au passage. */
+// Fenêtre ouverte sur la télé par l'API (« afficher neutroncore sur la télé ») : `?tele=1` force le mode télé
+// pour CETTE fenêtre seulement, sans toucher au réglage de l'app, et sans animation d'entrée.
+const FENETRE_TELE = (() => { try { return new URLSearchParams(window.location.search).get('tele') === '1' } catch { return false } })()
+
 function pickIntro(): Intro {
+  if (FENETRE_TELE) return { kind: null, awayMs: 0 }
   const s = getSettings()
   const last = Number(localStorage.getItem(LAST_VISIT) || 0)
   const awayMs = last ? Date.now() - last : 0
@@ -72,7 +80,7 @@ export const BUILD_ID =
     ?.src.match(/index-([\w-]+)\.js/)?.[1] ?? 'dev'
 
 const SCREENS: Record<ScreenId, () => React.JSX.Element> = {
-  accueil: Accueil, agenda: Agenda, automatisations: Automations, films: Media, demandes: Demandes, dl: Downloads, taches: Taches,
+  accueil: Accueil, agenda: Agenda, automatisations: Automations, atelier: Atelier, camera: Camera, lumiere: Lumiere, films: Media, demandes: Demandes, dl: Downloads, taches: Taches,
   projets: Projets, ambiance: Ambiance, plan: Plan, lanceur: Lanceur, outils: Outils, tests: Tests, parametres: Parametres,
 }
 
@@ -154,12 +162,12 @@ export default function App() {
   const [lyraOpen, setLyraOpen] = useState(false)
   const [lyraUnread, setLyraUnread] = useState(0)
   // badge « lanceur » : sessions claude code qui attendent une réponse / actives
-  const sessionsBadge = usePoll<{ sessions: { state?: string }[]; waiting: number }>(() => apiGet('/launcher/sessions'), 10000)
+  const sessionsBadge = usePoll<{ sessions: { state?: string; atelier?: string }[]; waiting: number }>(() => apiGet('/launcher/sessions'), 10000)
   const waitingCount = sessionsBadge.data?.waiting ?? 0
-  const activeCount = (sessionsBadge.data?.sessions ?? []).filter((s) => s.state !== 'parked').length
+  const activeCount = (sessionsBadge.data?.sessions ?? []).filter((s) => s.state !== 'parked' && !s.atelier).length
   const [clock, setClock] = useState('')
   const [updateReady, setUpdateReady] = useState(false)
-  const [tvMode, setTvMode] = useState(() => localStorage.getItem('neutroncore_tv') === '1')
+  const [tvMode, setTvMode] = useState(() => FENETRE_TELE || localStorage.getItem('neutroncore_tv') === '1')
   const [menuOpen, setMenuOpen] = useState(false)
   // intro (reglable) puis tour de premier lancement
   const [intro] = useState<Intro>(pickIntro)
@@ -206,7 +214,7 @@ export default function App() {
   useEffect(() => {
     if (tvMode) document.documentElement.dataset.tv = '1'
     else delete document.documentElement.dataset.tv
-    localStorage.setItem('neutroncore_tv', tvMode ? '1' : '0')
+    if (!FENETRE_TELE) localStorage.setItem('neutroncore_tv', tvMode ? '1' : '0')
   }, [tvMode])
 
   // auto-détection d'un nouveau build : compare le bundle référencé par
