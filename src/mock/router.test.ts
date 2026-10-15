@@ -36,14 +36,14 @@ describe('mockRequest', () => {
 
 // Chaque lecture faite par l'interface a une réponse de démo (liste relevée dans src/ le 2026-09-25).
 const GETS = [
-  '/agenda?start=2026-09-21&end=2026-10-05', '/agenda/rotation', '/arr/calendar', '/arr/incoming', '/arr/movies',
+  '/agenda?start=2026-09-21&end=2026-10-05', '/agenda/rotation', '/arr/calendar', '/automations', '/arr/incoming', '/arr/missing', '/arr/movies',
   '/arr/overview', '/arr/series', '/hue/beat/status', '/hue/lights', '/hue/positions', '/hue/scenes',
   '/hue/scenes/s-soir/preview', '/ironman/status', '/launcher', '/launcher/browse?path=/home/user/dev',
   '/launcher/claude-quota', '/launcher/claude-stats', '/launcher/sessions', '/launcher/sessions/notif-settings',
   '/launcher/sessions/recent', '/launcher/sessions/demo-1/messages?limit=80', '/lyra/catalog', '/lyra/settings',
-  '/lyra/status', '/projects', '/projects/stats', '/projects/updates', '/qbit/stats', '/qbit/torrents', '/requests',
+  '/lyra/status', '/notifications?limit=80', '/plan', '/projects', '/projects/stats', '/projects/updates', '/qbit/stats', '/qbit/torrents', '/requests',
   '/requests/declined-auto', '/requests/options', '/requests/search?q=metro', '/requests/seasons/1',
-  '/requests/watchlist', '/roadmap/projects', '/screens', '/services', '/services/vms', '/subtitles/status',
+  '/requests/watchlist', '/roadmap/projects', '/screens', '/screens/measured', '/services', '/services/vms', '/subtitles/status',
   '/system/alerts', '/system/backups', '/system/journal?unit=lyra-daemon&lines=40', '/system/resources',
   '/system/timers', '/system/updates', '/tests/catalog', '/tests/runs', '/tests/runs/run-2', '/tracking/sessions',
   '/tv/status', '/auth/token?action=tv_power',
@@ -81,5 +81,28 @@ describe('cohérence avec les types de l interface', () => {
     for (const unit of ['borg', 'rotation', 'timeshift']) {
       expect(r[unit].last_run).toMatch(/^[A-Z][a-z]{2} \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} /)
     }
+  })
+})
+
+describe('lumière 3d de démonstration', () => {
+  type Etat = { scenes: { id: string; nom: string; reglages?: unknown }[]; sets: { pas: { scene: string }[] }[] }
+  const lire = () => mockRequest(ROUTES, 'GET', '/spatial') as Etat
+  it('le pad de départ est celui de l’API, avec un exemple de réglages propres à chaque effet', () => {
+    const { scenes } = lire()
+    expect(scenes.map((s) => s.id)).toContain('depart11')
+    expect(scenes.find((s) => s.nom === 'vague de fond')?.reglages).toBeTruthy()
+  })
+  it('une scène gardée, renommée, rangée puis retirée est retenue', () => {
+    const { id } = mockRequest(ROUTES, 'PUT', '/spatial/scenes/new', { scene: { nom: 'essai', effets: ['onde'] } }) as { id: string }
+    mockRequest(ROUTES, 'PUT', `/spatial/scenes/${id}`, { scene: { nom: 'essai 2', effets: ['onde'] } })
+    expect(lire().scenes.find((s) => s.id === id)?.nom).toBe('essai 2')
+    mockRequest(ROUTES, 'PUT', '/spatial/scenes/ordre', { ordre: [id, ...lire().scenes.map((s) => s.id).filter((x) => x !== id)] })
+    expect(lire().scenes[0].id).toBe(id)
+    mockRequest(ROUTES, 'DELETE', `/spatial/scenes/${id}`)
+    expect(lire().scenes.some((s) => s.id === id)).toBe(false)
+  })
+  it('retirer une scène l’enlève aussi des sets', () => {
+    mockRequest(ROUTES, 'DELETE', '/spatial/scenes/depart05')
+    expect(lire().sets.flatMap((j) => j.pas).some((p) => p.scene === 'depart05')).toBe(false)
   })
 })

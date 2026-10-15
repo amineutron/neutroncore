@@ -13,9 +13,10 @@ export type Occurrence = {
   status: 'upcoming' | 'pending' | 'done' | 'failed' | 'missed' | 'past' | 'dismissed' | 'retrying' | 'repaired'
   run: { time: string; result: string; started?: string; duration_s?: number } | null
   can_retry: boolean; can_dismiss: boolean; can_restore: boolean
+  automation_id?: string   // passage d'une automatisation horaire
 }
 
-export const CATEGORY_LABEL: Record<string, string> = { sauvegardes: 'sauvegardes', systeme: 'système', perso: 'perso' }
+export const CATEGORY_LABEL: Record<string, string> = { sauvegardes: 'sauvegardes', systeme: 'système', perso: 'perso', automatisations: 'automatisations' }
 const RECURRENCE_LABEL = { none: 'une fois', daily: 'chaque jour', weekly: 'chaque semaine' }
 export const STATUS: Record<Occurrence['status'], { label: string; tone?: 'ok' | 'warn' | 'crit' | 'gold' }> = {
   upcoming: { label: 'à venir' },
@@ -117,7 +118,7 @@ export function EventDetail({ occ, onClose, onEdit, onDeleted, onLog, onChanged,
     <div className="pre-modal" onClick={onClose}>
       <div className="inner ag-modal" onClick={(e) => e.stopPropagation()}>
         <div className="head">
-          {occ.source === 'auto' ? 'événement automatique' : 'événement'}
+          {occ.automation_id ? 'automatisation' : occ.source === 'auto' ? 'événement automatique' : 'événement'}
           <span style={{ flex: 1 }} />
           <span className="x" onClick={onClose}>fermer</span>
         </div>
@@ -139,6 +140,7 @@ export function EventDetail({ occ, onClose, onEdit, onDeleted, onLog, onChanged,
             </Row>
           )}
           {occ.unit && !occ.run && occ.status === 'missed' && <Row k="passage">aucun passage trouvé dans le journal pour ce créneau</Row>}
+          {occ.automation_id && !occ.run && occ.status === 'missed' && <Row k="passage">non lancée à l'heure prévue (API arrêtée, ou une autre automatisation tournait)</Row>}
           {occ.status === 'retrying' && <Row k="relance">demandée, en attente du résultat</Row>}
           <FailureActions occ={occ} onChanged={onChanged} />
           {extra}

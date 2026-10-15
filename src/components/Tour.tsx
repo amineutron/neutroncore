@@ -3,7 +3,7 @@ import { getSettings, saveSettings } from '../lib/settings'
 import { Mascot, MASCOTS } from './Mascot'
 import type { MascotState } from '../lib/mascotBus'
 
-// Tours guidés : un tour d'accueil (4 pages) et un tour des paramètres,
+// Tours guidés : un tour d'accueil (5 pages) et un tour des paramètres,
 // proposé à la fin du premier. Chaque page a SA mascotte narratrice.
 // La zone éclairée est nette : le voile flouté est percé par un masque
 // radial centré sur la cible (le flou revient progressivement autour).
@@ -47,6 +47,22 @@ const MAIN: TourStep[] = [
       "Le réacteur compte les alertes en cours : calme, il n'y a rien à faire.",
       'En dessous, ce qui demande une action et les tuiles qui mènent aux pages.',
       'Le bouton ? en haut détaille tout ça écran par écran.',
+    ],
+  },
+  {
+    target: '.rail .nav', targetMobile: '.rail.open .nav', menu: true, mascot: 'comet',
+    title: 'les sections',
+    lines: [
+      'Les pages sont rangées en quatre groupes : pilotage, média, maison et système.',
+      'Dans pilotage, les automatisations et l’atelier 3d ; dans maison, la caméra, la lumière 3d '
+      + '(effets calés sur la musique) et le plan de pièce.',
+      'Ce qui n’est pas installé chez toi le dit sur sa page, sans gêner le reste.',
+    ],
+    linesMobile: [
+      'Le bouton en haut à gauche ouvre ce menu, rangé en quatre groupes.',
+      'pilotage : accueil, agenda, automatisations, tâches, projets, atelier 3d.',
+      'maison : ambiance, caméra, lumière 3d, plan de pièce, lanceur. Puis média et système.',
+      'Ce qui n’est pas installé chez toi le dit sur sa page.',
     ],
   },
   {

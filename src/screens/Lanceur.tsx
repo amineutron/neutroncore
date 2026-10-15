@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiGet, apiPost, apiPut, withConfirm } from '../lib/api'
+import { confirmDialog, toast } from '../lib/dialog'
 import { usePoll } from '../lib/poll'
 import { Bar, Btn, Card, PageTitle, Eyebrow, Chip } from '../components/ui'
 import { Sessions } from '../components/Sessions'
@@ -25,8 +26,10 @@ export function Lanceur() {
   async function claude(path: string) {
     setBusy(path)
     try {
-      await apiPost('/launcher/claude', { path }, await withConfirm('launcher_claude'))
-      addLaunch({ cwd: path, repo: path.split('/').filter(Boolean).pop() ?? path })
+      const r = await apiPost<{ cwd?: string; separe?: boolean; branche?: string; note?: string }>('/launcher/claude', { path }, await withConfirm('launcher_claude'))
+      addLaunch({ cwd: path, repo: path.split('/').filter(Boolean).pop() ?? path, expect: r.separe ? r.cwd : undefined })
+      if (r.separe) toast(`session sur sa propre branche : ${r.branche}`)
+      else if (r.note) toast(r.note, 'warn')
     } finally { setBusy('') }
   }
   async function folder(path: string) {
@@ -47,7 +50,7 @@ export function Lanceur() {
     state.refresh()
   }
   async function removeFavorite(path: string) {
-    if (!window.confirm('Retirer ce favori ?')) return
+    if (!await confirmDialog({ title: 'retirer ce favori ?', body: path, ok: 'retirer', danger: true })) return
     const current = (state.data?.favorites ?? []).filter((f) => f.path !== path).map((f) => ({ name: f.name, path: f.path }))
     await apiPut('/launcher/favorites', current)
     state.refresh()

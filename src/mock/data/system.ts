@@ -3,7 +3,9 @@ import type { MockHandler } from '../router'
 import { dayAt, isoAgo, localStamp, systemdAgo, unixAgo, unixIn } from './time'
 
 const GB = 1024 ** 3
-const svc = (name: string, display: string, status = 'up', type = 'http') => ({ name, display_name: display, status, type, url: null, extra: {} })
+const CONTROLLABLE = ['lyra', 'n8n', 'tracking', 'plex', 'radarr', 'sonarr', 'bazarr']
+const svc = (name: string, display: string, status = 'up', type = 'http') =>
+  ({ name, display_name: display, status, type, url: null, extra: {}, controllable: CONTROLLABLE.includes(name) })
 
 function agendaOccurrences() {
   const occ = []
@@ -36,6 +38,16 @@ const RUNS = [
     output: 'FAILED tests/test_demo.py::test_exemple - AssertionError (données de démo)' },
 ]
 
+const notif = (id: string, minutes: number, source: string, level: string, title: string, detail: string, action: string, read = false, count = 1) =>
+  ({ id, at: Date.now() / 1000 - minutes * 60, source, level, title, detail, action, ref: source === 'session' ? 'demo-1' : '', key: id, count, read })
+let demoNotifs = [
+  notif('n1', 4, 'session', 'warn', 'neutroncore · attend ta réponse', 'Claude demande une permission (données de démo).', 'lanceur'),
+  notif('n2', 22, 'system', 'warn', 'Ollama arrêté', 'Le service LLM local ne répond pas.', 'outils'),
+  notif('n3', 95, 'session', 'info', 'lyra · réponse prête', '', 'lanceur', true, 3),
+  notif('n4', 26 * 60, 'system', 'ok', 'résolu : /data presque plein — 91 %', '', 'films', true),
+  notif('n5', 27 * 60, 'system', 'crit', '/data presque plein — 93 %', '212 Go libres.', 'films', true),
+]
+
 export const system: [string, string, MockHandler][] = [
   ['GET', '/services', () => ({ services: [
     svc('lyra', 'Lyra', 'up', 'process'), svc('tracking', 'MCP Tracking'), svc('plex', 'Plex'), svc('radarr', 'Radarr'),
@@ -53,8 +65,11 @@ export const system: [string, string, MockHandler][] = [
       { path: '/backups', total: 1863 * GB, free: 944 * GB, used_pct: 49.3 }],
   })],
   ['GET', '/system/alerts', () => ({ alerts: [
-    { level: 'warn', title: 'Ollama arrêté', detail: 'Le service LLM local ne répond pas (données de démo).', action: 'outils' },
+    { kind: 'unit', key: 'unit:ollama.service', level: 'warn', title: 'Ollama arrêté', detail: 'Le service LLM local ne répond pas (données de démo).', action: 'outils' },
   ] })],
+  ['GET', '/notifications', () => ({ unread: demoNotifs.filter((n) => !n.read).length, total: demoNotifs.length, entries: demoNotifs })],
+  ['POST', '/notifications/read', () => { demoNotifs = demoNotifs.map((n) => ({ ...n, read: true })); return { success: true, unread: 0 } }],
+  ['DELETE', '/notifications', () => { demoNotifs = []; return { success: true } }],
   ['GET', '/system/backups', () => ({
     borg: { state: 'ok', last_run: systemdAgo(3 * 1440), result: 'success', exit_status: '0' },
     rotation: { state: 'ok', last_run: systemdAgo(9 * 1440), result: 'success', exit_status: '0', age_days: 9 },

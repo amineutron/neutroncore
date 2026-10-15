@@ -1,5 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useContext } from 'react'
 import { apiGet, apiPost, withConfirm } from '../lib/api'
+import { confirmDialog } from '../lib/dialog'
+import { Remote } from '../components/Remote'
+import { NavContext } from '../App'
 import { ColorPalette } from '../components/ColorPalette'
 import { DenonVolume } from '../components/DenonVolume'
 import { IronmanScene } from '../components/IronmanScene'
@@ -11,7 +14,7 @@ const AMBILIGHT_MODES: Record<string, string> = {
   video: 'FOLLOW_VIDEO', audio: 'FOLLOW_AUDIO', lounge: 'LOUNGE_LIGHT', off: 'OFF',
 }
 
-type TvStatus = { power: string; volume: number; muted: boolean; ambilight_mode: string; denon_volume: number | null; denon_muted: boolean; denon_reachable: boolean; denon_power?: string }
+type TvStatus = { power: string; volume: number; muted: boolean; ambilight_mode: string; denon_volume: number | null; denon_muted: boolean; denon_reachable: boolean; denon_power?: string; denon_source?: string }
 type Monitor = { name: string; width: number; height: number; x: number; dpms: boolean }
 type Screens = { monitors: Monitor[]; tv_ok: boolean; ambilight: { on: boolean; style: string }; ambihue: boolean | null }
 type Light = { name: string; on: boolean; bri: number; reachable: boolean; color?: string }
@@ -41,6 +44,7 @@ function RoomPreview({ positions, lightstates, size = 52 }: {
 }
 
 export function Ambiance() {
+  const navigate = useContext(NavContext)
   const tv = usePoll<TvStatus>(() => apiGet('/tv/status'), 15000)
   const lights = usePoll<{ lights: Record<string, Light> }>(() => apiGet('/hue/lights'), 15000)
   // liste figée : relue toutes les 5 min, toutes les 20 s tant qu'elle est périmée
@@ -116,7 +120,7 @@ export function Ambiance() {
   }
 
   async function openHalo() {
-    if (!window.confirm('Lancer l’application HALO sur le PC ?')) return
+    if (!await confirmDialog({ title: 'lancer HALO ?', body: 'L’application s’ouvre sur le PC.', ok: 'lancer' })) return
     await run('halo', async () => apiPost('/launcher/halo', undefined, await withConfirm('launcher_halo')))
   }
 
@@ -306,6 +310,15 @@ export function Ambiance() {
           </p>
         </Card>
       </div>
+
+      <div style={{ marginTop: 14 }}>
+        <Remote source={t?.denon_source} tvOn={t?.power === 'On'} onChange={tv.refresh} />
+      </div>
+
+      <Card title="routines et automatisations" style={{ marginTop: 14 }}>
+        <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 10px' }}>Plusieurs actions d'un seul geste, ou la maison qui réagit toute seule (heure, alerte, tv…).</p>
+        <Btn onClick={() => navigate('automatisations')}>ouvrir les automatisations</Btn>
+      </Card>
 
       <Card title="gestion avancée — halo" style={{ marginTop: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>

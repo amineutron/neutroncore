@@ -1,74 +1,68 @@
 import type { ReactNode } from 'react'
+import { inline, markerLabel, parse, type Block } from '../lib/markdown'
 
-// Rendu léger (sans dépendance) des réponses de Claude : blocs de code
-// ``` séparés du texte (avec langue et copie), titres, listes, code inline,
-// gras. Le but est de distinguer d'un coup d'œil commandes et explications.
+// Rendu des réponses de Claude, sans dépendance. L'analyse est dans lib/markdown.ts (testée) ;
+// ici on ne fait que poser les blocs : code et schémas en chasse fixe défilant de côté,
+// tableaux dans un cadre défilant, listes avec leurs numéros d'origine.
 
-type Block = { kind: 'code'; lang: string; body: string } | { kind: 'text'; body: string }
-
-export function splitBlocks(src: string): Block[] {
-  const out: Block[] = []
-  const re = /```([\w+-]*)[^\n]*\n([\s\S]*?)(?:```|$)/g
-  let last = 0
-  for (const m of src.matchAll(re)) {
-    const idx = m.index ?? 0
-    if (idx > last) out.push({ kind: 'text', body: src.slice(last, idx) })
-    out.push({ kind: 'code', lang: m[1] || '', body: m[2].replace(/\n$/, '') })
-    last = idx + m[0].length
-  }
-  if (last < src.length) out.push({ kind: 'text', body: src.slice(last) })
-  return out.filter((b) => b.body.trim())
-}
-
-function inline(text: string, key: string): ReactNode[] {
-  // `code` et **gras**
-  const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g)
-  return parts.map((p, i) => {
-    if (p.startsWith('`') && p.endsWith('`')) return <code key={`${key}-${i}`} className="md-code">{p.slice(1, -1)}</code>
-    if (p.startsWith('**') && p.endsWith('**')) return <b key={`${key}-${i}`}>{p.slice(2, -2)}</b>
-    return p
+function Inline({ text }: { text: string }): ReactNode {
+  return inline(text).map((s, i) => {
+    if (s.kind === 'code') return <code key={i} className="md-code">{s.text}</code>
+    if (s.kind === 'bold') return <b key={i}>{s.text}</b>
+    if (s.kind === 'italic') return <i key={i}>{s.text}</i>
+    if (s.kind === 'strike') return <s key={i}>{s.text}</s>
+    if (s.kind === 'link') return <a key={i} className="md-link" href={s.href} target="_blank" rel="noreferrer noopener">{s.text}</a>
+    return s.text
   })
 }
 
-function TextBlock({ body }: { body: string }) {
-  const lines = body.replace(/^\n+|\n+$/g, '').split('\n')
-  const nodes: ReactNode[] = []
-  let list: string[] = []
-  const flush = () => {
-    if (list.length) {
-      nodes.push(<ul key={`ul-${nodes.length}`} className="md-list">{list.map((l, i) => <li key={i}>{inline(l, `li${i}`)}</li>)}</ul>)
-      list = []
-    }
-  }
-  lines.forEach((raw, i) => {
-    const line = raw.replace(/\s+$/, '')
-    const h = line.match(/^(#{1,4})\s+(.*)$/)
-    const li = line.match(/^\s*(?:[-*]|\d+[.)])\s+(.*)$/)
-    if (h) { flush(); nodes.push(<div key={i} className="md-h">{inline(h[2], `h${i}`)}</div>) }
-    else if (li) list.push(li[1])
-    else if (!line.trim()) { flush(); nodes.push(<div key={i} className="md-gap" />) }
-    else { flush(); nodes.push(<div key={i}>{inline(line, `p${i}`)}</div>) }
-  })
-  flush()
-  return <div className="md-text">{nodes}</div>
+/** Texte sur plusieurs lignes : chaque retour à la ligne est gardé. */
+function Lines({ text }: { text: string }) {
+  return text.split('\n').map((l, i) => <span key={i}>{i > 0 && <br />}<Inline text={l} /></span>)
 }
 
 function copy(text: string) {
-  try { navigator.clipboard?.writeText(text) } catch { /* presse-papiers indisponible */ }
+  try { void navigator.clipboard?.writeText(text) } catch { /* presse-papiers indisponible */ }
+}
+
+function Pre({ label, body }: { label: string; body: string }) {
+  return (
+    <div className="md-pre">
+      <div className="md-pre-bar"><span>{label}</span><button type="button" onClick={() => copy(body)}>copier</button></div>
+      <pre>{body}</pre>
+    </div>
+  )
+}
+
+function BlockView({ b }: { b: Block }) {
+  switch (b.kind) {
+    case 'code': return <Pre label={b.lang || 'commande'} body={b.body} />
+    case 'ascii': return <Pre label="schéma" body={b.body} />
+    case 'heading': return <div className={`md-h md-h${Math.min(b.level, 3)}`} role="heading" aria-level={Math.min(b.level + 2, 6)}><Inline text={b.text} /></div>
+    case 'rule': return <hr className="md-rule" />
+    case 'quote': return <blockquote className="md-quote"><Lines text={b.text} /></blockquote>
+    case 'para': return <p className="md-p"><Lines text={b.text} /></p>
+    case 'list': return (
+      <div className="md-list" role="list">
+        {b.items.map((it, i) => (
+          <div key={i} role="listitem" className={`md-li ${it.checked === true ? 'done' : ''}`} style={{ paddingLeft: it.depth * 16 }}>
+            <span className="md-marker" aria-hidden={it.checked !== undefined}>{it.checked === undefined ? markerLabel(it.marker) : it.checked ? '☑' : '☐'}</span>
+            <span className="md-li-text">{it.checked !== undefined && <span className="sr">{it.checked ? 'fait : ' : 'à faire : '}</span>}<Lines text={it.text} /></span>
+          </div>
+        ))}
+      </div>
+    )
+    case 'table': return (
+      <div className="md-table-wrap" tabIndex={0} role="region" aria-label="tableau, défile horizontalement">
+        <table className="md-table">
+          <thead><tr>{b.head.map((h, i) => <th key={i} style={{ textAlign: b.align[i] }}><Inline text={h} /></th>)}</tr></thead>
+          <tbody>{b.rows.map((r, ri) => <tr key={ri}>{r.map((c, ci) => <td key={ci} style={{ textAlign: b.align[ci] }}><Inline text={c} /></td>)}</tr>)}</tbody>
+        </table>
+      </div>
+    )
+  }
 }
 
 export function Markdown({ text }: { text: string }) {
-  return (
-    <>
-      {splitBlocks(text).map((b, i) => b.kind === 'code' ? (
-        <div key={i} className="md-pre">
-          <div className="md-pre-bar">
-            <span>{b.lang || 'commande'}</span>
-            <button type="button" onClick={() => copy(b.body)}>copier</button>
-          </div>
-          <pre>{b.body}</pre>
-        </div>
-      ) : <TextBlock key={i} body={b.body} />)}
-    </>
-  )
+  return <div className="md-text">{parse(text).map((b, i) => <BlockView key={i} b={b} />)}</div>
 }

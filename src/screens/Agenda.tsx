@@ -8,6 +8,7 @@ import { CATEGORY_LABEL, EventDetail, EventForm, isProblem, type EventDraft, typ
 import { ListView, MonthView, WeekView, iso, rangeFor, shiftAnchor, type View } from '../components/AgendaViews'
 import { DayDrawer } from '../components/AgendaDay'
 import { RotationCard } from '../components/RotationCard'
+import { AUTOMATION_TARGET } from './Automations'
 
 type AgendaResp = { now: string; categories: string[]; occurrences: Occurrence[] }
 type StatusFilter = 'tous' | 'à venir' | 'problèmes'
@@ -36,6 +37,10 @@ function newDraft(day: string): EventDraft {
 
 export function Agenda() {
   const navigate = useContext(NavContext)
+  function openAutomation(id: string) {
+    try { sessionStorage.setItem(AUTOMATION_TARGET, id) } catch { /* stockage indisponible */ }
+    navigate('automatisations')
+  }
   const [view, setViewState] = useState<View>(initialView)
   const [anchor, setAnchor] = useState(() => iso(new Date()))
   const [dir, setDir] = useState<'next' | 'prev' | 'none'>('none')   // sens du glissement à la navigation
@@ -129,7 +134,8 @@ export function Agenda() {
       {current && (
         <EventDetail occ={current} onClose={() => setSelected(null)} onEdit={() => edit(current)} onDeleted={reload} onLog={openLog}
           onChanged={agenda.refresh}
-          extra={current.event_id === 'auto-disque-tournant' ? <RotationCard compact onFinished={agenda.refresh} /> : undefined} />
+          extra={current.event_id === 'auto-disque-tournant' ? <RotationCard compact onFinished={agenda.refresh} />
+            : current.automation_id ? <Btn sm onClick={() => openAutomation(current.automation_id!)}>ouvrir l'automatisation</Btn> : undefined} />
       )}
       {draft && <EventForm initial={draft} onClose={() => setDraft(null)} onSaved={reload} />}
     </>

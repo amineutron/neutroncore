@@ -1,15 +1,17 @@
 import { useContext, useState } from 'react'
 import { apiGet, apiPost, apiDelete, withConfirm } from '../lib/api'
+import { confirmDialog, toast } from '../lib/dialog'
 import { usePoll, fmtBytes } from '../lib/poll'
 import { setPrefill } from '../lib/prefill'
 import { NavContext } from '../App'
+import { Missing } from '../components/Missing'
 import { Bar, Btn, Card, Chip, Dot, Eyebrow, PageTitle } from '../components/ui'
 
 type Movie = { id: number; title: string; year: number; has_file: boolean; quality: string; size: number; poster: string; monitored: boolean }
 type Series = { id: number; title: string; year: number; episode_file_count: number; episode_count: number; size: number; poster: string; status: string }
 type Overview = { movie_count: number; series_count: number; missing_movies: number; recent_movies: Movie[]; disks: { path: string; free: number; total: number }[] }
 type CalEvent = { title: string; date: string; detail: string }
-type Tab = 'recents' | 'films' | 'series'
+type Tab = 'recents' | 'films' | 'series' | 'manquants'
 
 const MEDIA_HOST = import.meta.env.VITE_MEDIA_HOST ?? 'media-server.lan'
 const PLEX_WEB = `http://${MEDIA_HOST}:32400/web/index.html`
@@ -38,7 +40,7 @@ export function Media() {
   const match = (title: string) => !filter || norm(title).includes(norm(filter))
 
   async function remove(m: Movie) {
-    if (!window.confirm(`Supprimer « ${m.title} » et son fichier (${fmtBytes(m.size)}) ?`)) return
+    if (!await confirmDialog({ title: 'supprimer le film ?', body: `« ${m.title} » et son fichier (${fmtBytes(m.size)}) seront supprimés.`, ok: 'supprimer', danger: true })) return
     setBusy(m.id)
     try {
       await apiDelete(`/arr/movie/${m.id}`, await withConfirm('arr_delete'))
@@ -48,7 +50,7 @@ export function Media() {
   async function playOnTv(title: string) {
     await apiPost('/tv/app', { app: 'plex' })
     setPlaying(null)
-    window.alert(`Plex lancé sur la TV — cherche « ${title} » avec la télécommande ou Lyra.`)
+    toast(`Plex lancé sur la TV — cherche « ${title} » avec la télécommande ou Lyra.`)
   }
   function playOnPc(title: string) {
     window.open(`${PLEX_WEB}#!/search?query=${encodeURIComponent(title)}`, '_blank')
@@ -71,18 +73,20 @@ export function Media() {
     <>
       <PageTitle help="films" title="films & séries" desc={`${d?.movie_count ?? '…'} films · ${d?.series_count ?? '…'} séries`} />
       <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-        {(['recents', 'films', 'series'] as Tab[]).map((t) => (
+        {(['recents', 'films', 'series', 'manquants'] as Tab[]).map((t) => (
           <button key={t} className={`btn sm ${tab === t ? 'solid' : ''}`} onClick={() => setTab(t)}>
-            {t === 'recents' ? 'récents' : t === 'films' ? `films (${movies.data?.movies.length ?? '…'})` : `séries (${series.data?.series.length ?? '…'})`}
+            {t === 'recents' ? 'récents' : t === 'manquants' ? 'manquants' : t === 'films' ? `films (${movies.data?.movies.length ?? '…'})` : `séries (${series.data?.series.length ?? '…'})`}
           </button>
         ))}
-        {tab !== 'recents' && (
+        {(tab === 'films' || tab === 'series') && (
           <div className="lyra-input" style={{ margin: 0, flex: 1, minWidth: 180, padding: '5px 12px' }}>
             <input placeholder="filtrer…" value={filter} aria-label="Filtre" onChange={(e) => setFilter(e.target.value)} />
           </div>
         )}
-        {d && d.missing_movies > 0 && <Chip tone="warn">{d.missing_movies} manquants</Chip>}
-        <Btn sm solid onClick={() => requestNew(tab !== 'recents' ? filter : '')}>+ demander un film / une série</Btn>
+        {d && d.missing_movies > 0 && tab !== 'manquants' && (
+          <span style={{ cursor: 'pointer' }} onClick={() => setTab('manquants')}><Chip tone="warn">{d.missing_movies} manquants</Chip></span>
+        )}
+        <Btn sm solid onClick={() => requestNew(tab === 'films' || tab === 'series' ? filter : '')}>+ demander un film / une série</Btn>
       </div>
 
       {playing && (
@@ -144,6 +148,8 @@ export function Media() {
           </div>
         </>
       )}
+
+      {tab === 'manquants' && <Missing />}
 
       {tab === 'films' && (
         <>

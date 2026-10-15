@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { LOG_TARGET } from '../lib/nav'
+import { LINKS } from '../lib/links'
 import { apiGet } from '../lib/api'
 import { usePoll, fmtBytes } from '../lib/poll'
 import { useVms } from '../lib/vms'
 import { VmRow } from '../components/VmRow'
+import { Services, type Service } from '../components/Services'
 import { Bar, Card, Chip, PageTitle } from '../components/ui'
 
 type Resources = {
@@ -12,7 +14,6 @@ type Resources = {
   gpu: { vram_used: number; vram_total: number; utilization: number; temperature: number } | null
   disks: { path: string; used_pct: number; free: number }[]
 }
-type Service = { name: string; display_name: string; status: string; type: string; extra: Record<string, string> }
 type BackupUnit = { state: 'ok' | 'failed' | 'running' | 'never' | 'missing'; last_run: string | null; result: string | null }
 type Backups = { borg: BackupUnit; rotation: BackupUnit & { age_days: number | null }; timeshift: BackupUnit }
 
@@ -26,21 +27,6 @@ const backupLabel = (u: BackupUnit | undefined, age?: number | null): string => 
   if (age != null) return age === 0 ? "aujourd'hui" : `il y a ${age} j`
   return u.last_run ? u.last_run.split(' ').slice(1, 3).join(' ') : 'ok'
 }
-
-const MEDIA_HOST = import.meta.env.VITE_MEDIA_HOST ?? 'media-server.lan'
-
-const LINKS = [
-  { name: 'plex', url: `http://${MEDIA_HOST}:32400/web` },
-  { name: 'overseerr', url: `http://${MEDIA_HOST}:5055` },
-  { name: 'radarr', url: `http://${MEDIA_HOST}:7878` },
-  { name: 'sonarr', url: `http://${MEDIA_HOST}:8989` },
-  { name: 'bazarr', url: `http://${MEDIA_HOST}:6767` },
-  { name: 'qbittorrent', url: `http://${MEDIA_HOST}:8080` },
-  { name: 'prowlarr', url: `http://${MEDIA_HOST}:9696` },
-  { name: 'kavita', url: `http://${MEDIA_HOST}:5000` },
-  { name: 'vaultwarden', url: 'http://127.0.0.1:8222' },
-  { name: 'worldmonitor', url: 'https://worldmonitor.app' },
-]
 
 const LOG_UNITS = [
   { unit: 'all', label: 'tous les logs' },
@@ -96,19 +82,7 @@ export function Outils() {
     <>
       <PageTitle help="outils" title="outils & vms" desc="Machines virtuelles, backups, ressources et accès directs." />
 
-      <Card title="services" lite="les indisponibles en premier" style={{ marginBottom: 14 }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {[...(services.data?.services ?? [])]
-            .sort((a, b) => (a.status === 'up' ? 1 : 0) - (b.status === 'up' ? 1 : 0))
-            .map((s) => (
-              <span key={s.name} className="svc" style={s.status !== 'up' ? { borderColor: 'color-mix(in srgb, var(--crit) 45%, var(--line))' } : undefined}>
-                <span className={`dot ${s.status === 'up' ? 'ok' : s.status === 'starting' ? 'warn' : s.status === 'down' ? 'crit' : 'off'}`} />
-                {s.display_name}
-                {s.status !== 'up' && <span style={{ color: 'var(--crit)', fontFamily: 'var(--mono)', fontSize: 9.5 }}>{s.status === 'down' ? 'down' : s.status}</span>}
-              </span>
-            ))}
-        </div>
-      </Card>
+      <Services services={services.data?.services ?? []} onChange={services.refresh} />
 
       <div className="grid g3" style={{ marginBottom: 14 }}>
         <Card title="ressources">

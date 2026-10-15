@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { apiGet, apiPost, withConfirm } from '../lib/api'
+import { ask } from '../lib/dialog'
 import { usePoll, fmtAgo } from '../lib/poll'
 import { Btn, Card, Chip, PageTitle } from '../components/ui'
 import { Projects } from '../components/Projects'
+import { Branches } from '../components/Branches'
 
 type Project = { name: string; path: string; branch: string; dirty: number; has_remote: boolean; ahead: number; behind: number; last_commit: number | null }
 type Updates = { status: string; checked_at?: number; images: { image: string; state: string }[]; updates?: number }
@@ -25,7 +27,7 @@ export function Projets() {
     setSysBusy('dl')
     try {
       const r = await apiPost<{ downloaded: number; dir?: string }>('/system/updates/download?safe_only=true')
-      window.alert(`${r.downloaded} RPM téléchargés dans ${r.dir ?? '~/.neutroncore/updates'} — installation à faire en terminal (sudo dnf install ...).`)
+      await ask({ title: `${r.downloaded} RPM téléchargés`, body: `Dossier : ${r.dir ?? '~/.neutroncore/updates'}\nInstallation à faire en terminal (sudo dnf install ...).`, single: true })
     } finally { setSysBusy('') }
   }
 
@@ -51,6 +53,8 @@ export function Projets() {
         <Btn sm onClick={gitFetch} disabled={fetching}>{fetching ? 'fetch…' : 'git fetch (tous)'}</Btn>
         <Btn sm onClick={checkUpdates} disabled={checking}>{checking ? 'vérification…' : 'vérifier les images docker'}</Btn>
       </div>
+
+      <Branches />
 
       <Card title="dépôts" lite="~/dev" style={{ marginBottom: 14 }}>
         <div className="scroll-x">

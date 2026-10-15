@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { apiDelete, apiGet, apiPost, withConfirm } from '../lib/api'
+import { ask, toast } from '../lib/dialog'
 import { usePoll } from '../lib/poll'
 import { Loader, Bar, Btn, Card, Chip, PageTitle } from '../components/ui'
 
@@ -35,8 +36,8 @@ export function Downloads() {
   )
 
   async function removeTorrent(t: Torrent) {
-    if (!window.confirm(`Supprimer le torrent « ${t.name} » ?`)) return
-    const withData = window.confirm('Supprimer AUSSI les fichiers téléchargés ?\nOK = torrent + fichiers · Annuler = torrent seul')
+    const { ok, checked: withData } = await ask({ title: 'supprimer le torrent ?', body: t.name, ok: 'supprimer', danger: true, check: 'supprimer aussi les fichiers téléchargés' })
+    if (!ok) return
     setBusy(t.hash)
     try {
       await apiPost(`/qbit/torrents/${t.hash}/delete`, { delete_files: withData }, await withConfirm('qbit_delete'))
@@ -45,15 +46,15 @@ export function Downloads() {
   }
 
   async function removeDownload(s: Session) {
-    if (!window.confirm(`Retirer « ${s.name} » du pipeline ?\n(le torrent lié sera supprimé de qBittorrent)`)) return
-    const withData = window.confirm('Supprimer AUSSI les fichiers déjà téléchargés ?\nOK = tout supprimer · Annuler = garder les fichiers')
+    const { ok, checked: withData } = await ask({ title: 'retirer du pipeline ?', body: `${s.name}\nLe torrent lié sera supprimé de qBittorrent.`, ok: 'retirer', danger: true, check: 'supprimer aussi les fichiers déjà téléchargés' })
+    if (!ok) return
     setBusy(s.id)
     try {
       await apiDelete(`/tracking/downloads/${s.id}?delete_files=${withData}`, await withConfirm('qbit_delete'))
       sessions.refresh()
       torrents.refresh()
     } catch (e) {
-      window.alert(`Échec : ${(e as Error).message}`)
+      toast(`Échec : ${(e as Error).message}`, 'crit')
     } finally { setBusy('') }
   }
   const mediaSessions = (sessions.data ?? []).filter((s) => ['movie', 'series_episode', 'series_season'].includes(s.template) && s.status === 'running')

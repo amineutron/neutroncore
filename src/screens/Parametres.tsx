@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { apiGet, apiPut, setApiKey } from '../lib/api'
+import { confirmDialog, toast } from '../lib/dialog'
 import { getSettings, saveSettings, THEMES, type Settings } from '../lib/settings'
 import { Mascot, MASCOTS } from '../components/Mascot'
 import { Bar, Btn, Card, Chip, PageTitle, Eyebrow } from '../components/ui'
@@ -77,7 +78,7 @@ function AudioSection() {
         stopRef.current = null
       }
     } catch {
-      window.alert('Micro inaccessible — vérifie les permissions du navigateur.')
+      toast('Micro inaccessible — vérifie les permissions du navigateur.', 'crit')
     }
   }
 
@@ -93,7 +94,7 @@ function AudioSection() {
     audio.srcObject = dest.stream
     const anyAudio = audio as HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> }
     if (s.audioOutput && anyAudio.setSinkId) {
-      try { await anyAudio.setSinkId(s.audioOutput) } catch { window.alert('Sortie configurée introuvable — son joué sur la sortie par défaut.') }
+      try { await anyAudio.setSinkId(s.audioOutput) } catch { toast('Sortie configurée introuvable — son joué sur la sortie par défaut.', 'warn') }
     }
     osc.start()
     audio.play()
@@ -269,8 +270,10 @@ export function Parametres() {
             value={s.ecoPoll} onChange={(v) => set({ ecoPoll: v })} />
           <Toggle label="sessions claude code sur l'accueil" desc="Glyphes des sessions ouvertes — une mascotte y réagit en direct (travaille, attend, veille, fermeture)"
             value={s.homeSessions} onChange={(v) => set({ homeSessions: v })} />
+          <Toggle label="atelier 3d sur l'accueil" desc="Les boucles en cours : projet, itération, étape et état — rien ne s'affiche quand aucune ne tourne"
+            value={s.homeAtelier} onChange={(v) => set({ homeAtelier: v })} />
           <div className="light" style={{ cursor: 'pointer' }}
-            onClick={() => { if (window.confirm('Oublier la clé API sur cet appareil ?')) { setApiKey(''); location.reload() } }}>
+            onClick={async () => { if (await confirmDialog({ title: 'oublier la clé API ?', body: 'Elle sera redemandée à la prochaine ouverture sur cet appareil.', ok: 'oublier', danger: true })) { setApiKey(''); location.reload() } }}>
             <span className="bulb" style={{ background: 'var(--crit)' }} />
             <span className="nm">déconnecter cet appareil<br /><span style={{ fontSize: 11, color: 'var(--muted)' }}>Efface la clé API du navigateur</span></span>
           </div>

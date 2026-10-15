@@ -20,6 +20,7 @@ export type Settings = {
   bootAnim: boolean       // sequence complete (1re ouverture / longue absence)
   welcomeAnim: boolean    // salut court quand on revient peu apres
   sessionBrowserNotif: boolean // notif navigateur quand une session claude attend (capsule bureau sinon)
+  homeAtelier: boolean    // boucles de l'atelier 3d en cours sur l'accueil
   homeSessions: boolean   // glyphes des sessions claude code sur l'accueil (mascottes animees selon l'etat)
 }
 
@@ -45,6 +46,7 @@ const DEFAULTS: Settings = {
   bootAnim: true, welcomeAnim: true,
   sessionBrowserNotif: true,
   homeSessions: true,
+  homeAtelier: true,
 }
 
 export function getSettings(): Settings {
