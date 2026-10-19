@@ -7,6 +7,7 @@ import { Reactor, type SubSystem } from '../components/Reactor'
 import { HomeSessions } from '../components/HomeSessions'
 import { HomeAtelier } from '../components/HomeAtelier'
 import { Bar, Card, Chip, Dot } from '../components/ui'
+import { TvAgenda, TvBackups, TvBranches, TvCamera, TvDebit, TvLumiere3d, TvMaj, TvManquants, TvRoadmap, TvTele, TvTests } from '../components/TvSources'
 
 // Tableau de bord "ecran du matin" : tout l'essentiel, dense mais lisible du lit.
 type Alert = { level: 'warn' | 'crit'; title: string; detail: string }
@@ -47,7 +48,7 @@ export function TvDashboard() {
 
 
   // ---- personnalisation : sections activables et ordonnables ----
-  type SectionId = 'reactor' | 'alertes' | 'systeme' | 'mascottes' | 'sessions' | 'atelier' | 'encours' | 'automatisations' | 'sorties' | 'films' | 'quota' | 'semaine' | 'demandes' | 'soustitres' | 'lumieres'
+  type SectionId = 'reactor' | 'alertes' | 'systeme' | 'mascottes' | 'sessions' | 'atelier' | 'encours' | 'automatisations' | 'sorties' | 'films' | 'quota' | 'semaine' | 'demandes' | 'soustitres' | 'lumieres' | 'agenda' | 'sauvegardes' | 'branches' | 'tests' | 'lumiere3d' | 'camera' | 'maj' | 'tele' | 'debit' | 'roadmap' | 'manquants'
   const ALL: { id: SectionId; label: string }[] = [
     { id: 'reactor', label: 'état du cœur' },
     { id: 'alertes', label: 'alertes' },
@@ -64,6 +65,17 @@ export function TvDashboard() {
     { id: 'demandes', label: 'demandes en attente' },
     { id: 'soustitres', label: 'sous-titres ia' },
     { id: 'lumieres', label: 'lumières' },
+    { id: 'agenda', label: 'agenda du jour' },
+    { id: 'sauvegardes', label: 'sauvegardes' },
+    { id: 'branches', label: 'branches & pr' },
+    { id: 'tests', label: 'tests' },
+    { id: 'lumiere3d', label: 'lumière 3d' },
+    { id: 'camera', label: 'caméra' },
+    { id: 'maj', label: 'mises à jour' },
+    { id: 'tele', label: 'télé & ampli' },
+    { id: 'debit', label: 'téléchargements' },
+    { id: 'roadmap', label: 'roadmap' },
+    { id: 'manquants', label: 'manquants' },
   ]
   const DEFAULT_LAYOUT = { order: ALL.map((a) => a.id), enabled: Object.fromEntries(ALL.map((a) => [a.id, true])) as Record<SectionId, boolean>, sizes: Object.fromEntries(ALL.map((a) => [a.id, 2])) as Record<SectionId, number> }
   const [layout, setLayout] = useState<typeof DEFAULT_LAYOUT>(() => {
@@ -97,11 +109,19 @@ export function TvDashboard() {
   }
   const [dragging, setDragging] = useState<SectionId | null>(null)
   // réarrangement EN DIRECT au survol (façon sortable) : fluide et prévisible
-  function dragOver(target: SectionId) {
+  // Insertion dans le sens du déplacement (après la cible en descendant, avant en
+  // montant) et seulement une fois le milieu de la cible franchi : sans ce seuil,
+  // le reflux des colonnes remet la cible sous la souris et l'ordre oscille.
+  function dragOver(target: SectionId, e: React.DragEvent<HTMLElement>) {
     const from = dragFrom.current
     if (!from || from === target) return
+    const fromIdx = layout.order.indexOf(from)
+    const targetIdx = layout.order.indexOf(target)
+    const r = e.currentTarget.getBoundingClientRect()
+    const pastMiddle = e.clientY - r.top > r.height / 2
+    if (fromIdx < targetIdx ? !pastMiddle : pastMiddle) return
     const order = layout.order.filter((x) => x !== from)
-    order.splice(order.indexOf(target), 0, from)
+    order.splice(order.indexOf(target) + (fromIdx < targetIdx ? 1 : 0), 0, from)
     if (order.join() !== layout.order.join()) save({ ...layout, order })
   }
   function setSize(id: SectionId, size: number) {
@@ -247,6 +267,17 @@ export function TvDashboard() {
         </div>
       </Card>
     ),
+    agenda: () => <TvAgenda size={(layout.sizes.agenda ?? 2)} />,
+    sauvegardes: () => <TvBackups />,
+    branches: () => <TvBranches size={(layout.sizes.branches ?? 2)} />,
+    tests: () => <TvTests size={(layout.sizes.tests ?? 2)} />,
+    lumiere3d: () => <TvLumiere3d />,
+    camera: () => <TvCamera />,
+    maj: () => <TvMaj size={(layout.sizes.maj ?? 2)} />,
+    tele: () => <TvTele />,
+    debit: () => <TvDebit />,
+    roadmap: () => <TvRoadmap size={(layout.sizes.roadmap ?? 2)} />,
+    manquants: () => <TvManquants size={(layout.sizes.manquants ?? 2)} />,
     lumieres: () => {
       const list = Object.values(lights.data?.lights ?? {})
       const on = list.filter((l) => l.on)
@@ -313,8 +344,8 @@ export function TvDashboard() {
             key={id}
             draggable={editing}
             onDragStart={(e) => { dragFrom.current = id; setDragging(id); e.dataTransfer.effectAllowed = 'move' }}
-            onDragEnter={() => editing && dragOver(id)}
-            onDragOver={(e) => editing && e.preventDefault()}
+            onDragEnter={(e) => editing && e.preventDefault()}
+            onDragOver={(e) => { if (!editing) return; e.preventDefault(); dragOver(id, e) }}
             onDragEnd={() => { dragFrom.current = null; setDragging(null) }}
             onDrop={(e) => { e.preventDefault(); dragFrom.current = null; setDragging(null) }}
             style={{
