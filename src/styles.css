@@ -24,7 +24,7 @@ body{font-family:var(--sans);font-size:14px;line-height:1.5;color:var(--text);ba
 ::selection{background:var(--gold);color:var(--ink)}
 
 /* ---------- shell ---------- */
-.app{display:grid;grid-template-columns:222px 1fr;min-height:100vh;max-width:1640px;margin:0 auto}
+.app{display:grid;grid-template-columns:222px 1fr;min-height:100vh}
 .app.lyra-open{grid-template-columns:222px 296px 1fr}
 
 /* ---------- panneau lyra ---------- */
@@ -88,7 +88,7 @@ body{font-family:var(--sans);font-size:14px;line-height:1.5;color:var(--text);ba
 .clock{font-family:var(--mono);font-weight:300;font-size:12px;color:var(--muted)}
 .clock b{font-weight:600;color:var(--text)}
 
-.content{padding:26px 28px 80px;display:none;animation:fade .25s ease}
+.content{padding:26px 28px 80px;display:none;animation:fade .25s ease;max-width:1640px;width:100%;margin:0 auto}
 .content.on{display:block}
 @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
