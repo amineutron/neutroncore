@@ -2,7 +2,7 @@
 
 export type SessionState = '' | 'parked' | 'closing'
 export type SessionMeta = {
-  alias?: string; comment?: string; color?: string; pinned?: boolean; icon?: string; icon_bg?: string; synced_name?: string
+  alias?: string; comment?: string; color?: string; pinned?: boolean; icon?: string; icon_bg?: string; synced_name?: string; objectif?: string; auto_objectif?: string
   state?: SessionState; closing_steps?: string[]; closing_at?: number
   home_hidden?: boolean   // masquee de l'accueil et du mode tele
 }

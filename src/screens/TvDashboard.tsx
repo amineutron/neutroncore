@@ -41,7 +41,6 @@ export function TvDashboard() {
     { label: 'lyra', state: (services.data?.services ?? []).find((x) => x.name === 'tracking')?.status === 'up' ? 'ok' : 'warn' },
     { label: 'disque', state: media && media.used_pct >= 92 ? 'crit' : media && media.used_pct >= 85 ? 'warn' : 'ok' },
     { label: 'timers', state: (timers.data?.failed_units ?? []).length > 0 ? 'warn' : 'ok' },
-    { label: 'n8n', state: (services.data?.services ?? []).find((x) => x.name === 'n8n')?.status === 'up' ? 'ok' : 'crit' },
   ]
   const autoTimers = (timers.data?.timers ?? []).filter((t) => !t.unit.startsWith('systemd-') && !t.unit.startsWith('dnf') && t.next).slice(0, 6)
 

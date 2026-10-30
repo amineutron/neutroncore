@@ -18,7 +18,7 @@ export function TriggerEditor({ api, catalogue, lists }: { api: DraftApi; catalo
       </div>
       {api.trigger.type === 'manual' && <p className="au-note">Une routine : elle se lance d'un bouton, depuis cette page ou la palette (Ctrl+K).</p>}
       {api.trigger.type === 'time' && <p className="au-note">Elle apparaîtra dans l'agenda, avec le résultat de chaque passage.</p>}
-      {api.trigger.type === 'event' && <p className="au-note">À envoyer par un script ou n8n : POST /automations/event/{String(api.trigger.params.name || 'nom')} avec la clé de l'API. Un champ « title » rejoint la variable {'{titre}'}.</p>}
+      {api.trigger.type === 'event' && <p className="au-note">À envoyer par un script : POST /automations/event/{String(api.trigger.params.name || 'nom')} avec la clé de l'API. Un champ « title » rejoint la variable {'{titre}'}.</p>}
       {api.trigger.type === 'resource' && <p className="au-note">Déclenche une fois quand la mesure reste au-dessus du seuil, puis se réarme quand elle repasse dessous.</p>}
     </>
   )

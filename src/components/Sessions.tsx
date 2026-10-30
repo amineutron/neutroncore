@@ -239,6 +239,11 @@ export function Sessions({ onCounts }: { onCounts?: (byRepo: Record<string, numb
             <Btn sm solid onClick={() => { setOpen(s.sessionId); setMaxi(!(isOpen && maxi)) }}>{isOpen && maxi ? 'réduire' : 'plein écran'}</Btn>
           </div>
         </div>
+        {s.meta.objectif && (
+          <div className="cs-objectif" onClick={() => select(s.sessionId)} title={s.meta.objectif}>
+            <em>objectif</em> {s.meta.objectif}
+          </div>
+        )}
         {!isOpen && (
           <div className="cs-preview" onClick={() => select(s.sessionId)}>
             {s.last_user && <div><em>toi</em> {s.last_user}</div>}

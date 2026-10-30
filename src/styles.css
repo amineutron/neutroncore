@@ -625,6 +625,11 @@ input[type=range].bri::-webkit-slider-thumb{-webkit-appearance:none;appearance:n
 .cs:hover{border-color:var(--line2);border-left-color:var(--sc)}
 .cs.open{box-shadow:0 8px 30px #00000055;border-color:color-mix(in srgb,var(--sc) 45%,var(--line))}
 .cs-comment{font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;color:var(--sc);background:color-mix(in srgb,var(--sc) 12%,transparent);border-bottom:1px solid color-mix(in srgb,var(--sc) 25%,transparent);padding:4px 14px;border-radius:var(--r) var(--r) 0 0}
+.cs-objectif{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:0 14px 8px;font-size:12px;line-height:1.45;color:var(--faint);cursor:pointer}
+.cs-objectif em{font-style:normal;font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--sc);margin-right:6px}
+.cs.open .cs-objectif{-webkit-line-clamp:unset;display:block}
+.cs-field textarea{background:var(--surface2);border:1px solid var(--line2);border-radius:8px;color:var(--text);font:inherit;font-size:12.5px;padding:7px 10px;resize:vertical}
+.cs-field textarea:focus{outline:none;border-color:var(--sc)}
 .cs-head{display:flex;align-items:center;gap:12px;padding:11px 14px;cursor:pointer;flex-wrap:wrap}
 .cs-hint{font-size:11.5px;color:var(--faint);margin:6px 0 0}
 .cs .glyph,.cs-recent-row .glyph{position:relative;width:36px;height:36px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:600;font-size:12px;border:1px solid color-mix(in srgb,var(--sc) 40%,var(--line2));color:var(--sc);background:color-mix(in srgb,var(--sc) 14%,transparent)}
