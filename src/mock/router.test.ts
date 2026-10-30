@@ -44,7 +44,7 @@ const GETS = [
   '/lyra/status', '/notifications?limit=80', '/plan', '/projects', '/projects/stats', '/projects/updates', '/qbit/stats', '/qbit/torrents', '/requests',
   '/requests/declined-auto', '/requests/options', '/requests/search?q=metro', '/requests/seasons/1',
   '/requests/watchlist', '/roadmap/projects', '/screens', '/screens/measured', '/services', '/services/vms', '/subtitles/status',
-  '/system/alerts', '/system/backups', '/system/journal?unit=lyra-daemon&lines=40', '/system/resources',
+  '/system/alerts', '/system/backups', '/system/journal?unit=lyra-daemon&lines=40', '/system/resources', '/system/disque', '/system/disque/analyse?chemin=/data', '/automations/sources',
   '/system/timers', '/system/updates', '/tests/catalog', '/tests/runs', '/tests/runs/run-2', '/tracking/sessions',
   '/tv/status', '/auth/token?action=tv_power',
 ]

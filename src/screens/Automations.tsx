@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AutomationEditor } from '../components/AutomationEditor'
-import type { Lists } from '../components/BlockParams'
+import type { Lists, Option } from '../components/BlockParams'
 import { FlowCanvas } from '../components/FlowCanvas'
 import { RunHistory } from '../components/RunDetail'
 import { Btn, Card, Chip, Eyebrow, Loader, PageTitle } from '../components/ui'
@@ -25,6 +25,8 @@ export function Automations() {
   const list = usePoll<Listing>(() => apiGet('/automations'), 15000)
   const scenes = usePoll<{ scenes: Scene[] }>(() => apiGet('/hue/scenes'), 300000)
   const lights = usePoll<{ lights: Record<string, { name: string }> }>(() => apiGet('/hue/lights'), 300000)
+  // conteneurs, vms et appareils bluetooth : lus sur la machine (la liste des vms prend quelques secondes)
+  const sources = usePoll<{ containers: Option[]; vms: Option[]; bluetooth: Option[] }>(() => apiGet('/automations/sources'), 300000)
   const [busy, setBusy] = useState('')
   const [editing, setEditing] = useState<Automation | 'routine' | 'automation' | null>(null)
   const [saving, setSaving] = useState(false)
@@ -38,10 +40,11 @@ export function Automations() {
     scenes: (scenes.data?.scenes ?? []).filter((s) => s.group === HUE_ROOM).map(({ id, name }) => ({ id, name })),
     lights: Object.entries(lights.data?.lights ?? {}).map(([id, l]) => ({ id, name: l.name })),
     routines: all.filter(isRoutine).map(({ id, name }) => ({ id, name })),
+    containers: sources.data?.containers ?? [], vms: sources.data?.vms ?? [], bluetooth: sources.data?.bluetooth ?? [],
   }
   const names: Names = Object.fromEntries([
     ...lists.scenes.map((s) => [s.id, s.name]), ...lists.lights.map((l) => [`light:${l.id}`, l.name]),
-    ...lists.routines.map((r) => [`routine:${r.id}`, r.name]),
+    ...lists.routines.map((r) => [`routine:${r.id}`, r.name]), ...(lists.bluetooth ?? []).map((b) => [`bt:${b.id}`, b.name]),
   ])
 
   // arrivée depuis l'agenda : on déplie l'automatisation visée

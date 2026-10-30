@@ -1,6 +1,7 @@
 import { useContext, useEffect, useState } from 'react'
 import { apiGet } from '../lib/api'
 import { usePoll } from '../lib/poll'
+import { rappelVide } from '../lib/rappels'
 import { LOG_TARGET } from '../lib/nav'
 import { NavContext } from '../App'
 import { Btn, Chip, PageTitle } from '../components/ui'
@@ -8,6 +9,7 @@ import { CATEGORY_LABEL, EventDetail, EventForm, isProblem, type EventDraft, typ
 import { ListView, MonthView, WeekView, iso, rangeFor, shiftAnchor, type View } from '../components/AgendaViews'
 import { DayDrawer } from '../components/AgendaDay'
 import { RotationCard } from '../components/RotationCard'
+import { RappelEnCours } from '../components/RappelEnCours'
 import { AUTOMATION_TARGET } from './Automations'
 
 type AgendaResp = { now: string; categories: string[]; occurrences: Occurrence[] }
@@ -32,7 +34,7 @@ function matchStatus(o: Occurrence, f: StatusFilter): boolean {
 
 function newDraft(day: string): EventDraft {
   const hour = String(Math.min(new Date().getHours() + 1, 23)).padStart(2, '0')
-  return { title: '', category: 'perso', start: `${day}T${hour}:00`, duration_min: 60, recurrence: 'none', description: '', notify: false }
+  return { title: '', category: 'perso', start: `${day}T${hour}:00`, duration_min: 60, recurrence: 'none', description: '', notify: false, rappel: rappelVide() }
 }
 
 export function Agenda() {
@@ -75,13 +77,14 @@ export function Agenda() {
   const openLog = (unit: string) => { sessionStorage.setItem(LOG_TARGET, unit); setSelected(null); navigate('outils') }
   const edit = (o: Occurrence) => {
     setSelected(null)
-    setDraft({ id: o.event_id, title: o.title, category: o.category, start: o.event_start, duration_min: o.duration_min, recurrence: o.recurrence, description: o.description, notify: o.notify })
+    setDraft({ id: o.event_id, title: o.title, category: o.category, start: o.event_start, duration_min: o.duration_min, recurrence: o.recurrence, description: o.description, notify: o.notify, rappel: o.rappel ?? rappelVide() })
   }
   const viewProps = { days, today, occs, onSelect: setSelected }
 
   return (
     <>
       <PageTitle help="agenda" title="agenda" desc="Sauvegardes planifiées, rappels et événements perso, avec l'état réel de chaque passage." />
+      <RappelEnCours enabled grand />
 
       <div className="ag-bar">
         <Btn sm onClick={() => shift(-1)}>{'<'}</Btn>

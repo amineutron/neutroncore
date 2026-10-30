@@ -5,6 +5,7 @@ import { LyraPanel } from './components/LyraPanel'
 import { Dialogs } from './components/Dialogs'
 import { Palette } from './components/Palette'
 import { NotifBell, NotifCenter } from './components/NotifCenter'
+import { RappelEnCours } from './components/RappelEnCours'
 import { CommandsContext, useCommands, type Shell } from './lib/commands'
 import { getFavs } from './lib/palette'
 import { canLeave } from './lib/navGuard'
@@ -32,6 +33,9 @@ import { Atelier } from './screens/Atelier'
 import { Camera } from './screens/Camera'
 import { Lumiere } from './screens/Lumiere'
 import { LOG_TARGET } from './lib/nav'
+import { DiskPanel } from './components/DiskPanel'
+import { ouvrirDisque } from './lib/disque'
+import { inspecterCi } from './lib/ci'
 
 export type ScreenId = 'accueil' | 'agenda' | 'automatisations' | 'atelier' | 'camera' | 'lumiere' | 'films' | 'demandes' | 'dl' | 'taches' | 'projets' | 'ambiance' | 'plan' | 'lanceur' | 'outils' | 'tests' | 'parametres'
 
@@ -208,6 +212,8 @@ export default function App() {
     // la session à déplier n'a de sens que si le clic mène au lanceur
     if (n.ref && n.action === 'lanceur') { try { sessionStorage.setItem('deepLinkTarget', n.ref) } catch { /* stockage indisponible */ } }
     setNotifOpen(false)
+    if (n.action === 'disque') { ouvrirDisque(n.ref); return }
+    if (n.action === 'ci') { void inspecterCi(n); return }
     if (SCREEN_LIST.some((x) => x.id === n.action)) nav(n.action as ScreenId)
   }
 
@@ -407,6 +413,8 @@ export default function App() {
     </div>
       {notifOpen && <NotifCenter data={notifs.data} onClose={() => setNotifOpen(false)} onOpenEntry={openEntry} onChanged={notifs.refresh} />}
       {paletteOpen && <Palette commands={cmds.commands} loading={cmds.loading} onRun={cmds.run} onClose={() => setPaletteOpen(false)} />}
+      {screen !== 'accueil' && screen !== 'agenda' && <RappelEnCours enabled={ready} />}
+      <DiskPanel />
       <Dialogs />
     </CommandsContext.Provider>
     </NavContext.Provider>

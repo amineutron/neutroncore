@@ -1,4 +1,5 @@
 import { useContext } from 'react'
+import { RappelEnCours } from '../components/RappelEnCours'
 import { apiGet } from '../lib/api'
 import { usePoll } from '../lib/poll'
 import { NavContext, type ScreenId } from '../App'
@@ -10,9 +11,10 @@ import { HomeAtelier } from '../components/HomeAtelier'
 import { HomeShortcuts } from '../components/HomeShortcuts'
 import { Reactor, type SubSystem } from '../components/Reactor'
 import { Btn, Dot, PageTitle, Eyebrow, serviceTone } from '../components/ui'
+import { ouvrirDisque } from '../lib/disque'
 
 // kind : famille de l'alerte (disk, unit, backup, rotation, memory, agenda) — posé par l'API
-type Alert = { level: 'warn' | 'crit'; title: string; detail: string; action?: ScreenId; kind?: string; key?: string }
+type Alert = { level: 'warn' | 'crit'; title: string; detail: string; action?: ScreenId | 'disque'; kind?: string; key?: string; ref?: string }
 type Service = { name: string; display_name: string; status: string }
 
 export function Accueil() {
@@ -51,6 +53,7 @@ export function Accueil() {
   return (
     <>
       <PageTitle help="accueil" title="accueil" desc="Le briefing du homelab — tout l'écosystème en un regard." />
+      <RappelEnCours enabled grand />
       <div className="hero">
         <Reactor systems={systems} alertCount={alertList.length} />
         <div>
@@ -64,7 +67,7 @@ export function Accueil() {
             )}
             {alertList.map((a) => (
               <div key={a.key ?? a.title} className={`alert ${a.level === 'crit' ? 'crit' : ''}`}
-                onClick={a.action ? () => navigate(a.action as ScreenId) : undefined}
+                onClick={a.action === 'disque' ? () => ouvrirDisque(a.ref) : a.action ? () => navigate(a.action as ScreenId) : undefined}
                 style={a.action ? { cursor: 'pointer' } : undefined}>
                 <Dot s={a.level} />
                 <div className="t"><b>{a.title}</b><span>{a.detail}</span></div>

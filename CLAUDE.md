@@ -1102,3 +1102,62 @@ Non commite.
 - Tutoriel : page « les sections » (les quatre groupes du menu et les nouveaux ecrans), entre l'accueil et
   le mode tele. Le texte de bureau doit tenir dans 900 px de haut : verifie a 1400x900 et 390x844.
 - README : tableau des ecrans et elements facultatifs ranges par groupe du menu.
+
+## Rappels de l'agenda : le reveil (2026-10-17)
+Non commite.
+- Un evenement manuel porte `rappel` : `{minutes_avant, moyens: [app, telephone, tele, sonnerie], sonnerie,
+  sortie, duree_min, progressif}` (`null` = aucun). Formulaire `components/RappelForm.tsx`, logique pure
+  `lib/rappels.ts` (testee). La case « a traiter » (`notify`) reste a part.
+- API : `lib/rappels.py` (pur, teste) + `routers/rappels.py`. Le planificateur ne sonde rien en boucle : il
+  dort jusqu'au prochain rappel ou a sa verification une heure avant, relit l'horloge au plus tous les quarts
+  d'heure, et est reveille par toute creation, modification ou suppression d'evenement. Un rappel est note
+  « donne » AVANT d'etre execute (jamais deux fois) ; rate de moins de 10 min (API arretee) il est donne
+  quand meme, au-dela il est signale « manque ». Etat dans `$NEUTRONCORE_STATE/rappels.json`.
+- Tele : allumage, 8 s d'attente, entree du PC (`TV_PC_SOURCE`, defaut hdmi1), ecran du PC reveille.
+  Sonnerie : `pw-play --target` sur la sortie choisie, en boucle jusqu'a « arreter » ou `duree_min`, volume
+  qui monte sur la premiere minute. Sortie `tele` = la sortie son dont le port HDMI actif porte l'appareil
+  `TV_MONITOR_MATCH` (lu par `pactl -f json`, avec `LC_ALL=C` sinon le JSON est casse).
+- Banque de sonneries (`components/SonnerieBank.tsx`) : 22 fabriquees par l'API (`lib/sonneries.py`,
+  partiels additionnes : marimba, cloche, boite a musique, harpe, orgue... et melodies originales), rangees
+  en douces / melodies / classiques / energiques, plus les sons freedesktop presents et « mes sons »
+  (import wav, ogg, flac, mp3 de 10 Mo au plus dans `$NEUTRONCORE_STATE/sonneries/`, retrait par jeton
+  `sonnerie_supprimer`). WAV ecrits une fois dans `$NEUTRONCORE_STATE/sonneries_generees/<id>-v<VERSION>.wav` :
+  changer un son = monter `sonneries.VERSION`. La demo recopie la banque (`src/mock/data/system.ts`).
+  Chaque son s'ecoute sur cet appareil (fichier charge avec la cle) ou sur une sortie du PC.
+- PIEGE son muet (2026-10-17) : `pw-play` joue par defaut en role « Music », dont WirePlumber restaure le
+  volume memorise (ici 0,3 % : sonnerie inaudible). Toujours `--media-role Alarm -P '{ state.restore-props = false }'`.
+  `volume_sortie` (5-100 %) regle la sortie son du PC pendant la sonnerie (et la sort de la sourdine),
+  remis ensuite ; POST /agenda/rappels/sortie-volume regle une sortie tout de suite (curseur de la banque).
+- Arreter : grand bouton « arreter le reveil » en tete de l'accueil et de l'agenda, bandeau sur les autres
+  ecrans (`components/RappelEnCours.tsx`, releve 10 s).
+- Volume du reveil (`volume`, 0 a `DENON_MAX`) : le son de la tele sort par l'ampli en ARC, c'est donc le
+  volume de l'ampli qui est regle, seulement si la sonnerie sort par la tele ; l'ampli s'allume avec la tele
+  (CEC), on l'attend 20 s. Le volume d'avant est remis a l'arret, arrondi a l'entier (l'outil
+  `denon.volume_set` ne prend pas les demi-pas : 31,5 revient a 32).
+- Le souvenir de « remettre la tele comme avant » expire au bout de 6 h (`tv_display.MEMOIRE_MAX_S`).
+
+## Automatisations : blocs du 2026-10-19 (tirés de l'usage réel)
+Non commite. Cote API : `lib/automations_sondes.py` (pur, teste), `routers/automations_sondes.py`
+(sondes + actions + GET /automations/sources + POST /automations/ci/inspecter), `routers/disque.py`.
+- **Inactivite** : declencheurs `idle` (une fois par absence, a N min) et `back` (premier mouvement apres
+  N min), condition `idle`. L'API lance SON hypridle seulement si une automatisation s'en sert ; il pose
+  `$XDG_RUNTIME_DIR/neutroncore-inactivite/inactif` apres 60 s sans clavier ni souris. PIEGE : hypridle
+  0.1.7 ignore `-c` (plante « Could not find config ») : on lui donne HOME et XDG_CONFIG_HOME a lui.
+  hypridle respecte les inhibiteurs (une video qui joue n'est pas de l'inactivite). Releve toutes les 30 s.
+  `pc.screens` eteint par DPMS : bouger la souris ne rallume pas, d'ou « je reviens : rallumer les ecrans ».
+- **CI GitHub** (`ci`) : `gh run list` dans chaque depot suivi du volet branches, 3 min au plus. Action
+  `ci.inspect` = notification dont le clic propose d'ouvrir Claude Code dans le depot (jeton `ci_inspecter`,
+  `launcher.ouvrir_claude` avec un fichier d'invite) ; l'invite ne contient que le depot et l'identifiant.
+- **Docker** (`docker`) : arret (code 0 et 143 = arret propre, ignore par defaut) ou `unhealthy`.
+  `docker.restart` ne fait jamais d'arret : arrete -> start, malade -> restart, sain -> rien.
+- **Carte graphique** (`gpu_oom`) : lignes NVRM « Out of memory » du journal noyau, une par rafale, avec
+  les plus gros consommateurs (nom du programme, jamais son chemin).
+- **Actions** `vm.start` (nom sans le prefixe `vm_` de la liste des services) et `bt.connect` (appareils
+  appaires). Parametres a liste lue sur la machine : types `container`, `vm`, `bluetooth` (BlockParams).
+- `ref` d'un evenement (passage de CI, `docker:<nom>`) suit le declenchement jusqu'aux actions (`values["ref"]`).
+- **Disques** : tous les vrais disques montes sont surveilles (`DISQUES_SURVEILLES` pour forcer une liste),
+  alerte a 90 %, critique a 95 % ; les unites systemd du SYSTEME en echec sont aussi signalees. Une alerte
+  disque a `action: "disque"` et `ref` = point de montage : le clic ouvre `components/DiskPanel.tsx`
+  (aussi dans la palette). `du -x -d 3 --time=atime` en basse priorite, en tache de fond, resultat garde
+  12 h dans `$NEUTRONCORE_STATE/disque_analyse.json` (date de modification si le montage est noatime).
+  Lecture seule. Sur les instantanes timeshift l'analyse prend plus de 10 min.
