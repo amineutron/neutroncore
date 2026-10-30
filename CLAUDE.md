@@ -822,8 +822,8 @@ Non commite. Cote API : `lib/automations.py`, `routers/automations.py`,
   service non demarrable d'ici (`services_checker.demarrable` : pas d'unite utilisateur,
   ou service du systeme) est signale dans le centre de notifications sans faire echouer.
   Lyra, surveille par son processus, demarre par son unite `lyra-daemon`. Tracking est
-  un service du SYSTEME : l'API ne peut pas le demarrer. n8n n'a ni unite ni conteneur
-  sur cette machine (constate le 2026-10-13).
+  un service du SYSTEME : l'API ne peut pas le demarrer. n8n a ete retire de la
+  surveillance, de l'API et du MCP le 2026-10-30 (jamais installe ici).
 
 ## Camera avec detourage (2026-10-13) — reprise d'obs-virtual-bg, sans OBS
 Non commite. Pas encore essayee avec la vraie webcam.

@@ -47,7 +47,6 @@ export function Accueil() {
     { label: 'tracking', state: svcList.find((s) => s.name === 'tracking')?.status === 'up' ? 'ok' : 'warn' },
     { label: 'disque', state: worst('disk') },
     { label: 'timers', state: worst('unit', 'backup') },
-    { label: 'n8n', state: svcList.find((s) => s.name === 'n8n')?.status === 'up' ? 'ok' : 'crit' },
   ]
 
   return (

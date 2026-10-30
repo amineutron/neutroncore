@@ -3,7 +3,7 @@ import type { MockHandler } from '../router'
 import { dayAt, isoAgo, localStamp, systemdAgo, unixAgo, unixIn } from './time'
 
 const GB = 1024 ** 3
-const CONTROLLABLE = ['lyra', 'n8n', 'tracking', 'plex', 'radarr', 'sonarr', 'bazarr']
+const CONTROLLABLE = ['lyra', 'tracking', 'plex', 'radarr', 'sonarr', 'bazarr']
 const svc = (name: string, display: string, status = 'up', type = 'http') =>
   ({ name, display_name: display, status, type, url: null, extra: {}, controllable: CONTROLLABLE.includes(name) })
 

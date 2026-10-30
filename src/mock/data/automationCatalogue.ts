@@ -166,7 +166,6 @@ export const AUTOMATION_CATALOGUE = {
           "choices": [
             "any",
             "lyra",
-            "n8n",
             "tracking",
             "plex",
             "radarr",
@@ -214,7 +213,7 @@ export const AUTOMATION_CATALOGUE = {
     },
     {
       "type": "event",
-      "label": "un événement externe (script, n8n)",
+      "label": "un événement externe (script)",
       "params": [
         {
           "name": "name",
@@ -403,7 +402,6 @@ export const AUTOMATION_CATALOGUE = {
           "type": "choice",
           "choices": [
             "lyra",
-            "n8n",
             "tracking",
             "plex",
             "radarr",
@@ -820,7 +818,6 @@ export const AUTOMATION_CATALOGUE = {
           "choices": [
             "trigger",
             "lyra",
-            "n8n",
             "tracking",
             "plex",
             "radarr",
