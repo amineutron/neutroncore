@@ -3,11 +3,14 @@ import { getApiKey, setApiKey, apiGet, DEMO } from './lib/api'
 import { applySettings, getSettings } from './lib/settings'
 import { LyraPanel } from './components/LyraPanel'
 import { Dialogs } from './components/Dialogs'
+import OfflineBanner from './components/OfflineBanner'
 import { Palette } from './components/Palette'
 import { NotifBell, NotifCenter } from './components/NotifCenter'
+import { RappelEnCours } from './components/RappelEnCours'
 import { CommandsContext, useCommands, type Shell } from './lib/commands'
 import { getFavs } from './lib/palette'
 import { canLeave } from './lib/navGuard'
+import { EVENT_OUVRIR_NOTIFS } from './lib/resume'
 import type { Notif, NotifList } from './lib/notifs'
 import { BootSplash } from './components/BootSplash'
 import { WelcomeBack } from './components/WelcomeBack'
@@ -31,19 +34,46 @@ import { Automations } from './screens/Automations'
 import { Atelier } from './screens/Atelier'
 import { Camera } from './screens/Camera'
 import { Lumiere } from './screens/Lumiere'
+import { Mises } from './screens/Mises'
+import { Sauvegardes } from './screens/Sauvegardes'
+import { Ressources } from './screens/Ressources'
+import { Vms } from './screens/Vms'
+import { Reseau } from './screens/Reseau'
+import { Securite } from './screens/Securite'
+import { Dv } from './screens/Dv'
+import { MediaMenage } from './screens/MediaMenage'
+import { CiDeps } from './screens/CiDeps'
+import { Qualite } from './screens/Qualite'
+import { Historique } from './screens/Historique'
+import { ReveilScreen } from './screens/Reveil'
+import { Rampes } from './screens/Rampes'
+import { ZonesAudio } from './screens/ZonesAudio'
+import { EditeurThemes } from './screens/EditeurThemes'
+import { LyraMemoire } from './screens/LyraMemoire'
+import { Sandbox } from './screens/Sandbox'
+import { Resume } from './screens/Resume'
+import { Reglages2 } from './screens/Reglages2'
+import Worldmonitor from './screens/Worldmonitor'
+import { Cyber } from './screens/Cyber'
+import { Minuteurs } from './screens/Minuteurs'
+import { MinuteursPuce } from './components/minuteurs/MinuteursPuce'
 import { LOG_TARGET } from './lib/nav'
+import { buildHubs, hubOf, entryScreen, groupHubs, rememberTab, recalledTab } from './lib/navTree'
+import { HubTabs } from './components/HubTabs'
+import { DiskPanel } from './components/DiskPanel'
+import { ouvrirDisque } from './lib/disque'
+import { inspecterCi } from './lib/ci'
 
 export type ScreenId = 'accueil' | 'agenda' | 'automatisations' | 'atelier' | 'camera' | 'lumiere' | 'films' | 'demandes' | 'dl' | 'taches' | 'projets' | 'ambiance' | 'plan' | 'lanceur' | 'outils' | 'tests' | 'parametres'
+  | 'mises' | 'sauvegardes' | 'ressources' | 'vms' | 'reseau' | 'securite'
+  | 'dv' | 'menage' | 'cideps' | 'qualite' | 'historique' | 'reveil' | 'rampes' | 'zonesaudio'
+  | 'themes' | 'lyramemoire' | 'sandbox' | 'resume' | 'reglages2' | 'worldmonitor' | 'cyber' | 'minuteurs'
 
 // Permet aux écrans (tuiles de l'accueil...) de naviguer vers un autre onglet
 export const NavContext = createContext<(s: ScreenId) => void>(() => {})
 
-const NAV: { group: string; items: { id: ScreenId; label: string }[] }[] = [
-  { group: 'pilotage', items: [{ id: 'accueil', label: 'accueil' }, { id: 'agenda', label: 'agenda' }, { id: 'automatisations', label: 'automatisations' }, { id: 'taches', label: 'tâches' }, { id: 'projets', label: 'projets' }, { id: 'atelier', label: 'atelier 3d' }] },
-  { group: 'média', items: [{ id: 'films', label: 'films & séries' }, { id: 'demandes', label: 'demandes' }, { id: 'dl', label: 'téléchargements' }] },
-  { group: 'maison', items: [{ id: 'ambiance', label: 'ambiance' }, { id: 'camera', label: 'caméra' }, { id: 'lumiere', label: 'lumière 3d' }, { id: 'plan', label: 'plan de pièce' }, { id: 'lanceur', label: 'lanceur' }] },
-  { group: 'système', items: [{ id: 'outils', label: 'outils & vms' }, { id: 'tests', label: 'tests' }, { id: 'parametres', label: 'paramètres' }] },
-]
+// 11 entrées de menu, chacune avec ses sous-onglets (lib/navTree.ts)
+const HUBS = buildHubs<ScreenId>()
 
 const LAST_VISIT = 'neutroncore_last_visit'
 const FORCE_INTRO = 'neutroncore_force_intro'   // rejeu demande depuis les reglages
@@ -82,10 +112,15 @@ export const BUILD_ID =
 const SCREENS: Record<ScreenId, () => React.JSX.Element> = {
   accueil: Accueil, agenda: Agenda, automatisations: Automations, atelier: Atelier, camera: Camera, lumiere: Lumiere, films: Media, demandes: Demandes, dl: Downloads, taches: Taches,
   projets: Projets, ambiance: Ambiance, plan: Plan, lanceur: Lanceur, outils: Outils, tests: Tests, parametres: Parametres,
+  mises: Mises, sauvegardes: Sauvegardes, ressources: Ressources, vms: Vms, reseau: Reseau, securite: Securite,
+  dv: Dv, menage: MediaMenage, cideps: CiDeps, qualite: Qualite, historique: Historique,
+  reveil: ReveilScreen, rampes: Rampes, zonesaudio: ZonesAudio,
+  themes: EditeurThemes, lyramemoire: LyraMemoire, sandbox: Sandbox, resume: Resume, reglages2: Reglages2,
+  worldmonitor: Worldmonitor, cyber: Cyber, minuteurs: Minuteurs,
 }
 
 // liste à plat des écrans pour la palette (référence stable)
-const SCREEN_LIST = NAV.flatMap((g) => g.items.map((i) => ({ ...i, group: g.group })))
+const SCREEN_LIST = HUBS.flatMap((h) => h.tabs.map((tb) => ({ ...tb, group: h.label })))
 
 function Setup({ onDone }: { onDone: () => void }) {
   const [key, setKey] = useState('')
@@ -113,13 +148,12 @@ function Setup({ onDone }: { onDone: () => void }) {
         <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>
           Colle la clé API de lyra-control-api pour relier l'app au PC.
         </p>
-        <div className="lyra-input" style={{ margin: 0 }}>
+        <form className="lyra-input" style={{ margin: 0 }} onSubmit={(e) => { e.preventDefault(); void test() }}>
           <input
-            type="password" placeholder="clé API" value={key} aria-label="Clé API"
+            type="password" placeholder="clé API" value={key} aria-label="Clé API" autoComplete="off"
             onChange={(e) => setKey(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && test()}
           />
-        </div>
+        </form>
         {err && <p style={{ color: 'var(--crit)', fontSize: 12, marginTop: 10 }}>{err}</p>}
         <div style={{ marginTop: 14 }}>
           <button className="btn solid" onClick={test}>connecter</button>
@@ -138,7 +172,7 @@ export default function App() {
     const log = params.get('log')
     if (log) sessionStorage.setItem(LOG_TARGET, log)
     const q = params.get('screen') as ScreenId | null
-    return q && NAV.some((g) => g.items.some((i) => i.id === q)) ? q : ((getSettings().startScreen as ScreenId) || 'accueil')
+    return q && hubOf(HUBS, q) ? q : ((getSettings().startScreen as ScreenId) || 'accueil')
   })
   // lien profond (notification ntfy sur le telephone) : l'app Android recoit l'URL via appUrlOpen
   useEffect(() => {
@@ -166,7 +200,6 @@ export default function App() {
   const waitingCount = sessionsBadge.data?.waiting ?? 0
   const activeCount = (sessionsBadge.data?.sessions ?? []).filter((s) => s.state !== 'parked' && !s.atelier).length
   const [clock, setClock] = useState('')
-  const [updateReady, setUpdateReady] = useState(false)
   const [tvMode, setTvMode] = useState(() => FENETRE_TELE || localStorage.getItem('neutroncore_tv') === '1')
   const [menuOpen, setMenuOpen] = useState(false)
   // intro (reglable) puis tour de premier lancement
@@ -204,10 +237,18 @@ export default function App() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [ready, introOn])
+  // le résumé du matin (et d'autres écrans) demandent l'ouverture du centre de notifications par événement
+  useEffect(() => {
+    const open = () => setNotifOpen(true)
+    window.addEventListener(EVENT_OUVRIR_NOTIFS, open)
+    return () => window.removeEventListener(EVENT_OUVRIR_NOTIFS, open)
+  }, [])
   const openEntry = (n: Notif) => {
     // la session à déplier n'a de sens que si le clic mène au lanceur
     if (n.ref && n.action === 'lanceur') { try { sessionStorage.setItem('deepLinkTarget', n.ref) } catch { /* stockage indisponible */ } }
     setNotifOpen(false)
+    if (n.action === 'disque') { ouvrirDisque(n.ref); return }
+    if (n.action === 'ci') { void inspecterCi(n); return }
     if (SCREEN_LIST.some((x) => x.id === n.action)) nav(n.action as ScreenId)
   }
 
@@ -217,23 +258,7 @@ export default function App() {
     if (!FENETRE_TELE) localStorage.setItem('neutroncore_tv', tvMode ? '1' : '0')
   }, [tvMode])
 
-  // auto-détection d'un nouveau build : compare le bundle référencé par
-  // l'index frais avec celui réellement chargé
-  useEffect(() => {
-    const current = (document.querySelector(`script[src*="${import.meta.env.BASE_URL}assets/"]`) as HTMLScriptElement | null)?.src
-    if (!current) return
-    const check = async () => {
-      try {
-        const html = await (await fetch(import.meta.env.BASE_URL, { cache: 'no-store' })).text()
-        const m = html.match(/\/assets\/index-[\w-]+\.js/)
-        if (m && !current.endsWith(m[0].split('/').pop()!)) setUpdateReady(true)
-      } catch { /* hors ligne */ }
-    }
-    const t = setInterval(check, 600000)
-    const onVisible = () => { if (!document.hidden) check() }
-    document.addEventListener('visibilitychange', onVisible)
-    return () => { clearInterval(t); document.removeEventListener('visibilitychange', onVisible) }
-  }, [])
+  // la detection d'un nouveau build vit maintenant dans <OfflineBanner> (comparaison avec l'index frais, sans cache)
 
   useEffect(() => {
     applySettings()
@@ -254,6 +279,9 @@ export default function App() {
       window.removeEventListener('scroll', onScroll, { capture: true })
     }
   }, [])
+
+  // le dernier sous-onglet vu de chaque entrée du menu est rouvert au prochain passage
+  useEffect(() => { const h = hubOf(HUBS, screen); if (h) rememberTab(h.id, screen) }, [screen])
 
   useEffect(() => {
     if (lyraOpen) setLyraUnread(0)
@@ -308,6 +336,9 @@ export default function App() {
   }
 
   const Screen = SCREENS[screen]
+  const hub = hubOf(HUBS, screen)
+  const tabLabel = hub?.tabs.find((tb) => tb.id === screen)?.label
+  const crumbLabel = hub && hub.tabs.length > 1 && tabLabel !== hub.label ? `${hub.label} / ${tabLabel}` : hub?.label
   const date = new Date().toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
 
   return (
@@ -340,14 +371,14 @@ export default function App() {
           </div>
         </div>
         <div className="nav">
-          {NAV.map((g) => (
+          {groupHubs(HUBS).map((g) => (
             <div className="nav-group" key={g.group}>
               <div className="nav-cap">{g.group}</div>
-              {g.items.map((it) => (
-                <a key={it.id} className={screen === it.id ? 'on' : ''} onClick={() => nav(it.id)}>
-                  <span className="nv">::</span> {it.label}
-                  {it.id === 'lanceur' && waitingCount > 0 && <span className="nbadge wait" title={`${waitingCount} session(s) attendent ta réponse`}>{waitingCount}</span>}
-                  {it.id === 'lanceur' && waitingCount === 0 && activeCount > 0 && <span className="nbadge" title={`${activeCount} session(s) claude code active(s)`}>{activeCount}</span>}
+              {g.hubs.map((h) => (
+                <a key={h.id} className={hubOf(HUBS, screen)?.id === h.id ? 'on' : ''} onClick={() => nav(entryScreen(h, recalledTab(h.id)))}>
+                  <span className="nv">::</span> {h.label}
+                  {h.id === 'dev' && waitingCount > 0 && <span className="nbadge wait" title={`${waitingCount} session(s) attendent ta réponse`}>{waitingCount}</span>}
+                  {h.id === 'dev' && waitingCount === 0 && activeCount > 0 && <span className="nbadge" title={`${activeCount} session(s) claude code active(s)`}>{activeCount}</span>}
                 </a>
               ))}
             </div>
@@ -385,14 +416,10 @@ export default function App() {
               <i /><i /><i />
             </button>
           )}
-          <span className="crumb">neutroncore / <b>{NAV.flatMap((g) => g.items).find((i) => i.id === screen)?.label}</b></span>
+          <span className="crumb">neutroncore / <b>{crumbLabel}</b></span>
           <span className="grow" />
-          {updateReady && (
-            <button className="btn sm solid" onClick={() => location.reload()}>
-              nouvelle version — recharger
-            </button>
-          )}
           <button className="pl-open" aria-label="Palette de commandes" onClick={() => setPaletteOpen(true)}>chercher <kbd>ctrl k</kbd></button>
+          <MinuteursPuce onOpen={() => nav('minuteurs')} />
           <NotifBell data={notifs.data} open={notifOpen} onToggle={() => setNotifOpen((v) => !v)} />
           <button data-tour="tv" className={`btn sm ${tvMode ? 'solid' : ''}`} onClick={shell.toggleTv}>
             {tvMode ? 'quitter télé' : 'télé'}
@@ -400,13 +427,21 @@ export default function App() {
           <span className="clock"><b>{clock}</b> · {date}</span>
         </div>
         <section className="content on">
-          {tvMode ? <TvDashboard /> : <Screen />}
+          {tvMode ? <TvDashboard /> : (
+            <>
+              {hub && <HubTabs tabs={hub.tabs} current={screen} onPick={nav} />}
+              <Screen />
+            </>
+          )}
         </section>
       </div>
 
     </div>
       {notifOpen && <NotifCenter data={notifs.data} onClose={() => setNotifOpen(false)} onOpenEntry={openEntry} onChanged={notifs.refresh} />}
-      {paletteOpen && <Palette commands={cmds.commands} loading={cmds.loading} onRun={cmds.run} onClose={() => setPaletteOpen(false)} />}
+      {paletteOpen && <Palette commands={cmds.commands} loading={cmds.loading} onRun={cmds.run} onClose={() => setPaletteOpen(false)} openNotifs={() => setNotifOpen(true)} />}
+      {screen !== 'accueil' && screen !== 'agenda' && <RappelEnCours enabled={ready} />}
+      <DiskPanel />
+      <OfflineBanner buildId={BUILD_ID} />
       <Dialogs />
     </CommandsContext.Provider>
     </NavContext.Provider>

@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from 'react'
 import { Btn } from './ui'
-import { CATEGORY_LABEL, FailureActions, STATUS, dayLabel, fmtDuration, hhmm, isProblem, tone, type Occurrence } from './AgendaParts'
+import { CATEGORY_LABEL, FailureActions, STATUS, dayLabel, fmtDuration, isProblem, tone, type Occurrence } from './AgendaParts'
+import { timeLabel } from '../lib/sorties'
 
 // Jour déplié sous sa semaine (vue mois) : événements en couleur, filtres propres au jour, actions sur les échecs
 
@@ -46,7 +47,7 @@ export function DayDrawer({ day, today, occs, onSelect, onClose, onWeek, onChang
       {list.length === 0 && <p className="none">Rien ce jour-là avec ces filtres.</p>}
       {list.map((o, i) => (
         <div key={o.id} className={`ag-drow ${tone(o, today)}`} style={{ '--i': i } as CSSProperties} onClick={() => onSelect(o)}>
-          <span className="tm">{hhmm(o.start)}</span>
+          <span className="tm">{timeLabel(o)}</span>
           <span className="tt">{o.title}</span>
           <span className="st">{CATEGORY_LABEL[o.category] ?? o.category} · {STATUS[o.status].label}{o.run?.duration_s !== undefined ? ` · ${fmtDuration(o.run.duration_s)}` : ''}</span>
           <FailureActions occ={o} compact onChanged={onChanged} onLog={onLog} />

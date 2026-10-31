@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { apiGet, apiPost, lyraChat } from '../lib/api'
-import { confirmDialog } from '../lib/dialog'
 import { usePoll, fmtRemaining } from '../lib/poll'
 import { fetchVms, type Vm } from '../lib/vms'
 import { getSettings } from '../lib/settings'
 import { onLyraEvent } from '../lib/mascotBus'
 import { Mascot } from './Mascot'
+import { Micro } from './Micro'
 
 type Msg =
   | { who: 'help' }
@@ -98,7 +98,6 @@ export function LyraPanel({ hidden, floating, onClose, onUnread }: {
   const [msgs, setMsgs] = useState<Msg[]>([])
   const [maxi, setMaxi] = useState(false)
   const [reader, setReader] = useState<string | null>(null)  // contenu du modal de lecture
-  const [listening, setListening] = useState(false)
   const [catalog, setCatalog] = useState<CatalogServer[]>([])
   const [currentTool, setCurrentTool] = useState('')
   const [watchedVms, setWatchedVms] = useState<string[]>([])
@@ -257,40 +256,6 @@ export function LyraPanel({ hidden, floating, onClose, onUnread }: {
     } finally {
       setBusy(false)
     }
-  }
-
-  async function startVoice() {
-    if (!localStorage.getItem('neutroncore_audio_warned')) {
-      if (!await confirmDialog({ title: 'dictée vocale', body: 'Vérifie ta source audio dans paramètres > audio avant de commencer.', ok: 'continuer' })) return
-      localStorage.setItem('neutroncore_audio_warned', '1')
-    }
-    const wanted = getSettings().audioInput
-    if (wanted && navigator.mediaDevices?.enumerateDevices) {
-      try {
-        const devs = await navigator.mediaDevices.enumerateDevices()
-        if (!devs.some((d) => d.kind === 'audioinput' && d.deviceId === wanted)) {
-          push({ who: 'lyra', text: 'Micro configuré introuvable — branche-le ou choisis-en un autre dans paramètres > audio. J\'utilise l\'entrée système par défaut.', kind: 'error', at: now() })
-        }
-      } catch { /* permissions non accordées : on continue */ }
-    }
-    const SR = (window as unknown as Record<string, any>).SpeechRecognition
-      ?? (window as unknown as Record<string, any>).webkitSpeechRecognition
-    if (!SR) {
-      push({ who: 'lyra', text: 'Dictee vocale non supportee par ce navigateur (utilise Chrome).', kind: 'error', at: now() })
-      return
-    }
-    const rec = new SR()
-    rec.lang = 'fr-FR'
-    rec.interimResults = false
-    rec.onresult = (e: any) => {
-      const txt = e.results[0][0].transcript
-      setListening(false)
-      send(txt)
-    }
-    rec.onerror = () => setListening(false)
-    rec.onend = () => setListening(false)
-    setListening(true)
-    rec.start()
   }
 
   async function answer(chatId: string, value: string) {
@@ -494,13 +459,7 @@ export function LyraPanel({ hidden, floating, onClose, onUnread }: {
             if (e.key === 'Enter') send(input)
           }}
         />
-        <button
-          className="mic" aria-label="Dictee vocale"
-          style={{ background: listening ? 'var(--crit)' : 'var(--surface2)', border: '1px solid var(--line2)' }}
-          onClick={startVoice}
-        >
-          <svg viewBox="0 0 24 24" style={{ fill: listening ? '#fff' : 'var(--muted)' }}><path d="M12 15a3.5 3.5 0 0 0 3.5-3.5v-6a3.5 3.5 0 1 0-7 0v6A3.5 3.5 0 0 0 12 15zm6-3.5a6 6 0 0 1-12 0H4a8 8 0 0 0 7 7.93V22h2v-2.57A8 8 0 0 0 20 11.5h-2z"/></svg>
-        </button>
+        <Micro onSend={send} disabled={busy} />
         <button className="mic" aria-label="Envoyer" onClick={() => send(input)}>
           <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z" /></svg>
         </button>

@@ -1,6 +1,8 @@
 // Client API neutroncore — même origine que lyra-control-api (:9876).
 // La clé Bearer est saisie une fois (écran de config) et gardée en localStorage.
 
+import { offline } from './offline/runtime'
+
 const KEY_STORAGE = 'neutroncore_api_key'
 
 // Mode démo (build VITE_MOCK_API=1, publié sur GitHub Pages) : aucune requête
@@ -24,7 +26,9 @@ export function getApiKey(): string {
 }
 
 export function setApiKey(key: string): void {
-  localStorage.setItem(KEY_STORAGE, key.trim())
+  const k = key.trim()
+  if (k !== getApiKey()) offline.onKeyChange()   // les donnees gardees hors ligne appartiennent a l'ancienne cle
+  localStorage.setItem(KEY_STORAGE, k)
 }
 
 function headers(extra?: Record<string, string>): Record<string, string> {
@@ -56,7 +60,7 @@ async function handle<T>(r: Response): Promise<T> {
 
 export async function apiGet<T = unknown>(path: string): Promise<T> {
   if (DEMO) return demoRequest<T>('GET', path)
-  return handle<T>(await fetch(path, { headers: headers() }))
+  return offline.get<T>(path, async () => handle<T>(await fetch(path, { headers: headers() })))
 }
 
 /** Contenu binaire (pièces STL de l'atelier 3D) : même authentification que le reste. */
@@ -69,19 +73,20 @@ export async function apiBinary(path: string): Promise<ArrayBuffer> {
 
 export async function apiPost<T = unknown>(path: string, body?: unknown, extra?: Record<string, string>): Promise<T> {
   if (DEMO) return demoRequest<T>('POST', path, body)
-  return handle<T>(
-    await fetch(path, { method: 'POST', headers: headers(extra), body: body === undefined ? undefined : JSON.stringify(body) }),
-  )
+  return offline.write<T>('POST', path, body, extra, async () =>
+    handle<T>(await fetch(path, { method: 'POST', headers: headers(extra), body: body === undefined ? undefined : JSON.stringify(body) })))
 }
 
 export async function apiPut<T = unknown>(path: string, body: unknown): Promise<T> {
   if (DEMO) return demoRequest<T>('PUT', path, body)
-  return handle<T>(await fetch(path, { method: 'PUT', headers: headers(), body: JSON.stringify(body) }))
+  return offline.write<T>('PUT', path, body, undefined, async () =>
+    handle<T>(await fetch(path, { method: 'PUT', headers: headers(), body: JSON.stringify(body) })))
 }
 
 export async function apiDelete<T = unknown>(path: string, extra?: Record<string, string>): Promise<T> {
   if (DEMO) return demoRequest<T>('DELETE', path)
-  return handle<T>(await fetch(path, { method: 'DELETE', headers: headers(extra) }))
+  return offline.write<T>('DELETE', path, undefined, extra, async () =>
+    handle<T>(await fetch(path, { method: 'DELETE', headers: headers(extra) })))
 }
 
 /** Envoi d'un fichier (fond de la caméra) en formulaire ; le navigateur pose lui-même le type du corps. */
@@ -94,6 +99,7 @@ export async function apiUpload<T = unknown>(path: string, champ: string, fichie
 
 // Actions destructives : token HMAC 30 s renvoyé dans X-Confirm
 export async function withConfirm(action: string): Promise<Record<string, string>> {
+  offline.requireOnline('cette action demande une confirmation')   // le jeton se demande en direct : inutile et trompeur hors ligne
   const t = await apiGet<{ token: string }>(`/auth/token?action=${encodeURIComponent(action)}`)
   return { 'X-Confirm': t.token }
 }
@@ -160,3 +166,10 @@ export async function sessionEvents(
     }
   }
 }
+
+// Rejeu de la file hors ligne : avec l'en-tete d'authentification de CE module, jamais celui d'un autre.
+offline.configure({
+  send: async (i) =>
+    (await fetch(i.path, { method: i.method, headers: headers(), body: i.body === undefined ? undefined : JSON.stringify(i.body) })).status,
+  makeError: (status, message) => new ApiError(status, message),
+})

@@ -4,7 +4,7 @@ import { NumField } from './NumField'
 
 export type Option = { id: string; name: string }
 // listes dynamiques proposées par certains paramètres
-export type Lists = { scenes: Option[]; lights: Option[]; routines: Option[] }
+export type Lists = { scenes: Option[]; lights: Option[]; routines: Option[]; containers?: Option[]; vms?: Option[]; bluetooth?: Option[]; lumiere?: Option[] }
 
 function Pick({ label, value, options, onChange }: { label: string; value: Value | undefined; options: Option[]; onChange: (v: Value) => void }) {
   const current = String(value ?? '')
@@ -40,7 +40,14 @@ export function ParamInput({ spec, value, lists, block, onChange }: {
   }
   if (spec.type === 'id' && spec.name === 'scene_id') return <Pick label="scène" value={value} options={lists.scenes} onChange={onChange} />
   if (spec.type === 'id' && block === 'routine.run') return <Pick label="routine" value={value} options={lists.routines} onChange={onChange} />
+  if (spec.type === 'id' && block === 'spatial.scene') return <Pick label="scène ou moment" value={value} options={lists.lumiere ?? []} onChange={onChange} />
   if (spec.type === 'light') return <Pick label="lampe" value={value} options={lists.lights} onChange={onChange} />
+  if (spec.type === 'container') {
+    const options = [{ id: 'trigger', name: 'celui qui vient de tomber' }, ...(lists.containers ?? [])]
+    return <Pick label="conteneur" value={value} options={options} onChange={onChange} />
+  }
+  if (spec.type === 'vm') return <Pick label="vm" value={value} options={lists.vms ?? []} onChange={onChange} />
+  if (spec.type === 'bluetooth') return <Pick label="appareil" value={value} options={lists.bluetooth ?? []} onChange={onChange} />
   if (spec.type === 'id') {
     // identifiant libre (nom d'un événement externe) : lettres, chiffres, tirets
     return <input className="bp-text" value={String(value ?? '')} maxLength={64} placeholder="nom-de-l-evenement" aria-label="nom de l'événement"
@@ -70,7 +77,7 @@ export function ParamInput({ spec, value, lists, block, onChange }: {
   // outil et arguments d'une action lyra : jamais saisis à la main, posés par l'analyse (LyraPhrase)
   if (spec.type === 'tool' || spec.type === 'args') return null
   const n = Number(value)
-  const unit: Record<string, string> = { every_min: 'min', for_min: 'min', minutes_before: 'min avant', seconds: 's', above: 'seuil', value: 'seuil' }
+  const unit: Record<string, string> = { every_min: 'min', for_min: 'min', minutes_before: 'min avant', seconds: 's', above: 'seuil', value: 'seuil', minutes: 'min', after_min: 'min d’absence' }
   return (
     <span className="bp-num">
       <NumField value={Number.isFinite(n) ? n : spec.min} min={spec.min} max={spec.max} label={spec.name} onCommit={onChange} />

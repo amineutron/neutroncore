@@ -1,0 +1,24 @@
+.tl { display: flex; flex-direction: column; gap: 10px }
+.tl-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
+.tl-nom { min-width: 0; flex: 1 1 160px }
+.tl-boucle { display: flex; align-items: center; gap: 6px; font-size: 13px }
+.tl-scroll { overflow-x: auto; padding-bottom: 6px }
+.tl-piste { position: relative; height: 92px; min-width: 100%; border: 1px solid var(--line, #3a2f3f); border-radius: 8px; background: color-mix(in srgb, var(--gold, #f6c177) 4%, transparent); touch-action: pan-y }
+.tl-regle { position: absolute; inset: 0 0 auto 0; height: 18px; pointer-events: none }
+.tl-regle span { position: absolute; top: 0; height: 100%; border-left: 1px solid color-mix(in srgb, currentColor 14%, transparent); font-size: 10px; padding-left: 3px; opacity: .55 }
+.tl-vide { position: absolute; inset: 24px 0 0; display: grid; place-items: center; font-size: 13px; opacity: .6 }
+.tl-bloc { position: absolute; top: 24px; height: 60px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; padding: 4px 14px 4px 8px; border-radius: 8px; cursor: grab; user-select: none; overflow: hidden; background: color-mix(in srgb, var(--gold, #f6c177) 24%, var(--card, #1b1420)); border: 1px solid color-mix(in srgb, var(--gold, #f6c177) 55%, transparent); transition: left .12s ease, width .12s ease }
+.tl-bloc.bouge { cursor: grabbing; z-index: 3; transition: none; box-shadow: 0 6px 18px rgba(0, 0, 0, .4) }
+.tl-bloc.sel, .tl-bloc:focus-visible { outline: 2px solid var(--gold, #f6c177); outline-offset: 1px }
+.tl-bloc.joue { background: color-mix(in srgb, var(--rose, #eb6f92) 34%, var(--card, #1b1420)); border-color: var(--rose, #eb6f92) }
+.tl-nom-bloc { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.tl-dur { font-size: 11px; opacity: .7 }
+.tl-poignee { position: absolute; right: 0; top: 0; bottom: 0; width: 12px; cursor: ew-resize; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--gold, #f6c177) 55%, transparent)) }
+.tl-x { position: absolute; top: 2px; right: 14px; border: 0; background: transparent; color: inherit; font-size: 12px; line-height: 1; padding: 2px 4px; opacity: .55; cursor: pointer }
+.tl-x:hover { opacity: 1 }
+.tl-tete { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--rose, #eb6f92); pointer-events: none; z-index: 4 }
+.tl-pad { display: flex; flex-wrap: wrap; gap: 6px }
+.tl-bas { display: flex; align-items: center; gap: 10px }
+.tl-err { color: var(--rose, #eb6f92); font-size: 13px }
+@media (pointer: coarse) { .tl-bloc { height: 64px } .tl-poignee { width: 22px } .tl-x { padding: 8px } }
+@media (prefers-reduced-motion: reduce) { .tl-bloc { transition: none } }

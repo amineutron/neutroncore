@@ -1,0 +1,34 @@
+/* ecran reseau : classes prefixees rs- (styles.css reste intact) */
+.rs-grille{grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))}
+.rs-note{color:var(--faint);font-size:11.5px;margin-top:10px}
+.rs-filtres{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin-bottom:10px}
+.rs-filtre{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);cursor:pointer}
+.rs-filtres input[type=search],.rs-edit input[type=text]{background:var(--surface2);border:1px solid var(--line2);border-radius:8px;color:var(--text);font:inherit;font-size:12.5px;padding:6px 10px;min-width:0;flex:1 1 150px}
+.rs-ligne{display:grid;grid-template-columns:auto 1fr auto auto;gap:6px 12px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
+.rs-ligne.absent .rs-qui b{color:var(--muted)}
+.rs-ligne.inconnu{background:linear-gradient(90deg,var(--rose-soft),transparent 40%)}
+.rs-qui{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;min-width:0}
+.rs-qui small{flex-basis:100%;color:var(--faint);font-size:11px;overflow-wrap:anywhere}
+.rs-qui code{font-family:var(--mono);font-size:10.5px}
+.rs-vu{font-family:var(--mono);font-size:10.5px;color:var(--muted);white-space:nowrap}
+.rs-actions{display:flex;gap:6px}
+.rs-edit{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px}
+.rs-mesures{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.rs-mesure{display:flex;flex-direction:column;gap:3px;background:var(--surface2);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;min-width:0}
+.rs-mesure b{font-family:var(--mono);font-size:19px;font-weight:600}
+.rs-mesure small{color:var(--faint);font-size:10.5px;overflow-wrap:anywhere}
+.rs-mesure-t{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.rs-trace{width:100%;height:44px;margin-top:4px}
+@media (max-width:560px){
+  .rs-ligne{grid-template-columns:auto 1fr}
+  .rs-vu,.rs-actions{grid-column:2}
+}
+
+/* tuiles de debit vides : compactes ; 2x2 sur telephone */
+.rs-mesure.rs-vide{padding:8px 12px;justify-content:center}
+.rs-mesure.rs-vide small{font-size:11.5px}
+@media (max-width:560px){
+  .rs-mesures{grid-template-columns:1fr 1fr;gap:8px}
+  .rs-mesure{padding:8px 10px}
+  .rs-mesure b{font-size:16px}
+}

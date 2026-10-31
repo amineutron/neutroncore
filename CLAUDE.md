@@ -1102,3 +1102,36 @@ Non commite.
 - Tutoriel : page « les sections » (les quatre groupes du menu et les nouveaux ecrans), entre l'accueil et
   le mode tele. Le texte de bureau doit tenir dans 900 px de haut : verifie a 1400x900 et 390x844.
 - README : tableau des ecrans et elements facultatifs ranges par groupe du menu.
+
+## Mix de scenes : 2d et 3d ensemble, par priorite (2026-10-20)
+Non commite. Ecran lumiere, bloc avance « mixer des scenes » (`components/lumiere/MixEditeur.tsx`) ; une touche « mix » au pad.
+- **Modele** : un mix = une liste ORDONNEE de couches `{scene: <id du pad>, canaux?: ["3","4"]}` (1 a 6). La premiere est la
+  plus prioritaire. `canaux` absent = toutes les lampes ; sinon la couche ne joue que sur ces canaux de huebeat (le
+  ruban a plusieurs canaux, regroupes par lampe dans l'editeur : `groupesDeLampes`). Stocke dans `spatial.json` (`mixes`),
+  revalide a chaque lecture : une scene retiree du pad emporte sa couche, un mix sans couche disparait (`nettoyer_mixes`).
+- **Regle de calcul** : la lumiere EMISE de chaque couche (gamma applique avant : 3d au carre, 2d lineaire) se superpose du
+  bas vers le haut ; la couche du dessus MASQUE les dessous la ou elle eclaire (couverture = son canal le plus fort), les laisse
+  voir la ou elle est faible ou eteinte. Jamais au-dela de 1. Une couche ne compte que pour les canaux qu'elle vise ; un canal que
+  personne ne vise reste eteint. Scene seule : resultat identique a avant (le gamma est le meme, applique dans `sortie_lampe`).
+  L'alternance 2d (`groupe: alterne`) se compte DANS le groupe vise (rangs recalcules sur les canaux de la couche).
+- **Deux implementations, memes cas de test** : `spatial_fx.py` de huebeat (`sortie_lampe`, `superposer`, `sortie_mix`, test
+  `test_spatial_mix.py`) et `src/lib/spatialMix.ts` (`sortieMix`, `superposer`, `spatialMix.test.ts`). Changer la regle = les DEUX.
+  Preview : un appareil du banc d'essai se rattache au canal le plus proche dans le plan (`canalLePlusProche`, hauteur ignoree) ;
+  le ciblage n'a de sens que dans « ma piece » (autres lieux : la couche joue partout). L'apercu superpose SANS le gamma des
+  lampes (`lumiereMontree`) : une couche seule se voit exactement comme la meme scene seule (pas de saut de luminosite), mais dans
+  un mix 2d + 3d la 3d parait un peu plus forte qu'en vrai (limite listee dans `LIMITES_APERCU`).
+- **API** : `PUT /spatial/mixes/{id|new}` (couches = ids de scenes), `DELETE /spatial/mixes/{id}` (meme jeton que scenes et sets),
+  `POST /spatial/reel` et `/spatial/direct` acceptent `{mix: {nom, couches: [{scene: <scene entiere>, canaux?}]}}` au lieu de
+  `{scene}` (on joue aussi ce qui n'est pas enregistre). `lib/spatial.config_huebeat_mix` ecrit pour huebeat la config de la
+  couche du dessus (reglages communs, `canaux` reduit a ceux qu'elle vise) + `mix: [config de chaque couche]` ; une couche dont
+  aucune lampe n'est au plan est ecartee, s'il n'en reste qu'une c'est une scene seule. `avec_commun` met a jour TOUTES les couches.
+- **huebeat** (`spatial_fx.lire_config`) : lit `mix` (6 couches au plus, une couche abimee est ecartee, pas le mix ; pas de mix
+  imbrique). Ne relit pas son code a chaud : le relancer apres un changement de `spatial_fx.py`.
+- **Lampes et ecran restent d'accord** : tant qu'un mix joue en direct, tout changement de son contenu (mix enregistre, scene
+  retouchee ou supprimee) est renvoye aux lampes 400 ms apres (`mixEnvoye`) ; un mix retire du pad rend les lampes a la scene en
+  cours ; l'ecran rouvert retrouve le mix par `reel.mix` + son nom (`est_mix` dans la config de huebeat). `_derniere` (API) retient
+  le genre (scene ou mix) pour rejouer apres un changement de peripherique audio. `/spatial/direct` valide AVANT de lancer huebeat.
+- **Ecran** : jouer un mix = `mixActif` ; retoucher une scene (`regler`) ou en activer une autre quitte le mix. Le brouillon en
+  cours d'edition est montre dans la piece 3d sans rien envoyer aux lampes ; pour les lampes : enregistrer puis « jouer ».
+  Les mix ne sont pas (encore) retenus dans un set enregistre, ni jouables depuis un set ou un moment.
+- Mode demo : `src/mock/data/lumiere.ts` retient les mix en memoire (PUT/DELETE, nettoyage a la suppression d'une scene).

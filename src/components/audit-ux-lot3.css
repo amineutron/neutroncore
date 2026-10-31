@@ -1,0 +1,33 @@
+/* Correctifs de l'audit UX (lot 3) : classes locales, sans toucher styles.css */
+
+/* ambiance : survol sur souris, toucher sur ecran tactile */
+.hint-touch{display:none}
+@media (pointer:coarse){.hint-fine{display:none}.hint-touch{display:inline}}
+
+/* ambiance (telephone) : les scenes tiennent sur une ligne defilante pour remonter tv et ampli */
+@media (max-width:560px){
+  .amb-scenes{display:flex;overflow-x:auto;gap:10px;padding-bottom:6px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+  .amb-scenes>*{flex:0 0 104px;min-height:96px;scroll-snap-align:start}
+}
+
+/* etats vides avec exemples cliquables */
+.ex-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.ex-item{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 12px;border:1px dashed var(--line2);border-radius:10px}
+.ex-item .ex-t{flex:1;min-width:180px;font-size:13px;color:var(--text)}
+.ex-item .ex-t small{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.help-txt{font-size:12.5px;color:var(--muted)}
+
+/* parametres : zone danger isolee */
+.danger-zone{margin-top:28px;padding:14px 16px;border:1px solid color-mix(in srgb,var(--crit) 45%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--crit) 5%,transparent)}
+.danger-zone h3{margin:0 0 8px;color:var(--crit)}
+
+/* mises a jour : premier usage */
+.first-use{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;padding:36px 16px}
+.first-use p{margin:0;max-width:420px;font-size:13px;color:var(--muted)}
+
+/* cyber : deux groupes de filtres */
+.cy-fgroup{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.cy-fgroup .cy-flbl{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-right:2px}
+
+/* automatisations : texte d'aide plus contraste que --faint */
+p.au-note{color:var(--muted)}

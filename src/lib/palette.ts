@@ -8,6 +8,7 @@ export type Command = {
   group: string               // aller | affichage | maison | lanceur | liens
   keywords?: string           // synonymes cherchables, non affichés
   nav?: boolean               // simple navigation : pas de message « fait »
+  detail?: string             // extrait affiche sous le libelle (resultats de la recherche globale)
   run: () => void | Promise<unknown>
 }
 

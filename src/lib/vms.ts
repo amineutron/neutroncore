@@ -23,17 +23,20 @@ export function useVms(): { data: VmList | null; loading: boolean; error: string
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const refresh = useCallback(() => {
+  const charger = useCallback((essai: number) => {
     setLoading(true)
     fetchVms()
       .then((d) => {
         setData(d)
         setError(null)
+        // liste vide + « dernier etat connu » : le demon (ou son serveur de VMs) vient de redemarrer, on reessaie
+        if (d.vms.length === 0 && (d.stale || d.error) && essai < 3) setTimeout(() => charger(essai + 1), 5000)
       })
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false))
   }, [])
 
+  const refresh = useCallback(() => charger(0), [charger])
   useEffect(() => { refresh() }, [refresh])
 
   return { data, loading, error, refresh }

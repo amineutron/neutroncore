@@ -1,7 +1,8 @@
 // Reglages persistants (localStorage) — theme, affichage, notifications...
+import { installPersoStyles } from './themes'
 
 export type Settings = {
-  theme: 'neutron' | 'ironman' | 'matrix' | 'midnight' | 'dawn' | 'paper' | 'sky'
+  theme: 'neutron' | 'ironman' | 'matrix' | 'midnight' | 'dawn' | 'paper' | 'sky' | `perso:${string}`
   posters: boolean        // afficher les posters dans la recherche de demandes
   notifications: boolean  // notifications navigateur pour Lyra
   compact: boolean        // densite compacte
@@ -66,6 +67,8 @@ export function saveSettings(patch: Partial<Settings>): Settings {
 
 export function applySettings(s: Settings = getSettings()): void {
   const root = document.documentElement
+  // themes perso : la feuille doit etre reinjectee a chaque demarrage, sinon data-theme="perso:x" retombe sur neutron
+  try { installPersoStyles() } catch { /* stockage indisponible : themes integres seulement */ }
   if (s.theme === 'neutron') delete root.dataset.theme
   else root.dataset.theme = s.theme
   if (s.compact) root.dataset.density = 'compact'

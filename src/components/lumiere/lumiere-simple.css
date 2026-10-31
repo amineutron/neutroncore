@@ -1,0 +1,14 @@
+/* Lumière 3d : mode simple, ligne d'état, panneau avancé */
+.lu-barre{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px}
+.lu-bascule{display:inline-flex;gap:6px}
+.lu-etat{display:flex;flex-direction:column;gap:6px;min-width:0}
+.lu-etat-ligne{display:flex;flex-wrap:wrap;gap:6px}
+.lu-etat-avert{margin:0;font-size:12px;color:var(--muted)}
+.lu-etat-avert.warn{color:var(--warn)}
+.lu-simples{display:flex;flex-direction:column;gap:12px}
+.lu-simple-intro{margin:12px 0 0;font-size:12px;color:var(--muted)}
+.lu-avance{display:flex;flex-direction:column;gap:12px;min-width:0}
+.lu-avance-titre{margin:4px 0 0;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.lu-groupe{display:flex;flex-direction:column;gap:10px;min-width:0}
+.lu-groupe-titre{margin:2px 0 0;font-size:11.5px;color:var(--gold);font-weight:500}
+.lu-simple-col{display:flex;flex-direction:column;gap:12px;min-width:0}

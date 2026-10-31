@@ -262,6 +262,83 @@ export const AUTOMATION_CATALOGUE = {
           "max": 60
         }
       ]
+    },
+    {
+      "type": "idle",
+      "label": "je suis inactif depuis un moment",
+      "params": [
+        {
+          "name": "minutes",
+          "type": "int",
+          "min": 5,
+          "max": 720
+        }
+      ]
+    },
+    {
+      "type": "back",
+      "label": "je reviens après une absence",
+      "params": [
+        {
+          "name": "after_min",
+          "type": "int",
+          "min": 15,
+          "max": 1440
+        }
+      ]
+    },
+    {
+      "type": "ci",
+      "label": "la ci github se termine",
+      "params": [
+        {
+          "name": "result",
+          "type": "choice",
+          "choices": [
+            "echec",
+            "reussi",
+            "tous"
+          ]
+        },
+        {
+          "name": "contains",
+          "type": "otext",
+          "max": 60
+        }
+      ]
+    },
+    {
+      "type": "docker",
+      "label": "un conteneur docker tombe",
+      "params": [
+        {
+          "name": "state",
+          "type": "choice",
+          "choices": [
+            "stopped",
+            "unhealthy",
+            "any"
+          ]
+        },
+        {
+          "name": "code",
+          "type": "choice",
+          "choices": [
+            "erreur",
+            "tous"
+          ]
+        },
+        {
+          "name": "contains",
+          "type": "otext",
+          "max": 60
+        }
+      ]
+    },
+    {
+      "type": "gpu_oom",
+      "label": "la carte graphique manque de mémoire",
+      "params": []
     }
   ],
   "conditions": [
@@ -433,6 +510,26 @@ export const AUTOMATION_CATALOGUE = {
             "here",
             "away"
           ]
+        }
+      ]
+    },
+    {
+      "type": "idle",
+      "label": "clavier et souris",
+      "params": [
+        {
+          "name": "state",
+          "type": "choice",
+          "choices": [
+            "idle",
+            "active"
+          ]
+        },
+        {
+          "name": "minutes",
+          "type": "int",
+          "min": 1,
+          "max": 720
         }
       ]
     }
@@ -783,7 +880,9 @@ export const AUTOMATION_CATALOGUE = {
             "atelier",
             "taches",
             "lanceur",
-            "agenda"
+            "agenda",
+            "worldmonitor",
+            "monde"
           ]
         }
       ]
@@ -792,6 +891,51 @@ export const AUTOMATION_CATALOGUE = {
       "action": "tv.restore",
       "label": "tv : remettre ce qu'elle affichait",
       "params": []
+    },
+    {
+      "action": "reveil.run",
+      "label": "lancer un réveil progressif",
+      "params": [
+        {
+          "name": "id",
+          "type": "id"
+        }
+      ]
+    },
+    {
+      "action": "rampe.play",
+      "label": "jouer une rampe de lumière",
+      "params": [
+        {
+          "name": "id",
+          "type": "id"
+        }
+      ]
+    },
+    {
+      "action": "lumiere.arret",
+      "label": "arrêter la rampe ou le réveil en cours",
+      "params": []
+    },
+    {
+      "action": "spatial.scene",
+      "label": "lumière 3d : jouer une scène ou un moment",
+      "params": [
+        {
+          "name": "id",
+          "type": "id"
+        }
+      ]
+    },
+    {
+      "action": "audio.scene",
+      "label": "sono : appliquer une scène de volume",
+      "params": [
+        {
+          "name": "id",
+          "type": "id"
+        }
+      ]
     },
     {
       "action": "camera.power",
@@ -833,6 +977,41 @@ export const AUTOMATION_CATALOGUE = {
           ]
         }
       ]
+    },
+    {
+      "action": "docker.restart",
+      "label": "relancer un conteneur docker",
+      "params": [
+        {
+          "name": "name",
+          "type": "container"
+        }
+      ]
+    },
+    {
+      "action": "vm.start",
+      "label": "démarrer une vm",
+      "params": [
+        {
+          "name": "vm",
+          "type": "vm"
+        }
+      ]
+    },
+    {
+      "action": "bt.connect",
+      "label": "reconnecter un appareil bluetooth",
+      "params": [
+        {
+          "name": "device",
+          "type": "bluetooth"
+        }
+      ]
+    },
+    {
+      "action": "ci.inspect",
+      "label": "proposer d'inspecter l'échec de la ci",
+      "params": []
     }
   ],
   "variables": [
@@ -868,6 +1047,10 @@ export const AUTOMATION_CATALOGUE = {
     "lyra.tool",
     "tests.run",
     "tv.show",
-    "tv.restore"
+    "tv.restore",
+    "ci.inspect",
+    "reveil.run",
+    "rampe.play",
+    "spatial.scene"
   ]
 }

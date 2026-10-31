@@ -9,7 +9,7 @@ export default defineConfig({
   server: {
     proxy: {
       // dev : npm run dev proxifie l'API vers l'instance locale
-      '^/(arr|requests|subtitles|system|projects|launcher|lyra|services|qbit|tracking|tv|hue|ironman|screens|fan|auth|health)': {
+      '^/(agenda|arr|audit|auth|automations|branches|camera|ci-deps|cyber|dette|dv|fan|godeye|health|hue|ironman|journal|launcher|lyra|maj|manga|media|minuteurs|modelisation|notes|notifications|plan|projects|qbit|rampes|recherche|recos|reglages|requests|reseau|ressources|resume|reveil|roadmap|sauvegardes|screens|securite|services|sorties|spatial|subtitles|system|tests|tracking|tv|vms-console|zones-audio)': {
         target: 'http://127.0.0.1:9876',
         changeOrigin: true,
       },

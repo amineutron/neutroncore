@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { getFavs, rank, setFavs, subscribeFavs, toggleFav, type Command } from '../lib/palette'
+import { useSearchCommands } from './recherche/useSearch'
+import { surligner } from '../lib/recherche'
+import './resume/resume.css'
 
 const MAX_ROWS = 60
 
 // Palette de commandes (Ctrl+K) : chercher, flèches + Entrée pour lancer,
 // étoile (ou Ctrl+D) pour épingler une commande en favori.
-export function Palette({ commands, loading, onRun, onClose }: {
-  commands: Command[]; loading: boolean; onRun: (c: Command) => void; onClose: () => void
+// Sous les commandes, les résultats de la recherche globale (films, sessions, notifications, docs...).
+export function Palette({ commands, loading, onRun, onClose, openNotifs }: {
+  commands: Command[]; loading: boolean; onRun: (c: Command) => void; onClose: () => void; openNotifs: () => void
 }) {
   const [query, setQuery] = useState('')
   const [sel, setSel] = useState(0)
@@ -19,7 +23,9 @@ export function Palette({ commands, loading, onRun, onClose }: {
     const before = document.activeElement as HTMLElement | null
     return () => { before?.focus?.() }
   }, [])
-  const rows = useMemo(() => rank(commands, query, favs).slice(0, MAX_ROWS), [commands, query, favs])
+  const local = useMemo(() => rank(commands, query, favs).slice(0, MAX_ROWS), [commands, query, favs])
+  const search = useSearchCommands(query, commands, openNotifs)
+  const rows: Command[] = useMemo(() => [...local, ...search.hits], [local, search.hits])
   const current = rows[Math.min(sel, rows.length - 1)]
 
   useEffect(() => { setSel(0) }, [query])
@@ -63,10 +69,12 @@ export function Palette({ commands, loading, onRun, onClose }: {
                 }}
                 onClick={() => launch(c)}>
                 <span className="pl-group">{c.group}</span>
-                <span className="pl-label">{c.label}</span>
-                <button className={`pl-star ${fav ? 'on' : ''}`} aria-pressed={fav}
-                  aria-label={fav ? `Retirer ${c.label} des favoris` : `Ajouter ${c.label} aux favoris`}
-                  onClick={(e) => { e.stopPropagation(); setFavs(toggleFav(favs, c.id)) }}>{fav ? '★' : '☆'}</button>
+                <span className="pl-label">{c.label}{c.detail && <small className="pl-detail">{surligner(c.detail, query).map((m, k) => m.hit ? <mark key={k}>{m.t}</mark> : <span key={k}>{m.t}</span>)}</small>}</span>
+                {!c.id.startsWith('hit:') && (
+                  <button className={`pl-star ${fav ? 'on' : ''}`} aria-pressed={fav}
+                    aria-label={fav ? `Retirer ${c.label} des favoris` : `Ajouter ${c.label} aux favoris`}
+                    onClick={(e) => { e.stopPropagation(); setFavs(toggleFav(favs, c.id)) }}>{fav ? '★' : '☆'}</button>
+                )}
               </div>
             )
           })}
@@ -75,6 +83,7 @@ export function Palette({ commands, loading, onRun, onClose }: {
         <div className="pl-foot">
           <span>↑↓ choisir</span><span>entrée lancer</span><span>ctrl+d favori</span>
           {loading && rows.length > 0 && <span>scènes et favoris en cours de chargement…</span>}
+          {search.loading && <span>recherche dans le hub…</span>}
         </div>
       </div>
     </div>

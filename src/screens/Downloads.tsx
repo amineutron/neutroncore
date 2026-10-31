@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { apiDelete, apiGet, apiPost, withConfirm } from '../lib/api'
 import { ask, toast } from '../lib/dialog'
 import { usePoll } from '../lib/poll'
+import '../components/audit-ux.css'
 import { Loader, Bar, Btn, Card, Chip, PageTitle } from '../components/ui'
 
 type Torrent = { hash: string; name: string; state: string; progress: number; dl_speed_fmt: string; eta_fmt: string; num_seeds: number; size_fmt: string }
@@ -15,6 +16,12 @@ type SubStatus = {
 }
 
 const PHASES = ['download', 'subtitles', 'dv-conv']
+
+/** « etape 2/3 » plutôt que le nom brut de la phase du tracking. */
+const PHASE_NAMES = ['téléchargement', 'sous-titres', 'conversion dv']
+function phaseLabel(phase: string, idx: number): string {
+  return phase ? `étape ${idx + 1}/${PHASES.length} · ${PHASE_NAMES[idx]}` : ''
+}
 
 function phaseIndex(phase: string): number {
   const p = phase.toLowerCase()
@@ -63,7 +70,7 @@ export function Downloads() {
   return (
     <>
       <PageTitle help="dl" title="téléchargements" desc="qBittorrent + le pipeline : téléchargement, sous-titres, conversion Dolby Vision." />
-      <div className="tiles">
+      <div className="tiles dl-tiles">
         <div className="tile"><div className="ey">débit</div><div className="v num" style={{ fontSize: 22 }}>{stats.data?.dl_speed_fmt ?? '…'}</div><div className="d num">up {stats.data?.ul_speed_fmt ?? ''}</div></div>
         <div className="tile"><div className="ey">actifs</div><div className="v num">{active.length}</div><div className="d">{active.filter((t) => t.num_seeds === 0).length} sans seed</div></div>
         <div className="tile"><div className="ey">sous-titres ia</div><div className="v num">{ai ? `${ai.budget_spent}` : '…'}<small> / {ai?.budget_total ?? 5} pts</small></div><div className="d">{ai?.active_total ?? 0} trads en place</div></div>
@@ -73,8 +80,8 @@ export function Downloads() {
       <Card title="pipeline média" lite="du torrent au film prêt" style={{ marginBottom: 14 }}>
         {active.map((t) => (
           <div className="torrent" key={t.hash}>
-            <div className="row1">
-              <span className="name">{t.name}</span>
+            <div className="row1 dl-row">
+              <span className="name" title={t.name}>{t.name}</span>
               <span className="sp num">{t.num_seeds === 0 ? `0 seed — en attente` : `${t.dl_speed_fmt} · ETA ${t.eta_fmt}`}</span>
               <Btn sm danger disabled={busy === t.hash} onClick={() => removeTorrent(t)}>suppr</Btn>
             </div>
@@ -85,9 +92,9 @@ export function Downloads() {
           const idx = phaseIndex(s.extra?.phase ?? '')
           return (
             <div className="torrent" key={s.id}>
-              <div className="row1">
-                <span className="name">{s.name}</span>
-                <span className="sp num" style={{ color: 'var(--gold)' }}>{s.extra?.phase ?? ''}</span>
+              <div className="row1 dl-row">
+                <span className="name" title={s.name}>{s.name}</span>
+                <span className="sp num" style={{ color: 'var(--gold)' }}>{phaseLabel(s.extra?.phase ?? '', idx)}</span>
                 <Btn sm danger disabled={busy === s.id} onClick={() => removeDownload(s)}>suppr</Btn>
               </div>
               <div className="pipe">
@@ -123,7 +130,7 @@ export function Downloads() {
           <table>
             <tbody>
               {(ai?.active ?? []).slice(0, 8).map((e, i) => (
-                <tr key={i}><td className="mono">{e.title}</td><td className="num" style={{ textAlign: 'right', color: 'var(--faint)' }}>phase b</td></tr>
+                <tr key={i}><td className="mono">{e.title}</td><td className="num" style={{ textAlign: 'right', color: 'var(--faint)' }}>en place</td></tr>
               ))}
             </tbody>
           </table>

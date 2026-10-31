@@ -6,6 +6,8 @@ import { MascotChain } from '../components/Mascot'
 import { Reactor, type SubSystem } from '../components/Reactor'
 import { HomeSessions } from '../components/HomeSessions'
 import { HomeAtelier } from '../components/HomeAtelier'
+import { VueTele } from '../components/lumiere/VueTele'
+import { HomeResume } from '../components/resume/HomeResume'
 import { Bar, Card, Chip, Dot } from '../components/ui'
 
 // Tableau de bord "ecran du matin" : tout l'essentiel, dense mais lisible du lit.
@@ -47,7 +49,7 @@ export function TvDashboard() {
 
 
   // ---- personnalisation : sections activables et ordonnables ----
-  type SectionId = 'reactor' | 'alertes' | 'systeme' | 'mascottes' | 'sessions' | 'atelier' | 'encours' | 'automatisations' | 'sorties' | 'films' | 'quota' | 'semaine' | 'demandes' | 'soustitres' | 'lumieres'
+  type SectionId = 'reactor' | 'alertes' | 'systeme' | 'mascottes' | 'sessions' | 'atelier' | 'lumiere' | 'encours' | 'automatisations' | 'sorties' | 'films' | 'quota' | 'semaine' | 'demandes' | 'soustitres' | 'lumieres' | 'resume'
   const ALL: { id: SectionId; label: string }[] = [
     { id: 'reactor', label: 'état du cœur' },
     { id: 'alertes', label: 'alertes' },
@@ -55,6 +57,7 @@ export function TvDashboard() {
     { id: 'mascottes', label: 'mascottes' },
     { id: 'sessions', label: 'sessions claude code' },
     { id: 'atelier', label: 'atelier 3d' },
+    { id: 'lumiere', label: 'lumière 3d' },
     { id: 'encours', label: 'en cours' },
     { id: 'automatisations', label: 'automatisations' },
     { id: 'sorties', label: 'prochaines sorties' },
@@ -64,6 +67,7 @@ export function TvDashboard() {
     { id: 'demandes', label: 'demandes en attente' },
     { id: 'soustitres', label: 'sous-titres ia' },
     { id: 'lumieres', label: 'lumières' },
+    { id: 'resume', label: 'résumé du matin' },
   ]
   const DEFAULT_LAYOUT = { order: ALL.map((a) => a.id), enabled: Object.fromEntries(ALL.map((a) => [a.id, true])) as Record<SectionId, boolean>, sizes: Object.fromEntries(ALL.map((a) => [a.id, 2])) as Record<SectionId, number> }
   const [layout, setLayout] = useState<typeof DEFAULT_LAYOUT>(() => {
@@ -111,9 +115,11 @@ export function TvDashboard() {
   // la section sessions n'a pas de zoom : s/m/l = format court / moyen / long (pleine largeur)
   const sessionsFormat = (layout.sizes.sessions ?? 2) === 1 ? 'short' : (layout.sizes.sessions ?? 2) === 3 ? 'long' : 'medium'
   const SECTIONS: Record<SectionId, () => React.JSX.Element> = {
+    resume: () => <HomeResume tv />,
     sessions: () => <HomeSessions tv format={sessionsFormat} />,
     // comme les sessions : s/m/l = glyphes seuls, détail, détail avec la dernière phrase
     atelier: () => <HomeAtelier tv format={(layout.sizes.atelier ?? 2) === 1 ? 'short' : (layout.sizes.atelier ?? 2) === 3 ? 'long' : 'medium'} />,
+    lumiere: () => <VueTele />,
     reactor: () => <Reactor systems={systems} alertCount={(alerts.data?.alerts ?? []).length} />,
     alertes: () => (
       <Card title="alertes">
@@ -318,7 +324,7 @@ export function TvDashboard() {
             onDragEnd={() => { dragFrom.current = null; setDragging(null) }}
             onDrop={(e) => { e.preventDefault(); dragFrom.current = null; setDragging(null) }}
             style={{
-              zoom: id === 'sessions' || id === 'atelier' ? 1 : (layout.sizes[id] ?? 2) === 1 ? 0.82 : (layout.sizes[id] ?? 2) === 3 ? 1.28 : 1,
+              zoom: id === 'sessions' || id === 'atelier' || id === 'lumiere' ? 1 : (layout.sizes[id] ?? 2) === 1 ? 0.82 : (layout.sizes[id] ?? 2) === 3 ? 1.28 : 1,
               ...(editing ? {
                 outline: dragging === id ? '2px solid var(--rose)' : '2px dashed var(--gold)',
                 outlineOffset: 3, borderRadius: 12, cursor: 'grab', position: 'relative',

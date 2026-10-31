@@ -1,32 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
+import { NavContext } from '../App'
+import '../components/audit-ux.css'
 import { LOG_TARGET } from '../lib/nav'
 import { LINKS } from '../lib/links'
 import { apiGet } from '../lib/api'
-import { usePoll, fmtBytes } from '../lib/poll'
-import { useVms } from '../lib/vms'
-import { VmRow } from '../components/VmRow'
+import { usePoll } from '../lib/poll'
 import { Services, type Service } from '../components/Services'
-import { Bar, Card, Chip, PageTitle } from '../components/ui'
+import { Btn, Card, Chip, PageTitle } from '../components/ui'
 
-type Resources = {
-  cpu_pct: number
-  ram: { total: number; used: number }
-  gpu: { vram_used: number; vram_total: number; utilization: number; temperature: number } | null
-  disks: { path: string; used_pct: number; free: number }[]
-}
-type BackupUnit = { state: 'ok' | 'failed' | 'running' | 'never' | 'missing'; last_run: string | null; result: string | null }
+type BackupUnit = { state: 'ok' | 'failed' | 'running' | 'never' | 'missing' }
 type Backups = { borg: BackupUnit; rotation: BackupUnit & { age_days: number | null }; timeshift: BackupUnit }
-
-// Libelle court de l'etat d'une sauvegarde : l'echec prime sur la date
-const backupLabel = (u: BackupUnit | undefined, age?: number | null): string => {
-  if (!u) return '…'
-  if (u.state === 'failed') return 'échec'
-  if (u.state === 'running') return 'en cours'
-  if (u.state === 'missing') return 'non installé'
-  if (u.state === 'never') return 'jamais lancé'
-  if (age != null) return age === 0 ? "aujourd'hui" : `il y a ${age} j`
-  return u.last_run ? u.last_run.split(' ').slice(1, 3).join(' ') : 'ok'
-}
 
 const LOG_UNITS = [
   { unit: 'all', label: 'tous les logs' },
@@ -43,7 +26,7 @@ const LOG_UNITS = [
 ]
 
 export function Outils() {
-  const res = usePoll<Resources>(() => apiGet('/system/resources'), 10000)
+  const res = usePoll<{ cpu_pct: number }>(() => apiGet('/system/resources'), 10000)
   const services = usePoll<{ services: Service[] }>(() => apiGet('/services'), 30000)
   const backups = usePoll<Backups>(() => apiGet('/system/backups'), 300000)
   // journal présélectionné depuis un autre écran (fiche d'un événement de l'agenda)
@@ -63,78 +46,22 @@ export function Outils() {
   // changement d'unit : refetch immédiat ici
   useEffect(() => { journal.refresh() }, [logUnit]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // VMs : chargées à l'ouverture de l'écran (3 à 7 s via Lyra), pas de polling
-  const vmList = useVms()
-  const vms = vmList.data?.vms ?? []
+  const nav = useContext(NavContext)
   const r = res.data
-
-  const gauge = (label: string, value: string, pct: number, tone?: 'ok' | 'warn' | 'crit') => (
-    <div key={label}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}>
-        <span className="mono" style={{ color: 'var(--muted)' }}>{label}</span>
-        <span className="num">{value}</span>
-      </div>
-      <Bar pct={pct} tone={tone} />
-    </div>
-  )
+  const backupBad = ['borg', 'rotation', 'timeshift'].some((k) => backups.data?.[k as 'borg']?.state === 'failed')
 
   return (
     <>
-      <PageTitle help="outils" title="outils & vms" desc="Machines virtuelles, backups, ressources et accès directs." />
+      <PageTitle help="outils" title="outils & vms" desc="Services, journaux et accès directs. Ressources, sauvegardes et VMs ont leur propre onglet." />
 
       <Services services={services.data?.services ?? []} onChange={services.refresh} />
 
-      <div className="grid g3" style={{ marginBottom: 14 }}>
-        <Card title="ressources">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {r && gauge('cpu', `${r.cpu_pct} %`, r.cpu_pct, 'ok')}
-            {r && gauge('ram', `${fmtBytes(r.ram.used)} / ${fmtBytes(r.ram.total)}`, (r.ram.used / r.ram.total) * 100)}
-            {r?.gpu && gauge('gpu vram', `${fmtBytes(r.gpu.vram_used)} / ${fmtBytes(r.gpu.vram_total)} · ${r.gpu.temperature}°`, (r.gpu.vram_used / r.gpu.vram_total) * 100)}
-            {(r?.disks ?? []).map((d) =>
-              gauge(d.path, `${d.used_pct} %`, d.used_pct, d.used_pct >= 92 ? 'crit' : d.used_pct >= 85 ? 'warn' : undefined),
-            )}
-          </div>
-        </Card>
-        <Card title="machines virtuelles" lite={vmList.loading ? 'mise à jour…' : 'kvm'}>
-          <table>
-            <tbody>
-              {vms.map((vm, i) => <VmRow key={vm.name} vm={vm} i={i} onRefresh={vmList.refresh} />)}
-              {vms.length === 0 && (
-                <tr><td style={{ color: 'var(--faint)', fontSize: 12 }}>
-                  {vmList.loading && !vmList.data ? 'Interrogation de Lyra…' : 'Aucune VM détectée.'}
-                </td></tr>
-              )}
-            </tbody>
-          </table>
-          {(vmList.data?.stale || vmList.error) && (
-            <p style={{ fontSize: 11.5, color: 'var(--crit)', marginTop: 8 }}>
-              {vmList.error ? 'API injoignable' : 'Lyra injoignable'}
-              {vmList.data?.fetched_at ? ` — état de ${vmList.data.fetched_at.slice(11, 16)}` : ''}.
-            </p>
-          )}
-          <p style={{ fontSize: 11.5, color: 'var(--faint)', marginTop: 8, display: 'flex', justifyContent: 'space-between' }}>
-            <span>Démarrage/arrêt : confirmation en deux clics.</span>
-            {!vmList.loading && <span className="x" style={{ cursor: 'pointer', color: 'var(--gold)' }} onClick={vmList.refresh}>actualiser</span>}
-          </p>
-        </Card>
-        <Card title="backups" lite="clic : journaux">
-          <table>
-            <tbody>
-              {[
-                { name: 'Borg hebdo', where: '/mnt/backup_cold · dim. 02:00', unit: backups.data?.borg, log: 'borg-backup.log' },
-                { name: 'Borg tournant', where: 'disque usb · au branchement', unit: backups.data?.rotation, age: backups.data?.rotation.age_days, log: 'borg-rotation.log' },
-                { name: 'Timeshift', where: '/backups/fast · 03:00', unit: backups.data?.timeshift, log: 'timeshift-backup.service' },
-              ].map((b) => (
-                <tr key={b.name} onClick={() => setLogUnit(b.log)} style={{ cursor: 'pointer' }}>
-                  <td><b style={{ fontSize: 12.5 }}>{b.name}</b><br /><span style={{ fontSize: 11, color: 'var(--muted)' }}>{b.where}</span></td>
-                  <td style={{ textAlign: 'right' }}>
-                    <Chip tone={b.unit?.state === 'failed' ? 'crit' : b.unit?.state === 'ok' ? 'ok' : undefined}>{backupLabel(b.unit, b.age)}</Chip>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+      <div className="ou-links">
+        <span>ailleurs :</span>
+        <Btn sm onClick={() => nav('ressources')}>ressources{r ? ` · cpu ${r.cpu_pct} %` : ''}</Btn>
+        <Btn sm onClick={() => nav('sauvegardes')}>sauvegardes</Btn>
+        {backupBad && <Chip tone="crit">une sauvegarde a échoué</Chip>}
+        <Btn sm onClick={() => nav('vms')}>console vms</Btn>
       </div>
 
       <div id="journaux" />

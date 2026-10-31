@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { apiDelete, apiPost, apiPut, withConfirm } from '../lib/api'
+import { resume, versApi, type Rappel } from '../lib/rappels'
+import { RappelForm } from './RappelForm'
 import { Btn, Chip } from './ui'
 
 // Pièces de l'écran agenda : fiche d'un événement (au clic), actions sur les échecs, formulaire manuel
@@ -8,12 +10,13 @@ export type Occurrence = {
   id: string; event_id: string; source: 'auto' | 'manual'
   title: string; category: string; start: string; end: string
   recurrence: 'none' | 'daily' | 'weekly'; event_start: string; duration_min: number
-  description: string; notify: boolean
+  description: string; notify: boolean; rappel?: Rappel | null
   unit: string | null; log: string | null
   status: 'upcoming' | 'pending' | 'done' | 'failed' | 'missed' | 'past' | 'dismissed' | 'retrying' | 'repaired'
   run: { time: string; result: string; started?: string; duration_s?: number } | null
   can_retry: boolean; can_dismiss: boolean; can_restore: boolean
   automation_id?: string   // passage d'une automatisation horaire
+  all_day?: boolean        // sortie sans heure (Radarr ne donne que la date)
 }
 
 export const CATEGORY_LABEL: Record<string, string> = { sauvegardes: 'sauvegardes', systeme: 'système', perso: 'perso', automatisations: 'automatisations' }
@@ -128,8 +131,9 @@ export function EventDetail({ occ, onClose, onEdit, onDeleted, onLog, onChanged,
             <Chip tone={st.tone}>{st.label}</Chip>
             <Chip>{CATEGORY_LABEL[occ.category] ?? occ.category}</Chip>
             {occ.notify && <Chip tone="rose">rappel accueil</Chip>}
+            {occ.rappel && <Chip tone="gold">rappel {resume(occ.rappel)}</Chip>}
           </div>
-          <Row k="quand">{dayLabel(occ.start.slice(0, 10))}, {hhmm(occ.start)} - {hhmm(occ.end)}</Row>
+          <Row k="quand">{occ.all_day ? `${dayLabel(occ.start.slice(0, 10))}, toute la journée` : <>{dayLabel(occ.start.slice(0, 10))}, {hhmm(occ.start)} - {hhmm(occ.end)}</>}</Row>
           <Row k="répétition">{RECURRENCE_LABEL[occ.recurrence]}</Row>
           {occ.description && <Row k="détail">{occ.description}</Row>}
           {occ.unit && <Row k="unité">{occ.unit}</Row>}
@@ -158,7 +162,7 @@ export function EventDetail({ occ, onClose, onEdit, onDeleted, onLog, onChanged,
   )
 }
 
-export type EventDraft = { id?: string; title: string; category: string; start: string; duration_min: number; recurrence: string; description: string; notify: boolean }
+export type EventDraft = { id?: string; title: string; category: string; start: string; duration_min: number; recurrence: string; description: string; notify: boolean; rappel: Rappel }
 
 export function EventForm({ initial, onClose, onSaved }: { initial: EventDraft; onClose: () => void; onSaved: () => void }) {
   const [d, setD] = useState(initial)
@@ -167,7 +171,8 @@ export function EventForm({ initial, onClose, onSaved }: { initial: EventDraft; 
   const set = <K extends keyof EventDraft>(k: K, v: EventDraft[K]) => setD({ ...d, [k]: v })
   async function save() {
     setBusy(true); setErr('')
-    const { id, ...body } = d
+    const { id, rappel, ...reste } = d
+    const body = { ...reste, rappel: versApi(rappel) }
     try {
       if (id) await apiPut(`/agenda/events/${id}`, body)
       else await apiPost('/agenda/events', body)
@@ -197,7 +202,8 @@ export function EventForm({ initial, onClose, onSaved }: { initial: EventDraft; 
               {Object.entries(RECURRENCE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </label>
-          <label className="check"><input type="checkbox" checked={d.notify} onChange={(e) => set('notify', e.target.checked)} />rappel dans « à traiter » le jour même</label>
+          <RappelForm value={d.rappel} titre={d.title} onChange={(r) => set('rappel', r)} />
+          <label className="check"><input type="checkbox" checked={d.notify} onChange={(e) => set('notify', e.target.checked)} />aussi dans « à traiter » sur l’accueil, le jour même</label>
           <label className="wide">détail<textarea rows={3} maxLength={2000} value={d.description} onChange={(e) => set('description', e.target.value)} /></label>
           {err && <p className="ag-err wide">{err}</p>}
           <div className="ag-actions wide">

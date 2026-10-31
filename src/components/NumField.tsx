@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import './ctl.css'
 
 // Champ nombre qui laisse taper librement (« 4 », « 42 », « 420 ») : la valeur
 // n'est bornée et transmise qu'à la validation (sortie du champ ou Entrée).
@@ -17,7 +18,7 @@ export function NumField({ value, min, max, step, label, onCommit }: {
     if (next !== value) onCommit(next)
   }
   return (
-    <input type="number" inputMode="numeric" min={min} max={max} step={step} value={text} aria-label={label}
+    <input className="nc-ctl" type="number" inputMode="numeric" min={min} max={max} step={step} value={text} aria-label={label}
       onChange={(e) => setText(e.target.value)} onBlur={commit}
       onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commit() } }} />
   )

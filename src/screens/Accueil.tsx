@@ -1,4 +1,5 @@
 import { useContext } from 'react'
+import { RappelEnCours } from '../components/RappelEnCours'
 import { apiGet } from '../lib/api'
 import { usePoll } from '../lib/poll'
 import { NavContext, type ScreenId } from '../App'
@@ -8,11 +9,14 @@ import { MascotChain } from '../components/Mascot'
 import { HomeSessions } from '../components/HomeSessions'
 import { HomeAtelier } from '../components/HomeAtelier'
 import { HomeShortcuts } from '../components/HomeShortcuts'
+import { HomeResume } from '../components/resume/HomeResume'
+import { WidgetGrid, type Widget } from '../components/home/WidgetGrid'
 import { Reactor, type SubSystem } from '../components/Reactor'
 import { Btn, Dot, PageTitle, Eyebrow, serviceTone } from '../components/ui'
+import { ouvrirDisque } from '../lib/disque'
 
 // kind : famille de l'alerte (disk, unit, backup, rotation, memory, agenda) — posé par l'API
-type Alert = { level: 'warn' | 'crit'; title: string; detail: string; action?: ScreenId; kind?: string; key?: string }
+type Alert = { level: 'warn' | 'crit'; title: string; detail: string; action?: ScreenId | 'disque'; kind?: string; key?: string; ref?: string }
 type Service = { name: string; display_name: string; status: string }
 
 export function Accueil() {
@@ -48,9 +52,10 @@ export function Accueil() {
     { label: 'n8n', state: svcList.find((s) => s.name === 'n8n')?.status === 'up' ? 'ok' : 'crit' },
   ]
 
-  return (
-    <>
-      <PageTitle help="accueil" title="accueil" desc="Le briefing du homelab — tout l'écosystème en un regard." />
+  // Chaque bloc est un widget a part : l'ordre, la taille et la visibilite se reglent par « personnaliser l'accueil ».
+  // Les ids sont la cle de stockage de la disposition : ne pas les renommer.
+  const widgets: Widget[] = [
+    { id: 'hero', label: 'réacteur et alertes', node: (
       <div className="hero">
         <Reactor systems={systems} alertCount={alertList.length} />
         <div>
@@ -64,7 +69,7 @@ export function Accueil() {
             )}
             {alertList.map((a) => (
               <div key={a.key ?? a.title} className={`alert ${a.level === 'crit' ? 'crit' : ''}`}
-                onClick={a.action ? () => navigate(a.action as ScreenId) : undefined}
+                onClick={a.action === 'disque' ? () => ouvrirDisque(a.ref) : a.action ? () => navigate(a.action as ScreenId) : undefined}
                 style={a.action ? { cursor: 'pointer' } : undefined}>
                 <Dot s={a.level} />
                 <div className="t"><b>{a.title}</b><span>{a.detail}</span></div>
@@ -72,24 +77,21 @@ export function Accueil() {
             ))}
           </div>
         </div>
-      </div>
-
-      {getSettings().mascots && (getSettings().mascotFastOn || getSettings().mascotSlowOn) && (
-        <div className="card" style={{ marginBottom: 14, padding: '8px 18px' }}>
-          <MascotChain
-            fastName={getSettings().mascotFast}
-            slowName={getSettings().mascotSlow}
-            showFast={getSettings().mascotFastOn}
-            showSlow={getSettings().mascotSlowOn}
-          />
-        </div>
-      )}
-
-      {getSettings().homeAtelier && <HomeAtelier />}
-      {getSettings().homeSessions && <HomeSessions />}
-
-      <HomeShortcuts />
-
+      </div>) },
+    { id: 'resume', label: 'résumé du matin', node: <HomeResume /> },
+    { id: 'mascottes', label: 'mascottes', node: getSettings().mascots && (getSettings().mascotFastOn || getSettings().mascotSlowOn) ? (
+      <div className="card" style={{ padding: '8px 18px' }}>
+        <MascotChain
+          fastName={getSettings().mascotFast}
+          slowName={getSettings().mascotSlow}
+          showFast={getSettings().mascotFastOn}
+          showSlow={getSettings().mascotSlowOn}
+        />
+      </div>) : null },
+    { id: 'atelier', label: 'atelier 3d', node: getSettings().homeAtelier ? <HomeAtelier /> : null },
+    { id: 'sessions', label: 'sessions claude code', node: getSettings().homeSessions ? <HomeSessions /> : null },
+    { id: 'raccourcis', label: 'raccourcis', node: <HomeShortcuts /> },
+    { id: 'tuiles', label: 'tuiles', node: (
       <div className="tiles">
         <div className="tile" onClick={() => navigate('dl')}>
           <div className="ey">téléchargements</div>
@@ -116,8 +118,8 @@ export function Accueil() {
           <div className="v num">{mainP ? `${mainP.totals.percent} %` : '…'}<small> {mainP ? `${mainP.totals.done}/${mainP.totals.total}` : ''}</small></div>
           <div className="d">{mainP ? (mainP.totals.waiting > 0 ? `${mainP.name} · ${mainP.totals.waiting} en attente de toi` : mainP.name) : 'project-tracker'}</div>
         </div>
-      </div>
-
+      </div>) },
+    { id: 'services', label: 'services', node: (<>
       <Eyebrow>services</Eyebrow>
       <div className="svc-row">
         {[...svcList]
@@ -135,6 +137,14 @@ export function Accueil() {
           <Btn sm onClick={() => { alerts.refresh(); sessions.refresh() }}>réessayer</Btn>
         </div>
       )}
+    </>) },
+  ]
+
+  return (
+    <>
+      <PageTitle help="accueil" title="accueil" desc="Le briefing du homelab — tout l'écosystème en un regard." />
+      <RappelEnCours enabled grand />
+      <WidgetGrid widgets={widgets} />
     </>
   )
 }

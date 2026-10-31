@@ -1,0 +1,19 @@
+/* conversions dv : historique en lignes (carte sous 560 px), durees sans retour a la ligne */
+.dv-hist{list-style:none;margin:0;padding:0}
+.dv-hrow{display:grid;grid-template-columns:minmax(0,1fr) 110px auto auto;gap:4px 12px;align-items:center;padding:8px 0;border-top:1px solid var(--line);cursor:pointer}
+.dv-hrow:first-child{border-top:none}
+.dv-hname{display:flex;flex-direction:column;gap:2px;min-width:0}
+.dv-hname b{font-size:12.5px;overflow-wrap:anywhere}
+.dv-hname .mono,.dv-hsteps{font-size:11px;color:var(--muted)}
+.dv-hsteps{margin-top:6px}
+.dv-hdur{white-space:nowrap;text-align:right;font-size:12px}
+.dv-hstat{text-align:right;white-space:nowrap}
+@media (max-width:560px){
+  .dv-hrow{grid-template-columns:minmax(0,1fr) auto auto;border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-bottom:8px;background:var(--surface2)}
+  .dv-hrow:first-child{border-top:1px solid var(--line)}
+  .dv-hname{grid-column:1 / -1}
+  .dv-hbar{grid-column:1}
+  .dv-hbar:empty{display:none}
+  .dv-hdur{grid-column:2}
+  .dv-hstat{grid-column:3}
+}

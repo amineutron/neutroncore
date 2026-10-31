@@ -1,4 +1,6 @@
 import { useId, useRef } from 'react'
+import './audit-ux.css'
+import { placeLabels, labelBox } from '../lib/planLabels'
 import { fromSvg, segEnds, toSvg, type Plan } from '../lib/plan'
 
 export type Measured = { left: string[]; top: string[]; right: string[]; bottom: string[] }
@@ -68,6 +70,9 @@ export function RoomPlan({ plan, colors, selected, measured, onSelect, onMove, o
   const tv = plan.tv ? toSvg(plan.tv.pos, plan.roomDims) : null
   const tvW = unit * 24
   const strip = plan.strip
+  // étiquettes décalées selon la place disponible (la TV occupe déjà la sienne)
+  const lampPts = Object.entries(plan.configs).map(([id, cfg]) => ({ id, text: cfg.name.toLowerCase(), ...toSvg(cfg.pos, plan.roomDims) }))
+  const labelY = placeLabels(lampPts, unit, tv ? [labelBox(tv.x, tv.y + unit * 6, 'tv', unit)] : [])
   const glow = (list: string[] | undefined) => list?.[Math.floor(list.length / 2)]
 
   return (
@@ -117,7 +122,7 @@ export function RoomPlan({ plan, colors, selected, measured, onSelect, onMove, o
             {/* cible tactile large, invisible */}
             <circle cx={p.x} cy={p.y} r={unit * 6} fill="transparent" />
             <circle className="rp-dot" cx={p.x} cy={p.y} r={unit * 2.6} fill={color ?? 'var(--off)'} strokeWidth={unit * 0.5} />
-            <text className="rp-label" x={p.x} y={p.y - unit * 4.4} fontSize={unit * 3} textAnchor="middle">{cfg.name.toLowerCase()}</text>
+            <text className="rp-label" x={p.x} y={labelY[id] ?? p.y - unit * 4.4} fontSize={unit * 3} textAnchor="middle">{cfg.name.toLowerCase()}</text>
           </g>
         )
       })}

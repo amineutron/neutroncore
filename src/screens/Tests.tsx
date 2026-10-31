@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { apiGet, apiPost } from '../lib/api'
 import { usePoll } from '../lib/poll'
+import { launchButtons } from '../lib/testsLabels'
+import '../components/audit-ux.css'
 import { Btn, Card, Chip, Eyebrow, Loader, PageTitle } from '../components/ui'
 
 type Kind = { kind: string; label: string; desc: string; targets: string[] }
@@ -47,10 +49,10 @@ export function Tests() {
       return { ...s, [kind]: cur.includes(target) ? cur.filter((t) => t !== target) : [...cur, target] }
     })
 
-  async function launch(kind: string) {
+  async function launch(kind: string, all = false) {
     setErr('')
     try {
-      await apiPost('/tests/run', { kind, targets: sel[kind] ?? [] })
+      await apiPost('/tests/run', { kind, targets: all ? [] : sel[kind] ?? [] })
       runs.refresh()
     } catch (e) {
       setErr((e as Error).message.includes('409') ? 'Un run est déjà en cours — attends la fin.' : (e as Error).message)
@@ -74,16 +76,18 @@ export function Tests() {
             return (
               <Card key={k.kind} title={k.label} lite={k.desc} style={{ marginBottom: 12 }}>
                 {k.targets.length > 0 && (
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                  <div className="tst-targets" role="group" aria-label={`cibles ${k.label}`}>
                     {k.targets.map((t) => (
-                      <span
+                      <button
                         key={t}
-                        className={`chip ${chosen.includes(t) ? 'gold' : ''}`}
-                        style={{ cursor: 'pointer' }}
+                        type="button"
+                        role="checkbox"
+                        aria-checked={chosen.includes(t)}
+                        className={`tst-target ${chosen.includes(t) ? 'on' : ''}`}
                         onClick={() => toggle(k.kind, t)}
                       >
-                        {chosen.includes(t) ? '[x] ' : '[ ] '}{t}
-                      </span>
+                        <span className="box" aria-hidden>{'✓'}</span>{t}
+                      </button>
                     ))}
                     {k.targets.length > 3 && chosen.length < k.targets.length && (
                       <span className="chip" style={{ cursor: 'pointer' }}
@@ -99,10 +103,10 @@ export function Tests() {
                     )}
                   </div>
                 )}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <Btn sm solid disabled={anyRunning} onClick={() => launch(k.kind)}>
-                    lancer {chosen.length > 0 ? `(${chosen.length} cible${chosen.length > 1 ? 's' : ''})` : k.targets.length > 0 ? '(tout)' : ''}
-                  </Btn>
+                <div className="tst-actions">
+                  {launchButtons(k.targets.length, chosen.length).map((b) => (
+                    <Btn key={b.key} sm solid={b.solid} disabled={anyRunning} onClick={() => launch(k.kind, b.key === 'all')}>{b.label}</Btn>
+                  ))}
                   {last && (
                     <span style={{ fontFamily: 'var(--mono)', fontSize: 11, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span className={`dot ${last.status === 'running' ? 'warn' : last.status === 'ok' ? 'ok' : 'crit'}`} />

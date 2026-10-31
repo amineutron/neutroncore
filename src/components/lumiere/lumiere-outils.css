@@ -1,0 +1,35 @@
+/* Calibrage, test des lampes, partage de scènes (écran lumière 3d) */
+.lu-outil { display: grid; gap: 10px; }
+.lu-outil h4 { margin: 8px 0 0; font-size: 13px; color: var(--gold); font-weight: 600; }
+.lu-outil-barre { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lu-outil-phrase { margin: 0; color: var(--text); font-size: 14px; }
+.lu-outil-phrase.crit { color: var(--crit); }
+.lu-outil-err { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lu-outil-liste { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13px; }
+.lu-outil-liste .ko { color: var(--crit); }
+.lu-outil-apercu { border: 1px solid var(--line2); border-radius: var(--r); padding: 10px; display: grid; gap: 8px; background: var(--surface2); }
+.lu-outil-coches { border: 1px solid var(--line); border-radius: var(--r); margin: 0; padding: 6px 10px 8px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.lu-outil-coches legend { color: var(--muted); font-size: 12px; padding: 0 4px; }
+.lu-outil-coches label { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; min-height: 28px; }
+.lu-outil-fichier input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.lu-outil-fichier:focus-within .btn { outline: 2px solid var(--gold); outline-offset: 2px; }
+.lu-outil-fichier { position: relative; justify-self: start; cursor: pointer; }
+
+.lu-test { list-style: none; padding-left: 0; }
+.lu-test li { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; padding: 4px 8px; border-left: 3px solid var(--off); background: var(--surface2); border-radius: 6px; }
+.lu-test li.ok { border-left-color: var(--ok); }
+.lu-test li.ko { border-left-color: var(--crit); color: var(--text); }
+.lu-test-etat { font-size: 12px; min-width: 96px; color: var(--muted); }
+.lu-test li.ok .lu-test-etat { color: var(--ok); }
+.lu-test li.ko .lu-test-etat { color: var(--crit); }
+
+.lu-cal-plan { width: 100%; max-height: 60vh; touch-action: manipulation; cursor: crosshair; border-radius: var(--r); background: var(--surface2); }
+.lu-cal-piece { fill: var(--surface); stroke: var(--line2); stroke-width: 3; }
+.lu-cal-lampe circle { fill: var(--faint); }
+.lu-cal-lampe text { fill: var(--muted); pointer-events: none; }
+.lu-cal-lampe.on circle { fill: var(--gold); stroke: var(--rose); stroke-width: 3; }
+.lu-cal-lampe.on text { fill: var(--text); }
+.lu-cal-lampe .lu-cal-ancien { fill: none; stroke: var(--gold); stroke-dasharray: 3 3; stroke-width: 2; }
+@media (pointer: coarse) { .lu-outil-coches label { min-height: 44px; } }
+@media (prefers-reduced-motion: no-preference) { .lu-cal-lampe.on circle { animation: lu-cal-pulse 1.2s ease-in-out infinite alternate; } }
+@keyframes lu-cal-pulse { to { opacity: .55; } }

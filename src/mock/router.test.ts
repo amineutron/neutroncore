@@ -37,14 +37,14 @@ describe('mockRequest', () => {
 // Chaque lecture faite par l'interface a une réponse de démo (liste relevée dans src/ le 2026-09-25).
 const GETS = [
   '/agenda?start=2026-09-21&end=2026-10-05', '/agenda/rotation', '/arr/calendar', '/automations', '/arr/incoming', '/arr/missing', '/arr/movies',
-  '/arr/overview', '/arr/series', '/hue/beat/status', '/hue/lights', '/hue/positions', '/hue/scenes',
+  '/arr/overview', '/arr/series', '/godeye/avions?mode=zone', '/godeye/failles', '/godeye/infos', '/godeye/marches', '/godeye/navires', '/godeye/vues', '/hue/beat/status', '/hue/lights', '/hue/positions', '/hue/scenes',
   '/hue/scenes/s-soir/preview', '/ironman/status', '/launcher', '/launcher/browse?path=/home/user/dev',
   '/launcher/claude-quota', '/launcher/claude-stats', '/launcher/sessions', '/launcher/sessions/notif-settings',
   '/launcher/sessions/recent', '/launcher/sessions/demo-1/messages?limit=80', '/lyra/catalog', '/lyra/settings',
   '/lyra/status', '/notifications?limit=80', '/plan', '/projects', '/projects/stats', '/projects/updates', '/qbit/stats', '/qbit/torrents', '/requests',
   '/requests/declined-auto', '/requests/options', '/requests/search?q=metro', '/requests/seasons/1',
   '/requests/watchlist', '/roadmap/projects', '/screens', '/screens/measured', '/services', '/services/vms', '/subtitles/status',
-  '/system/alerts', '/system/backups', '/system/journal?unit=lyra-daemon&lines=40', '/system/resources',
+  '/system/alerts', '/system/backups', '/system/journal?unit=lyra-daemon&lines=40', '/system/resources', '/system/disque', '/system/disque/analyse?chemin=/data', '/automations/sources',
   '/system/timers', '/system/updates', '/tests/catalog', '/tests/runs', '/tests/runs/run-2', '/tracking/sessions',
   '/tv/status', '/auth/token?action=tv_power',
 ]

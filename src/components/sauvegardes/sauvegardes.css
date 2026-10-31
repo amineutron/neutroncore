@@ -1,0 +1,29 @@
+.sv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-bottom:14px}
+.sv-alertes{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.sv-alerte{padding:9px 12px;border-radius:10px;border:1px solid var(--line2);font-size:13px;line-height:1.45}
+.sv-alerte.warn{border-color:#f0b45e55;background:#f0b45e12}
+.sv-alerte.crit{border-color:#ff5c7455;background:#ff5c7414}
+.sv-alerte b{display:block}
+.sv-kv{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:13px;margin:8px 0}
+.sv-kv dt{color:var(--faint)}
+.sv-kv dd{margin:0;font-family:var(--mono);font-size:12.5px;text-align:right;overflow-wrap:anywhere}
+.sv-age{font-size:22px;font-family:var(--mono);margin:2px 0 4px}
+.sv-courbe{display:block;width:100%;height:34px;margin:6px 0}
+.sv-courbe polyline{fill:none;stroke:var(--gold);stroke-width:1.5;vector-effect:non-scaling-stroke}
+.sv-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}
+.sv-filtres{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.sv-filtres .chip{cursor:pointer;background:none}
+.sv-filtres .chip.on{color:var(--gold);border-color:#f6c17744;background:var(--gold-soft)}
+.sv-filtres select{background:transparent;color:inherit;border:1px solid var(--line2);border-radius:8px;padding:4px 8px;font:inherit;font-size:12px}
+.sv-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.sv-tbl th{text-align:left;color:var(--faint);font-weight:400;padding:5px 8px;border-bottom:1px solid var(--line2);white-space:nowrap}
+.sv-tbl td{padding:6px 8px;border-bottom:1px solid var(--line);font-family:var(--mono);white-space:nowrap}
+.sv-tbl th.n,.sv-tbl td.n{text-align:right}
+.sv-verifs{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.sv-verif{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;font-size:12.5px}
+.sv-trace{font-family:var(--mono);font-size:11.5px;white-space:pre-wrap;color:var(--muted);max-height:160px;overflow:auto;margin:8px 0 0}
+.sv-regl{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:8px}
+.sv-regl label{display:flex;flex-direction:column;gap:4px;font-size:12.5px}
+.sv-regl input{max-width:120px}
+.sv-busy{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--gold)}
+@media(max-width:560px){.sv-grid{grid-template-columns:1fr}.sv-age{font-size:19px}}

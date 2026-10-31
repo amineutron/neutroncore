@@ -6,6 +6,8 @@
 // Repère, en centimètres : x = gauche/droite et y = avant/arrière, centrés sur la pièce ;
 // z = hauteur depuis le sol.
 
+import { reagir, type EtatBandes } from './spatialBandes'
+
 export type Vec3 = [number, number, number]
 export type Dims = { w: number; h: number; d: number }           // largeur, profondeur, hauteur
 // lampe : ampoule ou applique ; par : projecteur fixe ; projo : lyre (faisceau orientable) ;
@@ -32,12 +34,18 @@ export type Depart = 'bas' | 'centre' | 'haut'
 export type Pulsation = { attaque: number; retombee: number; profondeur: number; plancher: number; vie?: number }
 /** `auto` : huebeat règle lui-même la sensibilité, le curseur ne sert plus. */
 export type Commun = Pulsation & { intensite: number; sensibilite: number; vie: number; auto?: boolean }
+/** Option à côté des réglages communs (PUT /spatial/commun) : réagir au contenu du son (basses = onde, aigus =
+ * scintillement, voix = couleur chaude). Absente ou fausse = comportement d'origine. Volontairement hors de `Commun`
+ * (ce n'est pas un curseur 0-100, `CleCommun` ne doit pas la lister). */
+export type OptionSon = { bandes?: boolean }
 export const COMMUN_DEFAUT: Commun = { intensite: 100, sensibilite: 68, attaque: 0, retombee: 60, profondeur: 0, plancher: 0, vie: 0 }
 /** 3d : la lumière voyage dans la pièce depuis le point source. 2d : pas de trajet, toutes les lampes réagissent sur le temps. */
 export type Mode = '3d' | '2d'
 /** En 2d : toutes les lampes ensemble, ou une sur deux en alternance à chaque temps (la scène Iron Man de huebeat). */
 export type Groupe = 'tous' | 'alterne'
-export type FxParams = { mode?: Mode; groupe?: Groupe; source: Vec3; axe: Axe; palette: string; couleurs?: string[]; intensite: number; depart?: Depart; pulse?: Pulsation; general?: number; couches?: Partial<Record<FxId, Couche>> }
+export type FxParams = { mode?: Mode; groupe?: Groupe; source: Vec3; axe: Axe; palette: string; couleurs?: string[]; intensite: number; depart?: Depart; pulse?: Pulsation; general?: number; couches?: Partial<Record<FxId, Couche>>
+  /** Réactions au son : présent seulement si l'option « bandes » est cochée (voir spatialBandes.ts). */
+  bandesEtat?: EtatBandes }
 /** Ce qu'un effet joue à sa façon dans une scène (déjà converti : cm, 0..1) ; le reste vient de la scène. `tempo`
  * multiplie le tempo de la musique pour cet effet seulement (0,5 = deux fois plus lent). */
 export type Couche = Partial<Pick<FxParams, 'palette' | 'couleurs' | 'intensite' | 'source' | 'axe' | 'depart' | 'pulse'>> & { tempo?: number }
@@ -225,6 +233,16 @@ export function evaluer2d(f: Fixture, dims: Dims, p: FxParams, beat: number, ran
  * couleurs se mélangent selon ce que chaque effet apporte. Un stroboscope ne fait que claquer sur le temps ;
  * un projecteur à lyre vise l'endroit que désigne l'effet le plus fort. */
 export function evaluer(effets: FxId[], f: Fixture, dims: Dims, p: FxParams, beat: number, rang = 0): Sortie {
+  const base = evaluerEffets(effets, f, dims, p, beat, rang)
+  // réactions au son : sans `bandesEtat` (option décochée) le calcul est exactement celui d'avant. Miroir de `evaluer` (spatial_fx.py).
+  if (!p.bandesEtat || f.kind === 'strobe') return base
+  const col = base.rgb.map((c) => c * base.niveau) as RGB
+  const [r, g, b] = reagir(col, f.pos, p.source, diagonale(dims), p.bandesEtat)
+  const m = Math.max(r, g, b)
+  return { ...base, rgb: m > 1e-9 ? [r / m, g / m, b / m] : base.rgb, niveau: m }
+}
+
+function evaluerEffets(effets: FxId[], f: Fixture, dims: Dims, p: FxParams, beat: number, rang: number): Sortie {
   if (p.mode === '2d') return evaluer2d(f, dims, p, beat, rang)
   // chaque effet joue avec ses propres réglages s'il en a (couleurs, intensité, respiration, tempo...) ; la place
   // qu'il prend se mesure à ce qu'il apporte, et sa force (intensité x respiration) pondère lumière et couleur.

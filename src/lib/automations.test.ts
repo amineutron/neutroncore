@@ -306,5 +306,39 @@ describe('blocs du 2026-10-13', () => {
     expect(describeAction({ action: 'camera.power', params: { on: true } }, [])).toBe('allumer la caméra')
     expect(describeAction({ action: 'camera.standby', params: { on: false } }, [])).toBe('sortir la caméra de veille')
     expect(describeAction({ action: 'camera.background', params: { fond: 'or' } }, [])).toBe('fond de la caméra : or et braise')
+    expect(describeAction({ action: 'spatial.scene', params: { id: 'moment04' } }, [], { 'lumiere:moment04': 'nuit' }))
+      .toBe('lumière 3d : jouer « nuit » (si les lampes sont déjà en direct)')
+    expect(describeAction({ action: 'spatial.scene', params: { id: 'abc' } }, [])).toContain('« abc »')
+  })
+})
+
+describe('blocs du 2026-10-19', () => {
+  it('déclencheurs dits en clair', () => {
+    expect(describeTrigger({ type: 'idle', params: { minutes: 45 } })).toBe('quand je n’ai touché ni clavier ni souris depuis 45 min')
+    expect(describeTrigger({ type: 'back', params: { after_min: 240 } })).toBe('quand je reviens après au moins 4 h d’absence')
+    expect(describeTrigger({ type: 'back', params: { after_min: 90 } })).toBe('quand je reviens après au moins 1 h 30 d’absence')
+    expect(describeTrigger({ type: 'ci', params: { result: 'echec', contains: '' } })).toBe('quand une ci github se termine en échec')
+    expect(describeTrigger({ type: 'ci', params: { result: 'tous', contains: 'lyra' } })).toBe('quand une ci github contenant « lyra » se termine')
+    expect(describeTrigger({ type: 'docker', params: { state: 'any', code: 'erreur', contains: '' } }))
+      .toBe('quand un conteneur docker s’arrête ou tombe malade (arrêt sur erreur)')
+    expect(describeTrigger({ type: 'docker', params: { state: 'unhealthy', code: 'erreur', contains: '' } })).toBe('quand un conteneur docker tombe malade')
+    expect(describeTrigger({ type: 'gpu_oom', params: {} })).toBe('quand la carte graphique manque de mémoire')
+  })
+
+  it('condition et actions', () => {
+    expect(describeCondition({ type: 'idle', params: { state: 'idle', minutes: 10 } })).toBe('ni clavier ni souris depuis 10 min')
+    expect(describeCondition({ type: 'idle', params: { state: 'active', minutes: 5 } })).toBe('clavier ou souris touchés dans les 5 min dernières')
+    const cat: ActionSpec[] = []
+    expect(describeAction({ action: 'docker.restart', params: { name: 'trigger' } }, cat)).toBe('relancer le conteneur qui vient de tomber')
+    expect(describeAction({ action: 'vm.start', params: { vm: 'debian-lab' } }, cat)).toBe('démarrer la vm debian-lab')
+    expect(describeAction({ action: 'bt.connect', params: { device: 'AA:BB:CC:DD:EE:01' } }, cat, { 'bt:AA:BB:CC:DD:EE:01': 'casque' })).toBe('reconnecter casque')
+  })
+
+  it('« inspecter » et « le conteneur qui vient de tomber » demandent le bon déclencheur', () => {
+    const base = { ...EMPTY_DRAFT, name: 'x' }
+    expect(draftError({ ...base, trigger: { type: 'time', params: { time: '07:00', days: [0] } }, actions: [{ action: 'ci.inspect', params: {} }] })).toContain('ci github')
+    expect(draftError({ ...base, trigger: { type: 'ci', params: { result: 'echec', contains: '' } }, actions: [{ action: 'ci.inspect', params: {} }] })).toBe('')
+    expect(draftError({ ...base, trigger: { type: 'interval', params: { every_min: 30 } }, actions: [{ action: 'docker.restart', params: { name: 'trigger' } }] }))
+      .toContain('conteneur docker tombe')
   })
 })

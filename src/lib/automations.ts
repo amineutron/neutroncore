@@ -67,7 +67,10 @@ const CHOICES: Record<string, Record<string, string>> = {
   kind: KIND,
   metric: METRIC,
   when: { raised: 'apparaît', resolved: 'est résolue', waiting: 'attend une réponse', done: 'a fini de répondre', verdict: 'rend un verdict' },
-  state: { on: 'allumé', off: 'éteint', down: 'tombe', up: 'revient', yes: 'oui', no: 'non', here: 'là', away: 'absent' },
+  state: { on: 'allumé', off: 'éteint', down: 'tombe', up: 'revient', yes: 'oui', no: 'non', here: 'là', away: 'absent',
+    idle: 'inactifs', active: 'utilisés', stopped: 's’arrête', unhealthy: 'tombe malade' },
+  result: { echec: 'en échec', reussi: 'réussie', tous: 'quel que soit le résultat' },
+  code: { erreur: 'sur une erreur seulement', tous: 'même un arrêt normal' },
   name: { any: 'n’importe lequel', trigger: 'celui qui vient de tomber' },
   suite: SUITES,
   fond: { aucun: 'caméra telle quelle', flou: 'flouté', aubergine: 'aubergine', or: 'or et braise', rose: 'rose du soir', nuit: 'nuit bleue', foret: 'forêt', studio: 'studio gris', papier: 'papier clair' },
@@ -88,6 +91,7 @@ export function choiceLabel(param: string, value: string, block = ''): string {
     if (block === 'lights_are') return value === 'on' ? 'allumées' : 'éteintes'
     if (block === 'tv') return value === 'on' ? 's’allume' : 's’éteint'
     if (block === 'lights') return value === 'on' ? 's’allument' : 's’éteignent'
+    if (block === 'docker' && value === 'any') return 's’arrête ou tombe malade'
   }
   return CHOICES[param]?.[value] ?? value.toLowerCase()
 }
@@ -99,6 +103,10 @@ export function boolLabel(param: string, value: boolean): string {
 }
 
 const unit = (metric: unknown) => (metric === 'gpu_temp' ? '°C' : ' %')
+const duree = (min: unknown) => {
+  const m = Number(min)
+  return m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${String(m % 60).padStart(2, '0')}` : ''}` : `${m} min`
+}
 
 export function daysLabel(days: number[]): string {
   const key = [...days].sort((a, b) => a - b).join('')
@@ -132,6 +140,14 @@ export function describeTrigger(t: Block): string {
     case 'startup': return 'au démarrage de neutroncore'
     case 'atelier': return `quand une boucle de l’atelier 3d${filter(p)} ${p.when === 'verdict' ? 'rend un verdict' : 'attend ta décision'}`
     case 'session_stuck': return `quand une session claude${filter(p)} au travail ne bouge plus depuis ${p.minutes} min`
+    case 'idle': return `quand je n’ai touché ni clavier ni souris depuis ${duree(p.minutes)}`
+    case 'back': return `quand je reviens après au moins ${duree(p.after_min)} d’absence`
+    case 'ci': return `quand une ci github${filter(p)} se termine${p.result === 'tous' ? '' : p.result === 'reussi' ? ' avec succès' : ' en échec'}`
+    case 'docker': {
+      const quoi = p.state === 'stopped' ? 's’arrête' : p.state === 'unhealthy' ? 'tombe malade' : 's’arrête ou tombe malade'
+      return `quand un conteneur docker${filter(p)} ${quoi}${p.code === 'tous' || p.state === 'unhealthy' ? '' : ' (arrêt sur erreur)'}`
+    }
+    case 'gpu_oom': return 'quand la carte graphique manque de mémoire'
     default: return t.type
   }
 }
@@ -149,6 +165,7 @@ function conditionText(c: Block): string {
     case 'alert_active': return p.kind === 'any' ? 'une alerte est en cours' : `une alerte « ${KIND[String(p.kind)] ?? p.kind} » est en cours`
     case 'resource': return `${METRIC[String(p.metric)] ?? p.metric} ${p.op === 'above' ? 'au-dessus de' : 'en dessous de'} ${p.value}${unit(p.metric)}`
     case 'presence': return p.state === 'away' ? 'tu es absent (écrans du pc éteints)' : 'tu es là (un écran du pc allumé)'
+    case 'idle': return p.state === 'idle' ? `ni clavier ni souris depuis ${duree(p.minutes)}` : `clavier ou souris touchés dans les ${duree(p.minutes)} dernières`
     default: return c.type
   }
 }
@@ -169,7 +186,16 @@ export function describeAction(step: Step, catalogue: ActionSpec[], names: Names
       case 'tv.show': return `afficher ${choiceLabel('screen', String(p.screen))} sur la télé (entrée ${choiceLabel('source', String(p.source))})`
       case 'tv.restore': return 'remettre sur la télé ce qu’elle affichait'
       case 'tests.run': return `lancer les tests : ${SUITES[String(p.suite)] ?? p.suite}`
+      case 'reveil.run': return `lancer le réveil « ${p.id} »`
+      case 'rampe.play': return `jouer la rampe de lumière « ${p.id} »`
+      case 'spatial.scene': return `lumière 3d : jouer « ${names[`lumiere:${p.id}`] ?? p.id} » (si les lampes sont déjà en direct)`
+      case 'lumiere.arret': return 'arrêter la rampe ou le réveil en cours'
+      case 'audio.scene': return `sono : appliquer la scène « ${p.id} »`
       case 'lyra.tool': return p.tool ? `lyra : « ${p.phrase} »` : 'lyra : phrase à faire analyser'
+      case 'docker.restart': return p.name === 'trigger' ? 'relancer le conteneur qui vient de tomber' : `relancer le conteneur ${p.name || '…'}`
+      case 'vm.start': return `démarrer la vm ${p.vm || '…'}`
+      case 'bt.connect': return `reconnecter ${names[`bt:${p.device}`] ?? (p.device || 'un appareil bluetooth')}`
+      case 'ci.inspect': return 'proposer d’ouvrir une session claude pour inspecter l’échec'
       default: return describeStep(step, catalogue, names)
     }
   })()
@@ -195,7 +221,8 @@ export function defaultBlock(spec: BlockSpec): Block {
       if (p.type === 'time') return [p.name, p.name === 'end' ? '06:00' : p.name === 'start' ? '22:00' : '07:30']
       if (p.type === 'days') return [p.name, [0, 1, 2, 3, 4]]
       if (p.type === 'choice') return [p.name, p.choices[0]]
-      if (p.type === 'int') return [p.name, { every_min: 30, above: 90, for_min: 5, minutes_before: 10, value: 80 }[p.name] ?? p.min]
+      if (p.type === 'int') return [p.name, { every_min: 30, above: 90, for_min: 5, minutes_before: 10, value: 80, after_min: 240 }[p.name] ?? (p.name === 'minutes' ? 30 : p.min)]
+      if (p.type === 'container') return [p.name, 'trigger']
       if (p.type === 'bool') return [p.name, true]
       return [p.name, '']
     })),
@@ -247,6 +274,11 @@ export function draftError(raw: AutomationDraft): string {
   if (all.some((s) => s.action === 'hue.light' && !s.params.light)) return 'choisis la lampe'
   if (all.some((s) => s.action === 'routine.run' && !s.params.id)) return 'choisis la routine à lancer'
   if (all.some((s) => s.action === 'lyra.tool' && !s.params.tool)) return 'fais analyser la phrase par lyra (bouton « analyser »)'
+  if (all.some((s) => s.action === 'docker.restart' && !s.params.name)) return 'choisis le conteneur à relancer'
+  if (all.some((s) => s.action === 'vm.start' && !s.params.vm)) return 'choisis la vm à démarrer'
+  if (all.some((s) => s.action === 'bt.connect' && !s.params.device)) return 'choisis l’appareil bluetooth'
+  if (all.some((s) => s.action === 'ci.inspect') && d.trigger.type !== 'ci') return '« inspecter l’échec » ne sert qu’avec le déclencheur « la ci github se termine »'
+  if (all.some((s) => s.action === 'docker.restart' && s.params.name === 'trigger') && d.trigger.type !== 'docker') return '« le conteneur qui vient de tomber » demande le déclencheur « un conteneur docker tombe »'
   if (d.trigger.type === 'event' && !/^[A-Za-z0-9_-]{1,64}$/.test(String(d.trigger.params.name ?? ''))) return 'nom de l’événement : lettres, chiffres, tirets, sans espace'
   const days = [d.trigger, ...d.conditions].some((b) => Array.isArray(b.params.days) && b.params.days.length === 0)
   if (days) return 'choisis au moins un jour'
@@ -263,7 +295,8 @@ export function runLabel(r: Run): string {
 const TRIGGER_SHORT: Record<string, string> = {
   manual: 'à la main', time: 'heure prévue', interval: 'intervalle', alert: 'alerte', resource: 'ressource', download_done: 'téléchargement',
   request: 'demande', agenda: 'agenda', session: 'session claude', service: 'service', tv: 'tv', lights: 'lumières', event: 'événement externe', startup: 'démarrage',
-  atelier: 'atelier 3d', session_stuck: 'session immobile',
+  atelier: 'atelier 3d', session_stuck: 'session immobile', idle: 'inactivité', back: 'retour', ci: 'ci github', docker: 'conteneur docker',
+  gpu_oom: 'carte graphique',
 }
 export function triggerLabel(trigger: string): string {
   return TRIGGER_SHORT[trigger] ?? trigger

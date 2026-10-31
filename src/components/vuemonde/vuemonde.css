@@ -1,0 +1,41 @@
+/* vue du monde (ecran worldmonitor) */
+.vm-scene{display:flex;flex-direction:column;gap:12px}
+.vm-barre{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.vm-barre label{display:inline-flex;gap:6px;align-items:center;font-size:12.5px;color:var(--muted);cursor:pointer}
+.vm-barre .grow{flex:1}
+.vm-cadre{position:relative;border:1px solid var(--line2);border-radius:12px;background:var(--surface);overflow:hidden}
+.vm-carte{position:relative;width:100%;aspect-ratio:2/1;min-height:220px;max-height:72vh;touch-action:none}
+.vm-toile{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+.vm-toile:active{cursor:grabbing}
+.vm-zoom{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:6px}
+.vm-zoom button{width:44px;height:44px;border-radius:10px;border:1px solid var(--line2);background:color-mix(in srgb,var(--surface) 88%,transparent);color:var(--text);font:600 18px var(--mono);cursor:pointer}
+.vm-zoom button:hover{border-color:var(--gold);color:var(--gold)}
+.vm-info{position:absolute;left:10px;bottom:10px;max-width:calc(100% - 20px);padding:8px 12px;border-radius:10px;border:1px solid var(--line2);background:color-mix(in srgb,var(--surface) 92%,transparent);font-size:12.5px;line-height:1.4}
+.vm-info b{color:var(--gold);font-weight:600}
+.vm-legende{display:flex;flex-wrap:wrap;gap:12px;font-size:11.5px;color:var(--muted);align-items:center}
+.vm-pt{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px;border:1px solid currentColor;opacity:.9}
+.vm-pt.ok{color:var(--gold);background:color-mix(in srgb,var(--gold) 45%,transparent)}
+.vm-pt.warn{color:var(--gold);background:color-mix(in srgb,var(--gold) 45%,transparent);width:14px;height:14px}
+.vm-pt.crit{color:var(--rose);background:color-mix(in srgb,var(--rose) 45%,transparent);width:18px;height:18px}
+.vm-listes{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.vm-liste{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.vm-liste li{display:flex;gap:10px;align-items:baseline;padding:7px 0;border-top:1px solid var(--line);font-size:12.5px;min-width:0}
+.vm-liste li:first-child{border-top:0}
+.vm-liste button{all:unset;display:flex;gap:10px;align-items:baseline;cursor:pointer;width:100%;min-width:0}
+.vm-liste .m{font:600 12px var(--mono);min-width:34px;color:var(--gold)}
+.vm-liste .m.crit{color:var(--rose)}
+.vm-liste .l{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vm-liste .a{color:var(--faint);font-size:11px;white-space:nowrap}
+.vm-liste li.on{background:color-mix(in srgb,var(--gold) 10%,transparent)}
+.vm-liste a{color:var(--text);text-decoration:none}
+.vm-liste a:hover{color:var(--gold)}
+/* plein ecran : le cadre prend toute la fenetre (bouton plein ecran, ou ?plein=1 sur la tele) */
+.vm-scene.plein{position:fixed;inset:0;z-index:300;background:var(--bg,#0e0a10);padding:0;gap:0}
+.vm-scene.plein .vm-cadre{border:0;border-radius:0;flex:1;display:flex}
+.vm-scene.plein .vm-carte{aspect-ratio:auto;max-height:none;min-height:0;flex:1}
+.vm-scene.plein .vm-barre{position:absolute;left:10px;top:10px;z-index:2;background:color-mix(in srgb,var(--surface) 88%,transparent);border:1px solid var(--line2);border-radius:10px;padding:6px 10px}
+.vm-scene.plein .vm-hors{display:none}
+.vm-scene.tele .vm-barre,.vm-scene.tele .vm-zoom{display:none}
+.vm-scene.tele .vm-info{font-size:clamp(14px,1.6vw,26px);padding:12px 18px}
+@media (max-width:560px){.vm-carte{aspect-ratio:3/2}.vm-listes{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.vm-toile{cursor:default}}

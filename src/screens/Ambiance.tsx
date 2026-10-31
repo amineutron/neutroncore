@@ -8,6 +8,7 @@ import { DenonVolume } from '../components/DenonVolume'
 import { IronmanScene } from '../components/IronmanScene'
 import { usePoll } from '../lib/poll'
 import { Btn, Card, Chip, PageTitle, Eyebrow, Loader } from '../components/ui'
+import '../components/audit-ux-lot3.css'
 
 // L'API TV attend les modes JointSpace, pas nos libellés courts
 const AMBILIGHT_MODES: Record<string, string> = {
@@ -143,7 +144,7 @@ export function Ambiance() {
         style={{ marginBottom: 16, cursor: 'pointer' }}
         onClick={() => setLightsOpen((v) => !v)}
       >
-        <h3>lumières<span className="lite">hue · {onCount} sur {lightList.length} allumées — survoler pour le détail</span>{lightsMode !== 'normal' && <span style={{ marginLeft: 10 }}><Chip tone="rose">contrôlées par {lightsMode}</Chip></span>}</h3>{lightsMode !== 'normal' && (<p style={{ fontSize: 11.5, color: 'var(--warn)', margin: '0 0 10px' }}>Les réglages manuels seront écrasés tant que « {lightsMode} » est actif — désactive-le d'abord pour reprendre la main.</p>)}
+        <h3>lumières<span className="lite">hue · {onCount} sur {lightList.length} allumées — <span className="hint-fine">survoler</span><span className="hint-touch">toucher</span> pour le détail</span>{lightsMode !== 'normal' && <span style={{ marginLeft: 10 }}><Chip tone="rose">contrôlées par {lightsMode}</Chip></span>}</h3>{lightsMode !== 'normal' && (<p style={{ fontSize: 11.5, color: 'var(--warn)', margin: '0 0 10px' }}>Les réglages manuels seront écrasés tant que « {lightsMode} » est actif — désactive-le d'abord pour reprendre la main.</p>)}
         {/* résumé : couleurs principales + luminosité générale */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
           <span style={{ display: 'flex', gap: 7 }}>
@@ -211,7 +212,7 @@ export function Ambiance() {
           muets pour l'instant, nouvel essai toutes les 20 s.
         </p>
       )}
-      <div className="scene-grid" style={{ marginBottom: 16 }}>
+      <div className="scene-grid amb-scenes" style={{ marginBottom: 16 }}>
         <IronmanScene
           active={Boolean(ironman.data?.active) || activeScene === 'ironman'}
           launching={busy === 'scène iron man'}
@@ -271,13 +272,15 @@ export function Ambiance() {
           />
         </Card>
         <Card title="huebeat" lite="sync musique">
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <Chip tone={beat.data?.running ? 'rose' : undefined}>{beat.data?.running ? 'actif' : 'arrêté'}</Chip>
+            <span style={{ fontSize: 12, color: 'var(--muted)' }}>les effets dans la pièce se lancent depuis lumière 3d</span>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Btn sm solid onClick={() => navigate('lumiere')}>ouvrir lumière 3d</Btn>
             {beat.data?.running
               ? <Btn sm danger disabled={busy === 'beat'} onClick={() => run('beat', () => apiPost('/hue/beat/stop'), beat.refresh)}>{busy === 'beat' ? 'arrêt…' : 'stop'}</Btn>
-              : <Btn sm solid disabled={busy === 'beat'} onClick={() => run('beat', () => apiPost('/hue/beat/start', { palette: 'ironman' }), beat.refresh)}>{busy === 'beat' ? 'lancement…' : 'démarrer'}</Btn>}
+              : <Btn sm disabled={busy === 'beat'} onClick={() => run('beat', () => apiPost('/hue/beat/start', { palette: 'ironman' }), beat.refresh)}>{busy === 'beat' ? 'lancement…' : 'mode classique'}</Btn>}
           </div>
         </Card>
       </div>

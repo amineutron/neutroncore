@@ -1,11 +1,48 @@
 // Système de démo : services, VM, ressources, sauvegardes, timers, tests, agenda.
 import type { MockHandler } from '../router'
 import { dayAt, isoAgo, localStamp, systemdAgo, unixAgo, unixIn } from './time'
+import { sortiesDemo } from './sorties'
 
 const GB = 1024 ** 3
 const CONTROLLABLE = ['lyra', 'n8n', 'tracking', 'plex', 'radarr', 'sonarr', 'bazarr']
 const svc = (name: string, display: string, status = 'up', type = 'http') =>
   ({ name, display_name: display, status, type, url: null, extra: {}, controllable: CONTROLLABLE.includes(name) })
+
+// Rappels : la banque recopie lib/sonneries.BANQUE de l'API (mêmes identifiants) ; sorties son inventées
+const RAPPELS = {
+  sonneries: [
+    { id: 'aube', nom: 'aube', categorie: 'douces', origine: 'neutroncore' },
+    { id: 'doux', nom: 'réveil doux', categorie: 'douces', origine: 'neutroncore' },
+    { id: 'bulles', nom: 'bulles', categorie: 'douces', origine: 'neutroncore' },
+    { id: 'brise', nom: 'brise', categorie: 'douces', origine: 'neutroncore' },
+    { id: 'boite', nom: 'boîte à musique', categorie: 'douces', origine: 'neutroncore' },
+    { id: 'carillon', nom: 'carillon', categorie: 'mélodies', origine: 'neutroncore' },
+    { id: 'marimba', nom: 'marimba du matin', categorie: 'mélodies', origine: 'neutroncore' },
+    { id: 'xylophone', nom: 'xylophone', categorie: 'mélodies', origine: 'neutroncore' },
+    { id: 'harpe', nom: 'harpe', categorie: 'mélodies', origine: 'neutroncore' },
+    { id: 'cloches', nom: "cloches d'église", categorie: 'mélodies', origine: 'neutroncore' },
+    { id: 'comptine', nom: 'comptine', categorie: 'mélodies', origine: 'neutroncore' },
+    { id: 'vibraphone', nom: 'vibraphone', categorie: 'mélodies', origine: 'neutroncore' },
+    { id: 'bipbip', nom: 'bip bip', categorie: 'classiques', origine: 'neutroncore' },
+    { id: 'numerique', nom: 'réveil numérique', categorie: 'classiques', origine: 'neutroncore' },
+    { id: 'mecanique', nom: 'réveil à marteau', categorie: 'classiques', origine: 'neutroncore' },
+    { id: 'sonar', nom: 'sonar', categorie: 'classiques', origine: 'neutroncore' },
+    { id: 'retro', nom: 'téléphone rétro', categorie: 'classiques', origine: 'neutroncore' },
+    { id: 'montee', nom: 'sirène montante', categorie: 'énergiques', origine: 'neutroncore' },
+    { id: 'alerte', nom: 'alerte', categorie: 'énergiques', origine: 'neutroncore' },
+    { id: 'electro', nom: 'arpège électro', categorie: 'énergiques', origine: 'neutroncore' },
+    { id: 'fanfare', nom: 'fanfare', categorie: 'énergiques', origine: 'neutroncore' },
+    { id: 'pulsation', nom: 'pulsation', categorie: 'énergiques', origine: 'neutroncore' },
+    { id: 'classique', nom: 'réveil classique', categorie: 'classiques', origine: 'systeme' },
+    { id: 'perso-chant-du-coq', nom: 'chant du coq', categorie: 'mes sons', origine: 'perso' },
+  ],
+  sorties: [
+    { id: 'tele', nom: 'la télé', tele: true, present: true, volume: 74, muet: false },
+    { id: 'defaut', nom: 'sortie par défaut du PC', tele: false, present: true, volume: 54, muet: false },
+    { id: 'alsa_output.demo-casque', nom: 'casque', tele: false, present: true, volume: 54, muet: false },
+  ],
+  en_cours: null, prochains: [], derniers: [],
+}
 
 function agendaOccurrences() {
   const occ = []
@@ -25,6 +62,7 @@ function agendaOccurrences() {
     id: 'evt-demo@1', event_id: 'evt-demo', source: 'manual', title: 'mise à jour du NAS', category: 'maintenance',
     start: localStamp(dayAt(2, 20)), end: localStamp(dayAt(2, 21)), recurrence: 'none', event_start: localStamp(dayAt(2, 20)),
     duration_min: 60, description: 'Redémarrage prévu après les mises à jour.', notify: true, unit: '', log: '',
+    rappel: { minutes_avant: 15, moyens: ['tele', 'sonnerie'], sonnerie: 'carillon', sortie: 'tele', duree_min: 5, progressif: true },
     status: 'upcoming', run: null, can_retry: false, can_dismiss: true, can_restore: false,
   })
   return occ
@@ -66,7 +104,27 @@ export const system: [string, string, MockHandler][] = [
   })],
   ['GET', '/system/alerts', () => ({ alerts: [
     { kind: 'unit', key: 'unit:ollama.service', level: 'warn', title: 'Ollama arrêté', detail: 'Le service LLM local ne répond pas (données de démo).', action: 'outils' },
+    { kind: 'disk', key: 'disk:/data', level: 'warn', title: '/data presque plein — 91 %', detail: '335 Go libres. Touche pour voir ce qui prend la place.', action: 'disque', ref: '/data' },
   ] })],
+  // ce qui remplit le disque (components/DiskPanel.tsx) : analyse figée, sans `du`
+  ['GET', '/system/disque', () => ({ disques: [
+    { path: '/', total: 931 * GB, free: 212 * GB, used_pct: 77.2, analyse_at: unixAgo(90), en_cours: false },
+    { path: '/data', total: 3726 * GB, free: 335 * GB, used_pct: 91, analyse_at: unixAgo(90), en_cours: false },
+    { path: '/backups', total: 1863 * GB, free: 944 * GB, used_pct: 49.3, analyse_at: null, en_cours: false },
+  ] })],
+  ['GET', '/system/disque/analyse', ({ query }) => ({ chemin: query.get('chemin') ?? '/data', en_cours: false, depuis: null, resultat: {
+    total: 3391 * GB, critere: 'acces', at: unixAgo(90), duree_s: 214, illisibles: 0,
+    gros: [
+      { chemin: 'media/films/4k', octets: 1480 * GB, jours: 2, profondeur: 3 }, { chemin: 'media/series', octets: 920 * GB, jours: 0, profondeur: 2 },
+      { chemin: 'telechargements/termines', octets: 410 * GB, jours: 35, profondeur: 2 }, { chemin: 'vms/images', octets: 268 * GB, jours: 140, profondeur: 2 },
+      { chemin: 'media/musique', octets: 96 * GB, jours: 12, profondeur: 2 },
+    ],
+    oublies: [
+      { chemin: 'vms/images', octets: 268 * GB, jours: 140, profondeur: 2 }, { chemin: 'archives/2024', octets: 74 * GB, jours: 410, profondeur: 2 },
+      { chemin: 'telechargements/iso', octets: 22 * GB, jours: 260, profondeur: 2 },
+    ],
+  } })],
+  ['POST', '/system/disque/analyser', () => ({ success: true, en_cours: true, deja: false })],
   ['GET', '/notifications', () => ({ unread: demoNotifs.filter((n) => !n.read).length, total: demoNotifs.length, entries: demoNotifs })],
   ['POST', '/notifications/read', () => { demoNotifs = demoNotifs.map((n) => ({ ...n, read: true })); return { success: true, unread: 0 } }],
   ['DELETE', '/notifications', () => { demoNotifs = []; return { success: true } }],
@@ -98,7 +156,15 @@ export const system: [string, string, MockHandler][] = [
   ] })],
   ['GET', '/tests/runs', () => ({ runs: RUNS })],
   ['GET', '/tests/runs/:id', ({ params }) => RUNS.find((r) => r.id === params.id) ?? RUNS[0]],
-  ['GET', '/agenda', () => ({ now: localStamp(new Date()), categories: ['sauvegardes', 'maintenance'], occurrences: agendaOccurrences() })],
+  ['GET', '/agenda', ({ query }) => {
+    const avecSorties = query.get('sorties') === '1'
+    return { now: localStamp(new Date()), categories: ['sauvegardes', 'maintenance', ...(avecSorties ? ['sorties'] : [])],
+      occurrences: [...agendaOccurrences(), ...(avecSorties ? sortiesDemo() : [])] }
+  }],
+  ['GET', '/agenda/rappels', () => RAPPELS],
+  ['GET', '/agenda/rappels/en-cours', () => ({ en_cours: null })],
+  ['POST', '/agenda/rappels/essayer', () => ({ success: true, resultats: { tele: 'ok', sonnerie: 'ok' } })],
+  ['POST', '/agenda/rappels/ecouter', () => ({ success: true, remarque: 'mode démo : rien ne sonne' })],
   ['GET', '/agenda/rotation', () => ({ state: 'idle', running: false, mounted: false, ready: true, age_days: 9, last_run: isoAgo(9 * 1440),
     result: 'success', can_start: true, can_stop: false, reason: '', log: [], started_at: null, finished_at: null, duration_s: null })],
 ]
