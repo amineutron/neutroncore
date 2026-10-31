@@ -98,3 +98,13 @@
 - Erreurs de ma part, signalees a l'utilisateur : un `pkill -f` sur le relais de test ; le fichier pid de huebeat retire a la main (deux instances) ; un essai sur les lampes alors que l'utilisateur s'en servait.
 - NON verifie a l'oeil : le mode 2d et l'avance de 120 ms sur les vraies lampes ; le rallumage au retour du son ; la camera et la lumiere 3d sur telephone.
 - Ouvert : `test_plafond_par_jour_applique` (API) echoue dans les dix minutes apres minuit ; restes d'obs-virtual-bg et routes `/media/obs/*` a retirer ; decisions n8n ; rendu « volumes pleins » a integrer dans modelisation-3d ; HALO dessine encore le ruban a 1,80 m.
+
+
+## 2026-10-31 — tuiles « son seul » / « image » dans ambiance
+
+- Objectif : remettre en grand le mode « son seul » (ecran de la tele eteint, son garde) de l'ecran ambiance.
+- Constat : aucun bouton n'existait dans l'app ; seule la route API `POST /tv/screen {on}` etait presente, sans appelant.
+- Fait : deux tuiles `son seul` / `image` avec icone (`src/screens/Ambiance.tsx`, classes `.so-tile*` en fin de `src/styles.css`). tsc et vitest OK, rendu verifie sur le build demo.
+- Deploye par la session qui possede le dist servi (copie combinee reveil + DJ light, hors depot), rsync sans `--delete`. Piege : ne jamais ecraser `neutroncore/dist` depuis un autre worktree.
+- Cote pylips-mcp (non commite) : `screen_off` / `screen_on` passent par JointSpace screenstate ; l'ancienne methode n'eteignait rien.
+- Ouvert : effet reel sur la tele non verifie par moi ; le dist servi vient d'une copie hors depot, a fusionner dans une branche avant tout build propre.

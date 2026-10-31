@@ -257,6 +257,20 @@ export function Ambiance() {
               {busy === 'tvm' ? '…' : t?.muted ? 'son' : 'muet'}
             </Btn>
           </div>
+          <div className="sound-only" role="group" aria-label="affichage de la tv">
+            <button className="so-tile so-main" disabled={busy === 'tvs' || t?.power !== 'On'}
+              onClick={() => run('tvs', () => apiPost('/tv/screen', { on: false }), tv.refresh)}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5H4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12"/></svg>
+              <span className="so-t">{busy === 'tvs' ? '…' : 'son seul'}</span>
+              <span className="so-s">écran noir, son gardé</span>
+            </button>
+            <button className="so-tile" disabled={busy === 'tvs2'}
+              onClick={() => run('tvs2', () => apiPost('/tv/screen', { on: true }), tv.refresh)}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M9 20h6M12 17v3"/></svg>
+              <span className="so-t">{busy === 'tvs2' ? '…' : 'image'}</span>
+              <span className="so-s">rallumer l’écran</span>
+            </button>
+          </div>
         </Card>
         <Card title="denon avr" lite="x1700h">
           <div style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center' }}>

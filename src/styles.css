@@ -2089,3 +2089,17 @@ button.at-it{cursor:pointer}
 .lu-sens{display:flex;align-items:center;gap:8px}
 .lu-sens input{flex:1;min-width:0}
 .lu-sens input:disabled{opacity:.75;cursor:default}
+
+.sound-only{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.so-tile{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-height:92px;padding:14px 16px;border-radius:14px;cursor:pointer;text-align:left;font-family:var(--mono);color:var(--text);background:var(--surface2);border:1px solid var(--line2);transition:border-color .15s,background .15s,transform .15s,box-shadow .15s}
+.so-tile svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;margin-bottom:4px;color:var(--muted)}
+.so-tile .so-t{font-size:17px;font-weight:700;letter-spacing:.02em}
+.so-tile .so-s{font-size:10px;color:var(--muted)}
+.so-tile:hover:not(:disabled){border-color:var(--gold);background:var(--gold-soft);transform:translateY(-1px)}
+.so-tile:hover:not(:disabled) svg{color:var(--gold)}
+.so-tile:active:not(:disabled){transform:none}
+.so-tile.so-main{background:linear-gradient(135deg,var(--gold-soft),var(--rose-soft));border-color:color-mix(in srgb,var(--gold) 45%,var(--line2))}
+.so-tile.so-main svg{color:var(--gold)}
+.so-tile:disabled{opacity:.45;cursor:not-allowed}
+.so-tile:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+@media (max-width:560px){.so-tile{min-height:80px;padding:12px 14px}}
