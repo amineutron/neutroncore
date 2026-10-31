@@ -1,0 +1,5 @@
+.sec-row{display:flex;gap:8px;align-items:center}
+.sec-muted{color:var(--faint);font-size:12px}
+.sec-filters input:not([type=checkbox]),.sec-filters select{background:var(--surface2);border:1px solid var(--line2);border-radius:7px;padding:7px 9px;color:var(--text);font-family:var(--sans);font-size:13px;color-scheme:dark;min-width:0}
+.sec-filters label{display:inline-flex;gap:5px;align-items:center;font-size:12.5px}
+@media (pointer:coarse){.sec-filters select,.sec-filters input:not([type=checkbox]){min-height:44px}}

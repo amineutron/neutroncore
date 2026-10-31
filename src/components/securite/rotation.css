@@ -1,0 +1,38 @@
+.rot-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.rot-head .sp{flex:1}
+.rot-list{display:flex;flex-direction:column;gap:10px}
+.rot-el{background:var(--surface);border:1px solid var(--line2);border-radius:10px;padding:12px 14px}
+.rot-el.busy{border-color:var(--gold)}
+.rot-top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.rot-top h3{margin:0;font-size:14.5px;font-weight:600}
+.rot-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px 16px;margin:10px 0;font-size:12.5px}
+.rot-grid dt{color:var(--faint);font-size:11.5px}
+.rot-grid dd{margin:0}
+.rot-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.rot-run{margin-top:10px;padding:10px 12px;background:var(--surface2);border-radius:8px}
+.rot-resume{margin:6px 0;font-size:13px}
+.rot-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:12.5px}
+.rot-steps li{display:flex;gap:8px;align-items:baseline}
+.rot-steps em{color:var(--faint);font-style:normal}
+.rot-puce{min-width:24px;font-family:var(--mono);font-size:11px;color:var(--faint)}
+.s-ok .rot-puce{color:var(--ok)}
+.s-echec .rot-puce{color:var(--crit)}
+.s-echec{color:var(--crit)}
+.rot-hist{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.rot-hist button.row{all:unset;cursor:pointer;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12.5px;padding:4px 0}
+.rot-hist button.row:focus-visible{outline:2px solid var(--gold)}
+.rot-wiz{background:var(--surface);border:1px solid var(--line2);border-radius:10px;padding:14px;margin-bottom:14px}
+.rot-wiz .steps{display:flex;gap:8px;margin-bottom:12px;font-size:12.5px;flex-wrap:wrap}
+.rot-wiz .steps span{padding:3px 10px;border-radius:99px;border:1px solid var(--line2);color:var(--faint)}
+.rot-wiz .steps span.on{color:var(--text);border-color:var(--gold)}
+.rot-wiz label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;margin-bottom:10px}
+.rot-wiz input:not([type=checkbox]),.rot-wiz select{background:var(--surface2);border:1px solid var(--line2);border-radius:7px;padding:7px 9px;color:var(--text);font-family:var(--sans);font-size:13px;color-scheme:dark;min-width:0}
+.rot-wiz label.inline{flex-direction:row;align-items:center;gap:6px}
+.rot-inv{max-height:260px;overflow:auto;display:flex;flex-direction:column;gap:4px;margin-top:8px}
+.rot-inv button{all:unset;cursor:pointer;display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:7px 9px;border:1px solid var(--line2);border-radius:7px;font-size:13px}
+.rot-inv button.on{border-color:var(--gold)}
+.rot-inv button:focus-visible{outline:2px solid var(--gold)}
+.rot-err{color:var(--crit);font-size:12.5px;margin:6px 0}
+.rot-note{font-size:12.5px;color:var(--faint);margin:6px 0}
+@media (pointer:coarse){.rot-wiz input:not([type=checkbox]),.rot-wiz select{min-height:44px}.rot-inv button{min-height:44px}}
+.rot-ta{background:var(--surface2);border:1px solid var(--line2);border-radius:7px;padding:7px 9px;color:var(--text);font-family:var(--mono);font-size:12px;resize:vertical}
