@@ -16,6 +16,7 @@ export type Occurrence = {
   run: { time: string; result: string; started?: string; duration_s?: number } | null
   can_retry: boolean; can_dismiss: boolean; can_restore: boolean
   automation_id?: string   // passage d'une automatisation horaire
+  all_day?: boolean        // sortie sans heure (Radarr ne donne que la date)
 }
 
 export const CATEGORY_LABEL: Record<string, string> = { sauvegardes: 'sauvegardes', systeme: 'système', perso: 'perso', automatisations: 'automatisations' }
@@ -132,7 +133,7 @@ export function EventDetail({ occ, onClose, onEdit, onDeleted, onLog, onChanged,
             {occ.notify && <Chip tone="rose">rappel accueil</Chip>}
             {occ.rappel && <Chip tone="gold">rappel {resume(occ.rappel)}</Chip>}
           </div>
-          <Row k="quand">{dayLabel(occ.start.slice(0, 10))}, {hhmm(occ.start)} - {hhmm(occ.end)}</Row>
+          <Row k="quand">{occ.all_day ? `${dayLabel(occ.start.slice(0, 10))}, toute la journée` : <>{dayLabel(occ.start.slice(0, 10))}, {hhmm(occ.start)} - {hhmm(occ.end)}</>}</Row>
           <Row k="répétition">{RECURRENCE_LABEL[occ.recurrence]}</Row>
           {occ.description && <Row k="détail">{occ.description}</Row>}
           {occ.unit && <Row k="unité">{occ.unit}</Row>}

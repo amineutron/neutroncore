@@ -1,6 +1,7 @@
 // Système de démo : services, VM, ressources, sauvegardes, timers, tests, agenda.
 import type { MockHandler } from '../router'
 import { dayAt, isoAgo, localStamp, systemdAgo, unixAgo, unixIn } from './time'
+import { sortiesDemo } from './sorties'
 
 const GB = 1024 ** 3
 const CONTROLLABLE = ['lyra', 'tracking', 'plex', 'radarr', 'sonarr', 'bazarr']
@@ -155,7 +156,11 @@ export const system: [string, string, MockHandler][] = [
   ] })],
   ['GET', '/tests/runs', () => ({ runs: RUNS })],
   ['GET', '/tests/runs/:id', ({ params }) => RUNS.find((r) => r.id === params.id) ?? RUNS[0]],
-  ['GET', '/agenda', () => ({ now: localStamp(new Date()), categories: ['sauvegardes', 'maintenance'], occurrences: agendaOccurrences() })],
+  ['GET', '/agenda', ({ query }) => {
+    const avecSorties = query.get('sorties') === '1'
+    return { now: localStamp(new Date()), categories: ['sauvegardes', 'maintenance', ...(avecSorties ? ['sorties'] : [])],
+      occurrences: [...agendaOccurrences(), ...(avecSorties ? sortiesDemo() : [])] }
+  }],
   ['GET', '/agenda/rappels', () => RAPPELS],
   ['GET', '/agenda/rappels/en-cours', () => ({ en_cours: null })],
   ['POST', '/agenda/rappels/essayer', () => ({ success: true, resultats: { tele: 'ok', sonnerie: 'ok' } })],

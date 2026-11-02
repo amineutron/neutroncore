@@ -186,6 +186,11 @@ export function describeAction(step: Step, catalogue: ActionSpec[], names: Names
       case 'tv.show': return `afficher ${choiceLabel('screen', String(p.screen))} sur la télé (entrée ${choiceLabel('source', String(p.source))})`
       case 'tv.restore': return 'remettre sur la télé ce qu’elle affichait'
       case 'tests.run': return `lancer les tests : ${SUITES[String(p.suite)] ?? p.suite}`
+      case 'reveil.run': return `lancer le réveil « ${p.id} »`
+      case 'rampe.play': return `jouer la rampe de lumière « ${p.id} »`
+      case 'spatial.scene': return `lumière 3d : jouer « ${names[`lumiere:${p.id}`] ?? p.id} » (si les lampes sont déjà en direct)`
+      case 'lumiere.arret': return 'arrêter la rampe ou le réveil en cours'
+      case 'audio.scene': return `sono : appliquer la scène « ${p.id} »`
       case 'lyra.tool': return p.tool ? `lyra : « ${p.phrase} »` : 'lyra : phrase à faire analyser'
       case 'docker.restart': return p.name === 'trigger' ? 'relancer le conteneur qui vient de tomber' : `relancer le conteneur ${p.name || '…'}`
       case 'vm.start': return `démarrer la vm ${p.vm || '…'}`

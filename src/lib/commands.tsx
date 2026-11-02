@@ -7,6 +7,7 @@ import { LINKS } from './links'
 import type { Command } from './palette'
 import { saveSettings, THEMES } from './settings'
 import { runAutomation } from './automationRun'
+import { commandesMinuteurs } from './minuteursCmd'
 import { ouvrirDisque } from './disque'
 
 // Ce que les commandes pilotent dans App (navigation et surcouches)
@@ -108,7 +109,7 @@ export function buildCommands(shell: Shell, dyn: Dynamic): Command[] {
     id: `link:${l.name}`, label: `ouvrir ${l.name}`, group: 'liens', keywords: 'interface web onglet', nav: true,
     run: () => { window.open(l.url, '_blank', 'noreferrer') },
   }))
-  return [...go, ...display, ...home, ...launcher, ...links]
+  return [...go, ...display, ...home, ...launcher, ...links, ...commandesMinuteurs((s) => shell.go(s))]
 }
 
 /** Commandes de la palette. `wanted` : charge scènes et favoris (palette ouverte ou raccourcis à afficher).

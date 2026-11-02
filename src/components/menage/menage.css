@@ -1,0 +1,9 @@
+/* entretien de la mediatheque : barre de filtres repliable sous 560 px */
+.mm-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.mm-toggle{display:none;align-self:flex-start}
+.mm-actions{display:flex;gap:12px;align-items:flex-start}
+@media (max-width:560px){
+  .mm-toggle{display:inline-block}
+  .mm-bar.ferme{display:none}
+  .mm-bar input[type=text],.mm-bar input:not([type]){flex:1 1 100%}
+}

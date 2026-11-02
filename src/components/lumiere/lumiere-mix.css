@@ -1,0 +1,29 @@
+/* Mixer des scènes (MixEditeur) : liste des mix, couches rangées par priorité, lampes visées en puces */
+.lu-mx{display:flex;flex-direction:column;gap:10px;min-width:0}
+.lu-mx-liste{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.lu-mx-item{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:7px 9px;border:1px solid var(--line2);border-radius:10px;min-width:0}
+.lu-mx-item.on{border-color:var(--gold)}
+.lu-mx-nom{display:flex;flex-direction:column;gap:2px;flex:1 1 140px;min-width:0}
+.lu-mx-nom b{font-family:var(--mono);font-size:12.5px;overflow-wrap:anywhere}
+.lu-mx-actions{display:flex;gap:6px;flex-wrap:wrap}
+.lu-mx-form{display:flex;flex-direction:column;gap:10px;padding:10px;border:1px solid var(--line2);border-radius:12px}
+.lu-mx-couches{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.lu-mx-couche{display:flex;align-items:flex-start;gap:9px;padding:8px;border:1px solid var(--line2);border-radius:10px;min-width:0}
+.lu-mx-couche:first-child{border-color:color-mix(in srgb,var(--gold) 55%,var(--line2))}
+.lu-mx-rang{flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-family:var(--mono);font-size:12px;border:1px solid var(--line2);color:var(--muted)}
+.lu-mx-couche:first-child .lu-mx-rang{border-color:var(--gold);color:var(--gold)}
+.lu-mx-corps{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.lu-mx-champ{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--muted)}
+.lu-mx-champ select{max-width:100%}
+.lu-mx-lampes{display:flex;flex-wrap:wrap;gap:5px}
+.lu-mx-puce{all:unset;box-sizing:border-box;cursor:pointer;font-family:var(--mono);font-size:11px;padding:3px 9px;border-radius:999px;border:1px solid var(--line2);color:var(--muted);min-height:24px;display:inline-flex;align-items:center}
+.lu-mx-puce:hover,.lu-mx-puce:focus-visible{border-color:var(--gold);color:var(--fg,inherit)}
+.lu-mx-puce.on{border-color:var(--gold);color:var(--gold);background:color-mix(in srgb,var(--gold) 12%,transparent)}
+.lu-mx-puce.part{border-style:dashed;border-color:var(--gold);color:var(--gold)}
+.lu-mx-vise{font-size:10.5px;color:var(--muted);line-height:1.3}
+.lu-mx-ordre{display:flex;flex-direction:column;gap:4px;flex:none}
+@media (max-width:560px){
+  .lu-mx-couche{flex-wrap:wrap}
+  .lu-mx-ordre{flex-direction:row;width:100%;justify-content:flex-end}
+}
+@media (pointer:coarse){.lu-mx-puce{min-height:44px;padding:0 14px}}

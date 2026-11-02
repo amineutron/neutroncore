@@ -2,7 +2,7 @@
 
 export type NotifLevel = 'ok' | 'info' | 'warn' | 'crit'
 export type Notif = {
-  id: string; at: number; source: 'system' | 'session'; level: NotifLevel
+  id: string; at: number; source: 'system' | 'session' | 'cyber'; level: NotifLevel
   title: string; detail: string; action: string; ref: string; count: number; read: boolean
 }
 export type NotifList = { entries: Notif[]; unread: number; total: number }

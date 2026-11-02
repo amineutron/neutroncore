@@ -4,7 +4,7 @@ import { NumField } from './NumField'
 
 export type Option = { id: string; name: string }
 // listes dynamiques proposées par certains paramètres
-export type Lists = { scenes: Option[]; lights: Option[]; routines: Option[]; containers?: Option[]; vms?: Option[]; bluetooth?: Option[] }
+export type Lists = { scenes: Option[]; lights: Option[]; routines: Option[]; containers?: Option[]; vms?: Option[]; bluetooth?: Option[]; lumiere?: Option[] }
 
 function Pick({ label, value, options, onChange }: { label: string; value: Value | undefined; options: Option[]; onChange: (v: Value) => void }) {
   const current = String(value ?? '')
@@ -40,6 +40,7 @@ export function ParamInput({ spec, value, lists, block, onChange }: {
   }
   if (spec.type === 'id' && spec.name === 'scene_id') return <Pick label="scène" value={value} options={lists.scenes} onChange={onChange} />
   if (spec.type === 'id' && block === 'routine.run') return <Pick label="routine" value={value} options={lists.routines} onChange={onChange} />
+  if (spec.type === 'id' && block === 'spatial.scene') return <Pick label="scène ou moment" value={value} options={lists.lumiere ?? []} onChange={onChange} />
   if (spec.type === 'light') return <Pick label="lampe" value={value} options={lists.lights} onChange={onChange} />
   if (spec.type === 'container') {
     const options = [{ id: 'trigger', name: 'celui qui vient de tomber' }, ...(lists.containers ?? [])]

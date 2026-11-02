@@ -877,7 +877,9 @@ export const AUTOMATION_CATALOGUE = {
             "atelier",
             "taches",
             "lanceur",
-            "agenda"
+            "agenda",
+            "worldmonitor",
+            "monde"
           ]
         }
       ]
@@ -886,6 +888,51 @@ export const AUTOMATION_CATALOGUE = {
       "action": "tv.restore",
       "label": "tv : remettre ce qu'elle affichait",
       "params": []
+    },
+    {
+      "action": "reveil.run",
+      "label": "lancer un réveil progressif",
+      "params": [
+        {
+          "name": "id",
+          "type": "id"
+        }
+      ]
+    },
+    {
+      "action": "rampe.play",
+      "label": "jouer une rampe de lumière",
+      "params": [
+        {
+          "name": "id",
+          "type": "id"
+        }
+      ]
+    },
+    {
+      "action": "lumiere.arret",
+      "label": "arrêter la rampe ou le réveil en cours",
+      "params": []
+    },
+    {
+      "action": "spatial.scene",
+      "label": "lumière 3d : jouer une scène ou un moment",
+      "params": [
+        {
+          "name": "id",
+          "type": "id"
+        }
+      ]
+    },
+    {
+      "action": "audio.scene",
+      "label": "sono : appliquer une scène de volume",
+      "params": [
+        {
+          "name": "id",
+          "type": "id"
+        }
+      ]
     },
     {
       "action": "camera.power",
@@ -998,6 +1045,9 @@ export const AUTOMATION_CATALOGUE = {
     "tests.run",
     "tv.show",
     "tv.restore",
-    "ci.inspect"
+    "ci.inspect",
+    "reveil.run",
+    "rampe.play",
+    "spatial.scene"
   ]
 }

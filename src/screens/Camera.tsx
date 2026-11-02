@@ -7,6 +7,7 @@ import {
   type Camera as Etat, type FondImporte, type Reglages,
 } from '../lib/camera'
 import { Card, Chip, Loader, PageTitle } from '../components/ui'
+import { Studio } from '../components/camera/Studio'
 
 const TITRE = <PageTitle help="camera" title="caméra" desc="Ta webcam détourée, avec le fond que tu choisis, vue comme une caméra par les applications de visio." />
 type Patch = { fond?: Partial<Reglages['fond']>; detourage?: Partial<Reglages['detourage']>; veille?: boolean; modele?: Reglages['modele']; virtuelle?: boolean; cadence?: 30 | 60 }
@@ -81,6 +82,10 @@ export function Camera() {
   const [attente, setAttente] = useState('')
   const [vise, setVise] = useState<'on' | 'off' | null>(null)       // allumage ou extinction demandés, pas encore effectifs
   const fichier = useRef<HTMLInputElement>(null)
+  const [onglet, setOnglet] = useState<'reglages' | 'studio'>(() => {
+    try { return localStorage.getItem('neutroncore_camera_onglet') === 'studio' ? 'studio' : 'reglages' } catch { return 'reglages' }
+  })
+  const choisirOnglet = (o: 'reglages' | 'studio') => { setOnglet(o); try { localStorage.setItem('neutroncore_camera_onglet', o) } catch { /* sans stockage */ } }
   const d = etat.data
   // l'attente se termine quand la caméra est vraiment dans l'état demandé (ou en erreur), au plus tard après 25 s
   const tourne = Boolean(d?.moteur.actif || d?.moteur.demarre)
@@ -171,6 +176,11 @@ export function Camera() {
         </div>
 
         <div className="cam-droite">
+          <div className="at-seg" role="group" aria-label="Section de la caméra">
+            <button type="button" className={onglet === 'reglages' ? 'on' : ''} aria-pressed={onglet === 'reglages'} onClick={() => choisirOnglet('reglages')}>réglages</button>
+            <button type="button" className={onglet === 'studio' ? 'on' : ''} aria-pressed={onglet === 'studio'} onClick={() => choisirOnglet('studio')}>studio</button>
+          </div>
+          {onglet === 'studio' ? <Studio onChange={etat.refresh} /> : <>
           <Card title="fond">
             <div className="at-seg" role="group" aria-label="Type de fond">
               {([['aucun', 'caméra telle quelle'], ['flou', 'flouté'], ['prefait', 'préfait'], ['fichier', 'importé']] as const).map(([m, label]) => (
@@ -222,6 +232,7 @@ export function Camera() {
               <Tourne cle="modele" />
             </label>
           </Card>
+          </>}
         </div>
       </div>
     </>

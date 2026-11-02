@@ -4,6 +4,7 @@ import { confirmDialog, toast } from '../lib/dialog'
 import { getSettings, saveSettings, THEMES, type Settings } from '../lib/settings'
 import { Mascot, MASCOTS } from '../components/Mascot'
 import { Bar, Btn, Card, Chip, PageTitle, Eyebrow } from '../components/ui'
+import '../components/audit-ux-lot3.css'
 import { SessionNotifSettings } from '../components/SessionNotifSettings'
 
 const ANIMS: { id: Settings['lyraAnim']; label: string; desc: string }[] = [
@@ -272,11 +273,6 @@ export function Parametres() {
             value={s.homeSessions} onChange={(v) => set({ homeSessions: v })} />
           <Toggle label="atelier 3d sur l'accueil" desc="Les boucles en cours : projet, itération, étape et état — rien ne s'affiche quand aucune ne tourne"
             value={s.homeAtelier} onChange={(v) => set({ homeAtelier: v })} />
-          <div className="light" style={{ cursor: 'pointer' }}
-            onClick={async () => { if (await confirmDialog({ title: 'oublier la clé API ?', body: 'Elle sera redemandée à la prochaine ouverture sur cet appareil.', ok: 'oublier', danger: true })) { setApiKey(''); location.reload() } }}>
-            <span className="bulb" style={{ background: 'var(--crit)' }} />
-            <span className="nm">déconnecter cet appareil<br /><span style={{ fontSize: 11, color: 'var(--muted)' }}>Efface la clé API du navigateur</span></span>
-          </div>
         </Card>
       </div>
 
@@ -400,6 +396,14 @@ export function Parametres() {
           <Chip>{THEMES.find((t) => t.id === s.theme)?.dark ? 'thème sombre' : 'thème clair'}</Chip>
         </div>
       </Card>
+
+      <section className="danger-zone" aria-label="zone danger">
+        <h3>zone danger</h3>
+        <p style={{ fontSize: 12.5, color: 'var(--muted)', margin: '0 0 10px' }}>
+          Efface la clé API de ce navigateur : elle sera redemandée à la prochaine ouverture sur cet appareil.
+        </p>
+        <Btn danger onClick={async () => { if (await confirmDialog({ title: 'oublier la clé API ?', body: 'Elle sera redemandée à la prochaine ouverture sur cet appareil.', ok: 'oublier', danger: true })) { setApiKey(''); location.reload() } }}>déconnecter cet appareil</Btn>
+      </section>
     </>
   )
 }
