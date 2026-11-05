@@ -11,7 +11,7 @@ describe('arbre de navigation', () => {
   it('range chaque écran dans une seule entrée', () => {
     const ids = hubs.flatMap((x) => x.tabs.map((tb) => tb.id))
     expect(new Set(ids).size).toBe(ids.length)
-    expect(ids).toHaveLength(39)
+    expect(ids).toHaveLength(40)
   })
 
   it('retrouve l entrée d un écran', () => {

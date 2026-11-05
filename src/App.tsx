@@ -57,6 +57,7 @@ import Worldmonitor from './screens/Worldmonitor'
 import { Cyber } from './screens/Cyber'
 import { Minuteurs } from './screens/Minuteurs'
 import { MinuteursPuce } from './components/minuteurs/MinuteursPuce'
+import { DjLight } from './screens/DjLight'
 import { LOG_TARGET } from './lib/nav'
 import { buildHubs, hubOf, entryScreen, groupHubs, rememberTab, recalledTab } from './lib/navTree'
 import { HubTabs } from './components/HubTabs'
@@ -64,7 +65,7 @@ import { DiskPanel } from './components/DiskPanel'
 import { ouvrirDisque } from './lib/disque'
 import { inspecterCi } from './lib/ci'
 
-export type ScreenId = 'accueil' | 'agenda' | 'automatisations' | 'atelier' | 'camera' | 'lumiere' | 'films' | 'demandes' | 'dl' | 'taches' | 'projets' | 'ambiance' | 'plan' | 'lanceur' | 'outils' | 'tests' | 'parametres'
+export type ScreenId = 'accueil' | 'agenda' | 'automatisations' | 'atelier' | 'camera' | 'lumiere' | 'djlight' | 'films' | 'demandes' | 'dl' | 'taches' | 'projets' | 'ambiance' | 'plan' | 'lanceur' | 'outils' | 'tests' | 'parametres'
   | 'mises' | 'sauvegardes' | 'ressources' | 'vms' | 'reseau' | 'securite'
   | 'dv' | 'menage' | 'cideps' | 'qualite' | 'historique' | 'reveil' | 'rampes' | 'zonesaudio'
   | 'themes' | 'lyramemoire' | 'sandbox' | 'resume' | 'reglages2' | 'worldmonitor' | 'cyber' | 'minuteurs'
@@ -110,7 +111,7 @@ export const BUILD_ID =
     ?.src.match(/index-([\w-]+)\.js/)?.[1] ?? 'dev'
 
 const SCREENS: Record<ScreenId, () => React.JSX.Element> = {
-  accueil: Accueil, agenda: Agenda, automatisations: Automations, atelier: Atelier, camera: Camera, lumiere: Lumiere, films: Media, demandes: Demandes, dl: Downloads, taches: Taches,
+  accueil: Accueil, agenda: Agenda, automatisations: Automations, atelier: Atelier, camera: Camera, lumiere: Lumiere, djlight: DjLight, films: Media, demandes: Demandes, dl: Downloads, taches: Taches,
   projets: Projets, ambiance: Ambiance, plan: Plan, lanceur: Lanceur, outils: Outils, tests: Tests, parametres: Parametres,
   mises: Mises, sauvegardes: Sauvegardes, ressources: Ressources, vms: Vms, reseau: Reseau, securite: Securite,
   dv: Dv, menage: MediaMenage, cideps: CiDeps, qualite: Qualite, historique: Historique,

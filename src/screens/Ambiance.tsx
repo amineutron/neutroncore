@@ -318,6 +318,11 @@ export function Ambiance() {
         <Remote source={t?.denon_source} tvOn={t?.power === 'On'} onChange={tv.refresh} />
       </div>
 
+      <Card title="dj light" lite="la musique pilote la lumière" style={{ marginTop: 14 }}>
+        <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 10px' }}>Volume, grosse caisse, drop, tonalité et tempo branchés sur les réglages de tes scènes, avec des couches à priorité, des profils et des sets.</p>
+        <Btn solid onClick={() => navigate('djlight')}>ouvrir dj light</Btn>
+      </Card>
+
       <Card title="routines et automatisations" style={{ marginTop: 14 }}>
         <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 10px' }}>Plusieurs actions d'un seul geste, ou la maison qui réagit toute seule (heure, alerte, tv…).</p>
         <Btn onClick={() => navigate('automatisations')}>ouvrir les automatisations</Btn>

@@ -44,6 +44,8 @@ export type Mode = '3d' | '2d'
 /** En 2d : toutes les lampes ensemble, ou une sur deux en alternance à chaque temps (la scène Iron Man de huebeat). */
 export type Groupe = 'tous' | 'alterne'
 export type FxParams = { mode?: Mode; groupe?: Groupe; source: Vec3; axe: Axe; palette: string; couleurs?: string[]; intensite: number; depart?: Depart; pulse?: Pulsation; general?: number; couches?: Partial<Record<FxId, Couche>>
+  /** DJ Light : l'onde traverse la pièce `vitesseOnde` fois plus vite (1 ou absent : une pulsation entière). */
+  vitesseOnde?: number
   /** Réactions au son : présent seulement si l'option « bandes » est cochée (voir spatialBandes.ts). */
   bandesEtat?: EtatBandes }
 /** Ce qu'un effet joue à sa façon dans une scène (déjà converti : cm, 0..1) ; le reste vient de la scène. `tempo`
@@ -154,9 +156,11 @@ export function apport(fx: FxId, f: Fixture, dims: Dims, p: FxParams, beat: numb
   const diag = diagonale(dims)
   const temps = Math.floor(beat), phase = frac(beat)
   if (fx === 'onde') {
-    // l'onde met une pulsation à traverser la pièce et s'affaiblit en s'éloignant
-    const rayon = phase * diag * 0.85
-    const niveau = cloche(dist(f.pos, p.source) - rayon, diag * 0.09) * (1 - phase * 0.55)
+    // l'onde met une pulsation à traverser la pièce (moins si `vitesseOnde` > 1, puis elle reste au bout) et s'affaiblit en s'éloignant
+    // (un front rapide s'élargit, jusqu'à 2,2 fois : sinon il n'éclaire que quelques lampes à la fois et la pièce paraît terne)
+    const k = Math.max(1, p.vitesseOnde ?? 1), av = Math.min(1, phase * k)
+    const rayon = av * diag * 0.85
+    const niveau = cloche(dist(f.pos, p.source) - rayon, diag * 0.09 * Math.min(2.2, 1 + 0.25 * (k - 1))) * (1 - av * 0.55)
     return { niveau, rgb: couleur(p, temps), vise: p.source }
   }
   if (fx === 'mur') {

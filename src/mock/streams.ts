@@ -22,3 +22,16 @@ export async function demoLyraChat(text: string, onEvent: (ev: Record<string, un
 export async function demoSessionEvents(signal?: AbortSignal): Promise<void> {
   await new Promise<void>((resolve) => signal?.addEventListener('abort', () => resolve()))
 }
+
+/** DJ Light en démo : le morceau simulé (`lib/djSimu`) joue en boucle à 30 images par seconde, jusqu'à l'abandon. */
+export async function demoDjlightFlux(onEvent: (ev: import('../lib/api').EvenementDj) => void, signal?: AbortSignal): Promise<void> {
+  const { Simulateur } = await import('../lib/djSimu')
+  const simu = new Simulateur(1, 8)
+  onEvent({ type: 'etat', moteur: 'ok', source: 'morceau simulé' })
+  try {
+    for (;;) {
+      await sleep(1000 / 30, signal)
+      onEvent({ type: 'frame', ...simu.suivant(1 / 30) })
+    }
+  } catch { /* abandon de l'écran */ }
+}

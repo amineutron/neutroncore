@@ -4,6 +4,7 @@ import { ATELIER_ROUTES } from './data/atelier'
 import { godeye } from './data/godeye'
 import { home } from './data/home'
 import { launcher } from './data/launcher'
+import { djlight } from './data/djlight'
 import { lumiere } from './data/lumiere'
 import { lumiereOutils } from './data/lumiereOutils'
 import { lumiereSource } from './data/lumiereSource'
@@ -36,7 +37,7 @@ import { affichageWorldmonitor } from './data/worldmonitor'
 
 export const ROUTES = compileRoutes([
   ['GET', '/auth/token', () => ({ token: 'demo' })],
-  ...ATELIER_ROUTES, ...media, ...requests, ...system, ...godeye, ...lumiereOutils, ...lumiereSource, ...lumiere, ...mises, ...sauvegardes, ...ressources, ...vmsConsole, ...reseau, ...securite, ...dv, ...sorties, ...menage, ...ciDeps, ...qualite, ...historique, ...reveilDemo, ...sonoDemo,...lyraMemoire, ...sandbox, ...reglages, ...resume, ...cyber, ...cameraStudio, ...minuteursDemo,
+  ...ATELIER_ROUTES, ...media, ...requests, ...system, ...godeye, ...lumiereOutils, ...lumiereSource, ...lumiere, ...djlight, ...mises, ...sauvegardes, ...ressources, ...vmsConsole, ...reseau, ...securite, ...dv, ...sorties, ...menage, ...ciDeps, ...qualite, ...historique, ...reveilDemo, ...sonoDemo,...lyraMemoire, ...sandbox, ...reglages, ...resume, ...cyber, ...cameraStudio, ...minuteursDemo,
   ['GET', '/tv/affichage', () => affichageWorldmonitor],
   ['POST', '/tv/afficher', () => ({ success: true, error: null })],
   ['POST', '/tv/remettre', () => ({ success: true, error: null })],

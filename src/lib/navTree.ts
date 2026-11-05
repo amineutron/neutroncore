@@ -16,7 +16,7 @@ export function buildHubs<Id extends string>(): Hub<Id>[] {
     h('qualite', 'qualité', 'dev', [t('tests', 'tests'), t('qualite', 'qualité'), t('cideps', 'ci & dépendances')]),
     h('lyra', 'lyra', 'dev', [t('lyramemoire', 'mémoire'), t('sandbox', 'bac à sable')]),
     h('media', 'média', 'maison', [t('films', 'films & séries'), t('demandes', 'demandes'), t('dl', 'téléchargements'), t('dv', 'conversions dv'), t('menage', 'entretien')]),
-    h('ambiance', 'ambiance', 'maison', [t('ambiance', 'scènes & tv'), t('lumiere', 'lumière 3d'), t('plan', 'plan de pièce'), t('zonesaudio', 'sono'), t('camera', 'caméra')]),
+    h('ambiance', 'ambiance', 'maison', [t('ambiance', 'scènes & tv'), t('lumiere', 'lumière 3d'), t('djlight', 'dj light'), t('plan', 'plan de pièce'), t('zonesaudio', 'sono'), t('camera', 'caméra')]),
     h('veille', 'veille', 'maison', [t('worldmonitor', 'god eye'), t('cyber', 'cyber'), t('reseau', 'réseau'), t('securite', 'sécurité')]),
     h('systeme', 'système', 'système', [t('ressources', 'ressources'), t('outils', 'outils & vms'), t('vms', 'console vms'), t('sauvegardes', 'sauvegardes'), t('mises', 'mises à jour')]),
     h('reglages', 'réglages', 'système', [t('parametres', 'paramètres'), t('themes', 'thèmes'), t('reglages2', 'sauvegarde & journal')]),
