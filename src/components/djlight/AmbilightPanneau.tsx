@@ -79,6 +79,12 @@ export function AmbilightPanneau({ etat, reglages: r, sauvegardes, courante, niv
         <label className="at-champ">couleur
           <input type="color" value={r.couleur} aria-label="Couleur de l’Ambilight" onChange={(e) => poser({ couleur: e.target.value })} />
         </label>
+        <div>
+          <label className="dj-inverse"><input type="checkbox" checked={r.auto} onChange={(e) => poser({ auto: e.target.checked })} />sensibilité auto</label>
+          <p className="dj-note">{r.auto
+            ? 'Recale le signal sur ce que la musique fait réellement : les creux récents vont au minimum, les pics au maximum, même si le morceau varie peu. S’adapte en une dizaine de secondes.'
+            : 'Le signal est utilisé tel quel : un morceau au volume régulier garde l’Ambilight à mi-hauteur.'}</p>
+        </div>
         <label className="dj-curseur">minimum (au calme) <em>{r.min} %</em>
           <input type="range" min={0} max={100} value={r.min} aria-label="Minimum" onChange={(e) => { const v = Number(e.target.value); poser({ min: v, max: Math.max(r.max, v) }) }} />
         </label>

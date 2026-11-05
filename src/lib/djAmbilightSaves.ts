@@ -25,6 +25,7 @@ export function lireReglagesAmbilight(brut: unknown): ReglagesAmbilight {
   return {
     voie: VOIES_AMBILIGHT.find((v) => v === o.voie) ?? d.voie,
     signal: SIGNAUX_AMBILIGHT.find((s) => s === o.signal) ?? d.signal,
+    auto: typeof o.auto === 'boolean' ? o.auto : d.auto,
     min, max,
     lissage: nombre(o.lissage, 0, 100, d.lissage),
     cadence: nombre(o.cadence, CADENCE_MIN, CADENCE_MAX, d.cadence),
@@ -34,9 +35,9 @@ export function lireReglagesAmbilight(brut: unknown): ReglagesAmbilight {
 
 // Les quatre cases de départ : de quoi essayer tout de suite, à renommer et à écraser.
 export const SAUVEGARDES_DEPART: SauvegardeAmbilight[] = [
-  { nom: 'douce', reglages: { voie: 'lounge', signal: 'volume_court', min: 5, max: 55, lissage: 75, cadence: 4, couleur: '#ff8c28' } },
-  { nom: 'soirée', reglages: { voie: 'cached', signal: 'volume', min: 10, max: 100, lissage: 40, cadence: 10, couleur: '#ff8c28' } },
-  { nom: 'punchy', reglages: { voie: 'cached', signal: 'basses', min: 0, max: 100, lissage: 15, cadence: 12, couleur: '#ff2bd6' } },
+  { nom: 'douce', reglages: { voie: 'lounge', signal: 'volume_court', auto: true, min: 5, max: 55, lissage: 75, cadence: 4, couleur: '#ff8c28' } },
+  { nom: 'soirée', reglages: { voie: 'cached', signal: 'volume', auto: true, min: 10, max: 100, lissage: 40, cadence: 10, couleur: '#ff8c28' } },
+  { nom: 'punchy', reglages: { voie: 'cached', signal: 'basses', auto: true, min: 0, max: 100, lissage: 15, cadence: 12, couleur: '#ff2bd6' } },
   { nom: 'libre', reglages: { ...REGLAGES_AMBILIGHT } },
 ]
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CADENCE_DEPART, ETAT_DEPART, REGLAGES_AMBILIGHT, avancer, couleurDeNiveau, decider, type ReglagesAmbilight } from './djAmbilight'
 
-const R = (p: Partial<ReglagesAmbilight> = {}): ReglagesAmbilight => ({ ...REGLAGES_AMBILIGHT, ...p })
+const R = (p: Partial<ReglagesAmbilight> = {}): ReglagesAmbilight => ({ ...REGLAGES_AMBILIGHT, auto: false, ...p })   // la correspondance simple ; l'auto a ses tests (djAmbilightAuto.test.ts)
 
 /** Joue une suite de signaux à intervalle régulier ; rend les niveaux obtenus. */
 const jouer = (signaux: number[], reglages: ReglagesAmbilight, pasMs = 100): number[] => {
