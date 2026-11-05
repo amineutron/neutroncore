@@ -25,6 +25,7 @@ import { LampesReelles } from '../components/djlight/LampesReelles'
 import { couleursCanaux, encoderTrame } from '../lib/djLampes'
 import { useAmbilight } from '../components/djlight/useAmbilight'
 import { AmbilightPanneau } from '../components/djlight/AmbilightPanneau'
+import { AmbilightBarre } from '../components/djlight/AmbilightBarre'
 import { CADENCE_DEPART, ETAT_DEPART, avancer, couleurDeNiveau, decider, type ReglagesAmbilight } from '../lib/djAmbilight'
 import { CLE_AMBILIGHT, charger as chargerReglagesAmbilight, ecrireStockage, enregistrerDans, lireStockage, nommer, type StockageAmbilight } from '../lib/djAmbilightSaves'
 
@@ -215,6 +216,7 @@ export function DjLight() {
         </div>
         <span className={`chip ${etatFlux}`} role="status">{texteFlux}</span>
         <LampesReelles etat={lampes} avanceMs={avanceMs(reglages)} onDemarrer={() => { void liaison.demarrer() }} onArreter={() => { void liaison.arreter() }} />
+        <AmbilightBarre etat={etatAmbi} onDemarrer={lancerAmbilight} onArreter={() => { void liaisonAmbi.arreter() }} />
       </div>
 
       <Analyseurs image={image} />
