@@ -6,17 +6,25 @@
 //   max      le niveau sur les pics, en % ;
 //   lissage  la « moyenne » : 0 suit le signal d'un coup, 100 est très lent. La montée est plus vive que la descente,
 //            pour que la lumière accompagne un coup fort sans clignoter à chaque creux.
-import { clamp01 } from './djSignaux'
+import { clamp01, type SignalId } from './djSignaux'
+
+/** Comment on parle à la télé. `cached` : couleur par l'API de cache (mode manuel), très réactive mais sans effet sur les lampes
+ * liées à l'Ambilight ; `lounge` : couleur fixe du style « Lounge light », fidèle jusqu'à ~1 changement/s puis en retard. */
+export type VoieAmbilight = 'cached' | 'lounge'
+export const VOIES_AMBILIGHT: VoieAmbilight[] = ['cached', 'lounge']
+/** Les signaux continus qui ont un sens pour une luminosité (les autres sont des impulsions ou des notions musicales). */
+export const SIGNAUX_AMBILIGHT: SignalId[] = ['volume', 'volume_court', 'basses', 'sub', 'mediums', 'aigus', 'montee']
 
 export type ReglagesAmbilight = {
-  actif: boolean
+  voie: VoieAmbilight
+  signal: SignalId       // ce qui pilote la luminosité
   min: number            // 0..100
   max: number            // 0..100
   lissage: number        // 0..100
   cadence: number        // mises à jour par seconde demandées (bornées à CADENCE_MAX)
   couleur: string        // #rrggbb : la teinte, dont la luminosité varie
 }
-export const REGLAGES_AMBILIGHT: ReglagesAmbilight = { actif: false, min: 10, max: 100, lissage: 40, cadence: 10, couleur: '#ff8c28' }
+export const REGLAGES_AMBILIGHT: ReglagesAmbilight = { voie: 'cached', signal: 'volume', min: 10, max: 100, lissage: 40, cadence: 10, couleur: '#ff8c28' }
 
 export type EtatNiveau = { lisse: number; t: number | null }
 export const ETAT_DEPART: EtatNiveau = { lisse: 0, t: null }

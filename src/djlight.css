@@ -142,4 +142,18 @@
   .dj-pas li{grid-template-columns:24px minmax(0,1fr) minmax(0,1fr)}
   .dj-pas li .dj-mes,.dj-pas li .dj-ord2{grid-column:auto}
 }
-@media (prefers-reduced-motion:reduce){.dj-sw::after,.dj-barre i,.dj-temp i{transition:none}}
+/* Ambilight de la télé */
+.dj-ambi{display:flex;flex-direction:column;gap:12px}
+.dj-ambi-ligne{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.dj-ambi-jauge{position:relative;height:22px;border:1px solid var(--line2);border-radius:9px;background:var(--surface);overflow:hidden}
+.dj-ambi-jauge i{position:absolute;inset:0 auto 0 0;display:block;transition:width .08s linear}
+.dj-ambi-jauge span{position:relative;display:block;text-align:center;font:600 11px/20px var(--mono);color:var(--text);mix-blend-mode:difference}
+.dj-ambi-reglages{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px 18px;align-items:start}
+.dj-ambi-reglages input[type=color]{width:44px;height:30px;padding:0;border:1px solid var(--line2);border-radius:8px;background:none;cursor:pointer}
+.dj-ambi-reglages .dj-seg button:disabled{opacity:.55;cursor:not-allowed}
+.dj-ambi-saves{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px}
+.dj-ambi-case{position:relative;display:flex;flex-direction:column;gap:6px;padding:10px;border:1px solid var(--line2);border-radius:11px;background:var(--surface)}
+.dj-ambi-case.on{border-color:var(--gold)}
+.dj-ambi-case-couleur{position:absolute;top:10px;right:10px;width:14px;height:14px;border-radius:50%;border:1px solid var(--line2)}
+.dj-ambi-case .bp-text{width:calc(100% - 26px)}
+@media (prefers-reduced-motion:reduce){.dj-sw::after,.dj-barre i,.dj-temp i,.dj-ambi-jauge i{transition:none}}
