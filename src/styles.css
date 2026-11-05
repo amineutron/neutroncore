@@ -2061,6 +2061,13 @@ button.at-it{cursor:pointer}
 .lu-couleur{position:relative;display:inline-flex}
 .lu-couleur input{width:38px;height:38px;padding:0;border:1px solid var(--line2);border-radius:10px;background:none;cursor:pointer}
 .lu-couleur button{all:unset;position:absolute;top:-6px;right:-6px;width:16px;height:16px;border-radius:50%;background:var(--raise);border:1px solid var(--line2);color:var(--muted);font-size:11px;line-height:16px;text-align:center;cursor:pointer}
+.lu-jeux{margin-top:10px}
+.lu-jeu{position:relative;display:flex}
+.lu-jeu .lu-palette{flex:1;min-width:0}
+.lu-jeu-x{all:unset;cursor:pointer;position:absolute;top:-5px;right:-5px;width:16px;height:16px;border-radius:50%;background:var(--raise);border:1px solid var(--line2);color:var(--muted);font-size:11px;line-height:14px;text-align:center}
+.lu-jeu-x:hover,.lu-jeu-x:focus-visible{color:var(--text);border-color:var(--gold)}
+.lu-jeu-nouveau{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
+.lu-jeu-nouveau input{flex:1 1 160px;min-width:0;padding:7px 10px;border:1px solid var(--line2);border-radius:9px;background:var(--raise);color:var(--text)}
 
 /* lumière 3d : blocs repliables, choix 2d / 3d */
 .lu-bloc:not(.ouvert) h3{margin-bottom:0}
