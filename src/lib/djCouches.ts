@@ -7,6 +7,7 @@ import type { Commun, Dims, FxId, FxParams, Scene } from './spatialFx'
 import { ARC_EN_CIEL, LIBRE, PALETTES, couleursDe, paramsDeScene } from './spatialFx'
 import type { SignalId } from './djSignaux'
 import { SIGNAUX_INFO } from './djSignaux'
+import { nettoyerCouleurs } from './jeuxCouleurs'
 
 export type Genre = 'scene' | 'couleurs' | 'modulation' | 'couleur' | 'declencheur'
 export type ModeCouche = 'remplace' | 'ajoute' | 'multiplie'
@@ -24,6 +25,7 @@ export type Couche = {
   fx: FxId | null                     // cible « effet » : de quel effet on règle l'intensité
   scene: string | null                // déclencheur : la scène qui prend le relais
   palettes: string[]                  // cible « palette » : la palette choisie selon la valeur du signal
+  couleurs?: string[]                 // « couleurs » et déclencheur : couleurs choisies à la main, à la place de la palette de la scène
   mesures: number                     // déclencheur : combien de mesures dure la scène
   mode: ModeCouche
   min: number; max: number            // la sortie quand le signal vaut 0, puis quand il vaut 1 (unités de la cible)
@@ -97,6 +99,11 @@ export function etatInitial(commun: Commun, scene: Scene, onde = 1): Etat {
 function poserScene(e: Etat, s: Scene): Etat {
   return { ...e, scene: s, intensite: s.intensite, source: { ...s.source }, fx: {} }
 }
+/** La scène, avec les couleurs choisies à la main par la rangée si elle en a de valides (sinon telle quelle). */
+export function avecCouleursDeRangee(s: Scene, c: Pick<Couche, 'couleurs'>): Scene {
+  const choisies = nettoyerCouleurs(c.couleurs ?? [])
+  return choisies.length > 0 ? { ...s, palette: LIBRE, couleurs: choisies } : s
+}
 /** La palette de la scène prend la place des couleurs de dessous, et remet à zéro teinte, saturation et chaleur. */
 function poserCouleurs(e: Etat, s: Scene): Etat {
   return { ...e, palette: s.palette, couleurs: s.couleurs, teinte: 0, saturation: 100, chaleur: 0 }
@@ -156,12 +163,12 @@ export function appliquer(entree: Entree): Appliquee {
     const base = c.genre === 'scene' || c.genre === 'couleurs'
     if (!c.actif || (seul && !c.solo && !base)) continue
     if (c.genre === 'scene') { e = poserScene(e, scene); acts[c.id] = 1; continue }
-    if (c.genre === 'couleurs') { e = poserCouleurs(e, scene); acts[c.id] = 1; continue }
+    if (c.genre === 'couleurs') { e = poserCouleurs(e, avecCouleursDeRangee(scene, c)); acts[c.id] = 1; continue }
     const f = c.force / 100
     if (f <= 0) continue
     if (c.genre === 'declencheur') {
       const jouee = declenches[c.id] ? scenes.find((s) => s.id === declenches[c.id]) : undefined
-      if (jouee) { e = poserCouleurs(poserScene(e, jouee), jouee); acts[c.id] = 1 }
+      if (jouee) { e = poserCouleurs(poserScene(e, jouee), avecCouleursDeRangee(jouee, c)); acts[c.id] = 1 }
       continue
     }
     if (!c.cible) continue
@@ -260,9 +267,11 @@ const nombre = (v: number): string => String(Math.round(v * 10) / 10).replace('.
 /** La rangée dite en une phrase, pour la liste et pour l'aide. */
 export function phrase(c: Couche, scenes: Pick<Scene, 'id' | 'nom'>[] = []): string {
   if (c.genre === 'scene') return 'la scène jouée : ses effets, son intensité et son point source'
-  if (c.genre === 'couleurs') return 'la palette de la scène'
+  const nbChoisies = nettoyerCouleurs(c.couleurs ?? []).length
+  const choisies = nbChoisies > 0 ? ` en ${nbChoisies} couleur${nbChoisies > 1 ? 's' : ''} choisie${nbChoisies > 1 ? 's' : ''}` : ''
+  if (c.genre === 'couleurs') return nbChoisies > 0 ? `${nbChoisies} couleur${nbChoisies > 1 ? 's' : ''} choisie${nbChoisies > 1 ? 's' : ''} à la main` : 'la palette de la scène'
   const quand = c.signal ? (SIGNAL_VERBES[c.signal] ?? `selon ${SIGNAUX_INFO[c.signal].label}`) : ''
-  if (c.genre === 'declencheur') return `${quand}, la scène « ${scenes.find((s) => s.id === c.scene)?.nom ?? 'introuvable'} » prend le relais ${c.mesures} mesure${c.mesures > 1 ? 's' : ''}`
+  if (c.genre === 'declencheur') return `${quand}, la scène « ${scenes.find((s) => s.id === c.scene)?.nom ?? 'introuvable'} » prend le relais ${c.mesures} mesure${c.mesures > 1 ? 's' : ''}${choisies}`
   if (!c.cible) return 'à régler'
   const cible = infoCible(c.cible)
   const u = cible.unite === '%' ? ' %' : cible.unite === '°' ? '°' : ''

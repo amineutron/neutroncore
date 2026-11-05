@@ -1,7 +1,8 @@
 import { NumField } from '../NumField'
 import { CIBLES_COULEUR, CIBLES_MOD, MODES, infoCible, sortieDe, type Cible, type Couche, type ModeCouche } from '../../lib/djCouches'
 import { SIGNAUX, SIGNAUX_INFO, type SignalId } from '../../lib/djSignaux'
-import { EFFETS, PALETTES, type FxId, type Scene } from '../../lib/spatialFx'
+import { EFFETS, PALETTES, couleursDe, type FxId, type Scene } from '../../lib/spatialFx'
+import { CouleursChoisies } from './CouleursChoisies'
 
 const IMPULSIONS = SIGNAUX.filter((s) => SIGNAUX_INFO[s].genre === 'impulsion')
 const CONTINUS = SIGNAUX.filter((s) => SIGNAUX_INFO[s].genre === 'continu')
@@ -78,6 +79,12 @@ export function CoucheEditeur({ c, scenes, signal, onChange, onDupliquer, onSupp
           <input type="range" min={0} max={95} value={c.seuil} aria-label="Seuil" onChange={(e) => onChange({ seuil: Number(e.target.value) })} />
         </label>
         <p className="dj-note">La scène prend la place de celle qui joue, avec ses couleurs, tant que la rangée est au-dessus d’elles dans la pile.</p>
+        <CouleursChoisies couleurs={c.couleurs} depart={scenes.find((s) => s.id === c.scene) ? couleursDe(scenes.find((s) => s.id === c.scene) as Scene) : []} onChange={(couleurs) => onChange({ couleurs })} />
+      </>)}
+
+      {c.genre === 'couleurs' && (<>
+        <p className="dj-note">Par défaut, cette rangée donne à la scène sa propre palette. Tu peux lui imposer tes couleurs.</p>
+        <CouleursChoisies couleurs={c.couleurs} depart={[]} onChange={(couleurs) => onChange({ couleurs })} />
       </>)}
 
       {modulation && (<>
