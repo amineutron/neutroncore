@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { evaluerSuite, suiteRythmee, type Suite } from './djBench'
 import { lireReglages } from './djReglages'
 import { BPM_SIMU, Simulateur } from './djSimu'
@@ -18,6 +18,9 @@ function simule(secondes: number, decalageLu = 0): Suite {
 const note = (r: ReturnType<typeof evaluerSuite>, id: string): number => [...r.independantes, ...r.collectives].find((n) => n.id === id)!.score
 
 // La capture réelle se rejoue avec scripts/djBench.live.test.ts.
+// Ces tests rejouent plusieurs morceaux complets : ils frôlent les 5 s par défaut sur une machine de CI lente.
+vi.setConfig({ testTimeout: 60_000 })
+
 describe('banc d essai : morceau simulé (garde-fou de non-régression)', () => {
   it('note chaque fonction sur le morceau simulé joué normalement', () => {
     const r = evaluerSuite(simule(128))
