@@ -43,7 +43,7 @@ describe('rotation : vocabulaire', () => {
 
 describe('rotation : assistant', () => {
   it.each([
-    ['http://127.0.0.1:8080/x', true], ['http://localhost/', true], ['https://192.168.0.31/', true], ['http://100.101.2.3/', true], // guard:allow adresse de test
+    ['http://127.0.0.1:8080/x', true], ['http://localhost/', true], ['https://192.168.122.31/', true], ['http://100.101.2.3/', true], // guard:allow adresse de test
     ['http://172.20.1.1/', true], ['http://172.40.1.1/', false], ['http://exemple.com/', false], ['ftp://127.0.0.1/', false],
     ['http://u:p@127.0.0.1/', false], ['pas une url', false], ['http://8.8.8.8/', false],
   ])('hote %s', (url, ok) => expect(hoteLocal(url)).toBe(ok))
