@@ -1,6 +1,8 @@
 // Client API neutroncore — même origine que lyra-control-api (:9876).
 // La clé Bearer est saisie une fois (écran de config) et gardée en localStorage.
 
+import type { ImageAudio } from './djSignaux'
+
 import { offline } from './offline/runtime'
 
 const KEY_STORAGE = 'neutroncore_api_key'
@@ -173,3 +175,26 @@ offline.configure({
     (await fetch(i.path, { method: i.method, headers: headers(), body: i.body === undefined ? undefined : JSON.stringify(i.body) })).status,
   makeError: (status, message) => new ApiError(status, message),
 })
+
+/** DJ Light : ce que le moteur audio de l'API envoie (`GET /djlight/flux`, SSE lu en streaming comme les sessions). */
+export type EvenementDj = ({ type: 'frame' } & ImageAudio) | { type: 'etat'; moteur: string; source?: string; erreur?: string }
+export async function djlightFlux(onEvent: (ev: EvenementDj) => void, signal?: AbortSignal): Promise<void> {
+  if (DEMO) return (await import('../mock/streams')).demoDjlightFlux(onEvent, signal)
+  const r = await fetch('/djlight/flux', { headers: headers(), signal })
+  if (!r.ok || !r.body) throw new ApiError(r.status, r.status === 404 ? 'moteur audio absent : l’API n’a pas encore DJ Light (redémarrage nécessaire)' : 'flux audio indisponible')
+  const reader = r.body.getReader()
+  const decoder = new TextDecoder()
+  let buf = ''
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buf += decoder.decode(value, { stream: true })
+    const parts = buf.split('\n\n')
+    buf = parts.pop() ?? ''
+    for (const part of parts) {
+      const line = part.split('\n').find((l) => l.startsWith('data: '))
+      if (!line) continue
+      try { onEvent(JSON.parse(line.slice(6)) as EvenementDj) } catch { /* ping ou ligne partielle */ }
+    }
+  }
+}

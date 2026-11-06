@@ -10,6 +10,7 @@ import {
 import { lieux, type Venue } from '../lib/spatialVenues'
 import { Loader, PageTitle } from '../components/ui'
 import { Bloc } from '../components/lumiere/Bloc'
+import { JeuxCouleurs } from '../components/lumiere/JeuxCouleurs'
 import { Ecoute } from '../components/lumiere/Ecoute'
 import { ApercuReglage } from '../components/lumiere/ApercuReglage'
 import { BORNES, LEGENDES, type CleCommun } from '../lib/spatialApercu'
@@ -558,6 +559,7 @@ export function Lumiere() {
           <p className="lu-legende">Les couleurs se succèdent dans cet ordre, au fil des mesures.</p>
         </div>
       )}
+      <JeuxCouleurs couleurs={couleursLive} libre={live.palette === LIBRE} onAppliquer={reglerCouleurs} />
       <label className="lu-curseur">intensité
         <input type="range" min={10} max={100} step={1} value={live.intensite} aria-label="Intensité" onChange={(e) => regler({ intensite: Number(e.target.value) })} />
       </label>

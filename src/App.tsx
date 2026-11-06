@@ -57,6 +57,7 @@ import Worldmonitor from './screens/Worldmonitor'
 import { Cyber } from './screens/Cyber'
 import { Minuteurs } from './screens/Minuteurs'
 import { MinuteursPuce } from './components/minuteurs/MinuteursPuce'
+import { DjLight } from './screens/DjLight'
 import { LOG_TARGET } from './lib/nav'
 import { buildHubs, hubOf, entryScreen, groupHubs, rememberTab, recalledTab } from './lib/navTree'
 import { HubTabs } from './components/HubTabs'
@@ -64,7 +65,7 @@ import { DiskPanel } from './components/DiskPanel'
 import { ouvrirDisque } from './lib/disque'
 import { inspecterCi } from './lib/ci'
 
-export type ScreenId = 'accueil' | 'agenda' | 'automatisations' | 'atelier' | 'camera' | 'lumiere' | 'films' | 'demandes' | 'dl' | 'taches' | 'projets' | 'ambiance' | 'plan' | 'lanceur' | 'outils' | 'tests' | 'parametres'
+export type ScreenId = 'accueil' | 'agenda' | 'automatisations' | 'atelier' | 'camera' | 'lumiere' | 'djlight' | 'films' | 'demandes' | 'dl' | 'taches' | 'projets' | 'ambiance' | 'plan' | 'lanceur' | 'outils' | 'tests' | 'parametres'
   | 'mises' | 'sauvegardes' | 'ressources' | 'vms' | 'reseau' | 'securite'
   | 'dv' | 'menage' | 'cideps' | 'qualite' | 'historique' | 'reveil' | 'rampes' | 'zonesaudio'
   | 'themes' | 'lyramemoire' | 'sandbox' | 'resume' | 'reglages2' | 'worldmonitor' | 'cyber' | 'minuteurs'
@@ -110,7 +111,7 @@ export const BUILD_ID =
     ?.src.match(/index-([\w-]+)\.js/)?.[1] ?? 'dev'
 
 const SCREENS: Record<ScreenId, () => React.JSX.Element> = {
-  accueil: Accueil, agenda: Agenda, automatisations: Automations, atelier: Atelier, camera: Camera, lumiere: Lumiere, films: Media, demandes: Demandes, dl: Downloads, taches: Taches,
+  accueil: Accueil, agenda: Agenda, automatisations: Automations, atelier: Atelier, camera: Camera, lumiere: Lumiere, djlight: () => <DjLight />, films: Media, demandes: Demandes, dl: Downloads, taches: Taches,
   projets: Projets, ambiance: Ambiance, plan: Plan, lanceur: Lanceur, outils: Outils, tests: Tests, parametres: Parametres,
   mises: Mises, sauvegardes: Sauvegardes, ressources: Ressources, vms: Vms, reseau: Reseau, securite: Securite,
   dv: Dv, menage: MediaMenage, cideps: CiDeps, qualite: Qualite, historique: Historique,
@@ -166,6 +167,7 @@ function Setup({ onDone }: { onDone: () => void }) {
 export default function App() {
   // en démo, pas de backend donc pas de clé à saisir
   const [ready, setReady] = useState(() => DEMO || Boolean(getApiKey()))
+  const [djActif, setDjActif] = useState(false)      // DJ Light tient les vraies lampes : il reste monté en fond
   const [screen, setScreen] = useState<ScreenId>(() => {
     const params = new URLSearchParams(window.location.search)
     // lien profond vers un journal (bouton « journal » d'un échec dans la barre Quickshell)
@@ -336,6 +338,7 @@ export default function App() {
   }
 
   const Screen = SCREENS[screen]
+  const djVisible = screen === 'djlight' && !tvMode
   const hub = hubOf(HUBS, screen)
   const tabLabel = hub?.tabs.find((tb) => tb.id === screen)?.label
   const crumbLabel = hub && hub.tabs.length > 1 && tabLabel !== hub.label ? `${hub.label} / ${tabLabel}` : hub?.label
@@ -420,6 +423,11 @@ export default function App() {
           <span className="grow" />
           <button className="pl-open" aria-label="Palette de commandes" onClick={() => setPaletteOpen(true)}>chercher <kbd>ctrl k</kbd></button>
           <MinuteursPuce onOpen={() => nav('minuteurs')} />
+          {djActif && !djVisible && (
+            <button type="button" className="btn sm dj-fond-voyant" onClick={() => nav('djlight')} title="DJ Light pilote tes vraies lampes en fond. Clique pour revenir à son écran (et les arrêter).">
+              <i aria-hidden="true" />dj light en direct
+            </button>
+          )}
           <NotifBell data={notifs.data} open={notifOpen} onToggle={() => setNotifOpen((v) => !v)} />
           <button data-tour="tv" className={`btn sm ${tvMode ? 'solid' : ''}`} onClick={shell.toggleTv}>
             {tvMode ? 'quitter télé' : 'télé'}
@@ -430,9 +438,11 @@ export default function App() {
           {tvMode ? <TvDashboard /> : (
             <>
               {hub && <HubTabs tabs={hub.tabs} current={screen} onPick={nav} />}
-              <Screen />
+              {screen !== 'djlight' && <Screen />}
             </>
           )}
+          {/* DJ Light reste monté (sans rien afficher) tant que les vraies lampes tournent : changer de page ne les rend pas */}
+          {(djVisible || djActif) && <DjLight enFond={!djVisible} surLampes={setDjActif} />}
         </section>
       </div>
 

@@ -5,6 +5,7 @@ import { Remote } from '../components/Remote'
 import { NavContext } from '../App'
 import { ColorPalette } from '../components/ColorPalette'
 import { DenonVolume } from '../components/DenonVolume'
+import { EcranTv } from '../components/EcranTv'
 import { IronmanScene } from '../components/IronmanScene'
 import { usePoll } from '../lib/poll'
 import { Btn, Card, Chip, PageTitle, Eyebrow, Loader } from '../components/ui'
@@ -15,7 +16,7 @@ const AMBILIGHT_MODES: Record<string, string> = {
   video: 'FOLLOW_VIDEO', audio: 'FOLLOW_AUDIO', lounge: 'LOUNGE_LIGHT', off: 'OFF',
 }
 
-type TvStatus = { power: string; volume: number; muted: boolean; ambilight_mode: string; denon_volume: number | null; denon_muted: boolean; denon_reachable: boolean; denon_power?: string; denon_source?: string }
+type TvStatus = { screen?: string; power: string; volume: number; muted: boolean; ambilight_mode: string; denon_volume: number | null; denon_muted: boolean; denon_reachable: boolean; denon_power?: string; denon_source?: string }
 type Monitor = { name: string; width: number; height: number; x: number; dpms: boolean }
 type Screens = { monitors: Monitor[]; tv_ok: boolean; ambilight: { on: boolean; style: string }; ambihue: boolean | null }
 type Light = { name: string; on: boolean; bri: number; reachable: boolean; color?: string }
@@ -100,7 +101,7 @@ export function Ambiance() {
   )].slice(0, 5)
 
   const LABELS: Record<string, string> = {
-    tvp: 'télé', tvm: 'muet télé', 'dv-': 'ampli vol −', 'dv+': 'ampli vol +', dm: 'muet ampli', beat: 'huebeat',
+    tvp: 'télé', ecran: 'mode de la télé', tvm: 'muet télé', 'dv-': 'ampli vol −', 'dv+': 'ampli vol +', dm: 'muet ampli', beat: 'huebeat',
   }
   async function run(label: string, fn: () => Promise<{ success?: boolean } | unknown>, refresh?: () => void) {
     const nom = LABELS[label] ?? label
@@ -244,6 +245,9 @@ export function Ambiance() {
         })}
       </div>
 
+      <EcranTv etat={t ?? undefined} occupe={busy === 'ecran'}
+        onChoisir={(mode) => run('ecran', () => apiPost('/tv/screen', { on: mode === 'ecran' }), tv.refresh)} />
+
       <div className="grid g3">
         <Card title="tv philips" lite="55oled705">
           <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
@@ -317,6 +321,11 @@ export function Ambiance() {
       <div style={{ marginTop: 14 }}>
         <Remote source={t?.denon_source} tvOn={t?.power === 'On'} onChange={tv.refresh} />
       </div>
+
+      <Card title="dj light" lite="la musique pilote la lumière" style={{ marginTop: 14 }}>
+        <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 10px' }}>Volume, grosse caisse, drop, tonalité et tempo branchés sur les réglages de tes scènes, avec des couches à priorité, des profils et des sets.</p>
+        <Btn solid onClick={() => navigate('djlight')}>ouvrir dj light</Btn>
+      </Card>
 
       <Card title="routines et automatisations" style={{ marginTop: 14 }}>
         <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 10px' }}>Plusieurs actions d'un seul geste, ou la maison qui réagit toute seule (heure, alerte, tv…).</p>

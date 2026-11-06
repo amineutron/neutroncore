@@ -19,6 +19,7 @@ const SCENES = [
 
 // volume de l'ampli : la démo retient la consigne pour que la barre la relise
 let denonVolume = 42.5
+let ecranTv: 'on' | 'off' = 'on'
 
 type DemoBlock = { type: string; params: Record<string, unknown>; negate?: boolean }
 type DemoStep = { action: string; params: Record<string, unknown>; on_error?: string; retry?: number }
@@ -87,8 +88,12 @@ let demoPlan = {
 }
 
 export const home: [string, string, MockHandler][] = [
-  ['GET', '/tv/status', () => ({ power: 'On', volume: 18, muted: false, ambilight_mode: 'FOLLOW_VIDEO', ambilight_on: true,
+  ['GET', '/tv/status', () => ({ power: 'On', volume: 18, muted: false, ambilight_mode: 'FOLLOW_VIDEO', ambilight_on: true, screen: ecranTv,
     denon_volume: denonVolume, denon_muted: false, denon_reachable: true, denon_power: 'on', denon_source: 'TV' })],
+  ['POST', '/tv/screen', ({ body }) => {
+    ecranTv = (body as { on?: unknown } | undefined)?.on === false ? 'off' : 'on'
+    return { success: true, demo: true, screen: ecranTv }
+  }],
   ['POST', '/tv/denon/volume', ({ body }) => {
     const level = Number((body as { level?: unknown } | undefined)?.level)
     if (Number.isFinite(level)) denonVolume = Math.max(0, Math.min(98, Math.round(level)))
