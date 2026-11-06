@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AutomationEditor } from '../components/AutomationEditor'
-import type { Lists } from '../components/BlockParams'
+import type { Lists, Option } from '../components/BlockParams'
 import { FlowCanvas } from '../components/FlowCanvas'
 import { RunHistory } from '../components/RunDetail'
 import { Btn, Card, Chip, Eyebrow, Loader, PageTitle } from '../components/ui'
@@ -14,6 +14,8 @@ import { invalidateCommands } from '../lib/commands'
 import { confirmDialog, toast } from '../lib/dialog'
 import { ago } from '../lib/notifs'
 import { usePoll } from '../lib/poll'
+import { EXEMPLES_AUTOMATISATION } from '../lib/automationExemples'
+import '../components/audit-ux-lot3.css'
 
 type Scene = { id: string; name: string; group: string }
 type Listing = { automations: Automation[]; catalogue: Catalogue; running: { id: string; name: string } | null; invalid: number }
@@ -25,9 +27,14 @@ export function Automations() {
   const list = usePoll<Listing>(() => apiGet('/automations'), 15000)
   const scenes = usePoll<{ scenes: Scene[] }>(() => apiGet('/hue/scenes'), 300000)
   const lights = usePoll<{ lights: Record<string, { name: string }> }>(() => apiGet('/hue/lights'), 300000)
+  // conteneurs, vms et appareils bluetooth : lus sur la machine (la liste des vms prend quelques secondes)
+  const sources = usePoll<{ containers: Option[]; vms: Option[]; bluetooth: Option[] }>(() => apiGet('/automations/sources'), 300000)
+  // scènes du pad et moments de la lumière 3d (action « jouer une scène ou un moment »)
+  const moments = usePoll<{ moments: { id: string; nom: string }[]; scenes: { id: string; nom: string }[] }>(() => apiGet('/moments-lumiere'), 300000)
   const [busy, setBusy] = useState('')
   const [editing, setEditing] = useState<Automation | 'routine' | 'automation' | null>(null)
   const [saving, setSaving] = useState(false)
+  const [exemple, setExemple] = useState<AutomationDraft | null>(null)   // brouillon pré-rempli, jamais enregistré d'office
   const [open, setOpen] = useState<string | null>(null)
   // passage sélectionné repéré par son horodatage : un nouveau passage en tête ne fait pas sauter la sélection
   const [runAt, setRunAt] = useState<number | null>(null)
@@ -38,10 +45,14 @@ export function Automations() {
     scenes: (scenes.data?.scenes ?? []).filter((s) => s.group === HUE_ROOM).map(({ id, name }) => ({ id, name })),
     lights: Object.entries(lights.data?.lights ?? {}).map(([id, l]) => ({ id, name: l.name })),
     routines: all.filter(isRoutine).map(({ id, name }) => ({ id, name })),
+    lumiere: [...(moments.data?.moments ?? []).map((m) => ({ id: m.id, name: `moment : ${m.nom}` })),
+      ...(moments.data?.scenes ?? []).map((x) => ({ id: x.id, name: `scène : ${x.nom}` }))],
+    containers: sources.data?.containers ?? [], vms: sources.data?.vms ?? [], bluetooth: sources.data?.bluetooth ?? [],
   }
   const names: Names = Object.fromEntries([
     ...lists.scenes.map((s) => [s.id, s.name]), ...lists.lights.map((l) => [`light:${l.id}`, l.name]),
-    ...lists.routines.map((r) => [`routine:${r.id}`, r.name]),
+    ...lists.routines.map((r) => [`routine:${r.id}`, r.name]), ...(lists.bluetooth ?? []).map((b) => [`bt:${b.id}`, b.name]),
+    ...(lists.lumiere ?? []).map((l) => [`lumiere:${l.id}`, l.name.replace(/^(moment|scène) : /, '')]),
   ])
 
   // arrivée depuis l'agenda : on déplie l'automatisation visée
@@ -67,7 +78,7 @@ export function Automations() {
     try {
       const r = await apiPut<{ success: boolean; error?: string }>(`/automations/${id}`, { automation: draft })
       if (!r.success) throw new Error(r.error ?? 'refusé')
-      setEditing(null); list.refresh(); invalidateCommands()
+      setEditing(null); setExemple(null); list.refresh(); invalidateCommands()
       toast(`« ${draft.name} » enregistrée`)
     } catch (e) { toast(`non enregistrée : ${(e as Error).message}`, 'crit') } finally { setSaving(false) }
   }
@@ -134,7 +145,19 @@ export function Automations() {
         <>
           <Card title="automatisations" lite="quand… si… alors… sinon…" style={{ marginBottom: 14 }}>
             {autos.map(card)}
-            {autos.length === 0 && <p className="au-note">Aucune pour l'instant. Exemples : « quand un téléchargement se termine, notification avec son nom », « à 23:30 en semaine, si la tv est éteinte, tout éteindre », « quand plex tombe, le redémarrer, réessayer deux fois ».</p>}
+            {autos.length === 0 && (
+              <>
+                <p className="au-note">Aucune pour l'instant. Pars d'un exemple, tu pourras tout changer avant d'enregistrer :</p>
+                <div className="ex-list">
+                  {EXEMPLES_AUTOMATISATION.map((e) => (
+                    <div key={e.id} className="ex-item">
+                      <span className="ex-t"><b>{e.titre}</b><small>{e.phrase}</small></span>
+                      <Btn sm solid onClick={() => { setExemple(e.draft); setEditing('automation') }}>créer à partir de cet exemple</Btn>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
             <div style={{ marginTop: 10 }}><Btn solid onClick={() => setEditing('automation')}>+ nouvelle automatisation</Btn></div>
           </Card>
           <Card title="routines" lite="plusieurs actions d'un seul geste">
@@ -146,11 +169,11 @@ export function Automations() {
             <AutomationEditor
               isNew={typeof editing === 'string'}
               initial={typeof editing === 'object' ? toDraft(editing)
-                : editing === 'routine' ? EMPTY_DRAFT : { ...EMPTY_DRAFT, trigger: { type: 'time', params: { time: '07:30', days: [0, 1, 2, 3, 4] } } }}
+                : editing === 'routine' ? EMPTY_DRAFT : exemple ?? { ...EMPTY_DRAFT, trigger: { type: 'time', params: { time: '07:30', days: [0, 1, 2, 3, 4] } } }}
               catalogue={cat} names={names} saving={saving}
               // une routine ne se propose pas elle-même dans « lancer une routine »
               lists={typeof editing === 'object' ? { ...lists, routines: lists.routines.filter((r) => r.id !== editing.id) } : lists}
-              onSave={save} onDelete={typeof editing === 'object' ? () => remove(editing) : undefined} onClose={() => setEditing(null)}
+              onSave={save} onDelete={typeof editing === 'object' ? () => remove(editing) : undefined} onClose={() => { setEditing(null); setExemple(null) }}
             />
           )}
         </>

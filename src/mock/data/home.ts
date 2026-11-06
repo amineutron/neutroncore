@@ -111,6 +111,12 @@ export const home: [string, string, MockHandler][] = [
     return { success: true, demo: true, rev: 'demo' }
   }],
   ['GET', '/screens/measured', () => ({ ok: true, left: ['#1d3a6e', '#22407a', '#162c55'], top: ['#7a3b1e', '#8a4a22', '#6e2f18'], right: ['#5a1d4e', '#6b2460', '#481640'], bottom: [] })],
+  ['GET', '/automations/sources', () => ({
+    containers: [{ id: 'plex', name: 'plex' }, { id: 'radarr', name: 'radarr' }, { id: 'plextraktsync', name: 'plextraktsync (arrêté)' }],
+    vms: [{ id: 'debian-lab', name: 'debian-lab' }, { id: 'win-sandbox', name: 'win-sandbox' }],
+    bluetooth: [{ id: 'AA:BB:CC:DD:EE:01', name: 'casque' }, { id: 'AA:BB:CC:DD:EE:02', name: 'manette' }], inactivite: true,
+  })],
+  ['POST', '/automations/ci/inspecter', () => ({ success: true, separe: true, note: '', branche: 'worktree-demo', cwd: '' })],
   ['GET', '/automations', () => ({ automations: demoAutomations, catalogue: AUTOMATION_CATALOGUE, running: null, last: demoLast, invalid: 0 })],
   ['PUT', '/automations/:id', ({ params, body }) => {
     const a = (body as { automation: Omit<DemoAutomation, 'id' | 'last_run' | 'history'> }).automation

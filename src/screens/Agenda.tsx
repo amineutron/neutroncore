@@ -1,6 +1,7 @@
 import { useContext, useEffect, useState } from 'react'
 import { apiGet } from '../lib/api'
 import { usePoll } from '../lib/poll'
+import { rappelVide } from '../lib/rappels'
 import { LOG_TARGET } from '../lib/nav'
 import { NavContext } from '../App'
 import { Btn, Chip, PageTitle } from '../components/ui'
@@ -8,7 +9,10 @@ import { CATEGORY_LABEL, EventDetail, EventForm, isProblem, type EventDraft, typ
 import { ListView, MonthView, WeekView, iso, rangeFor, shiftAnchor, type View } from '../components/AgendaViews'
 import { DayDrawer } from '../components/AgendaDay'
 import { RotationCard } from '../components/RotationCard'
+import { RappelEnCours } from '../components/RappelEnCours'
 import { AUTOMATION_TARGET } from './Automations'
+import { SortiesFilter } from '../components/sorties/SortiesFilter'
+import { applySortiesFilter, loadSortiesOn } from '../lib/sorties'
 
 type AgendaResp = { now: string; categories: string[]; occurrences: Occurrence[] }
 type StatusFilter = 'tous' | 'à venir' | 'problèmes'
@@ -32,7 +36,7 @@ function matchStatus(o: Occurrence, f: StatusFilter): boolean {
 
 function newDraft(day: string): EventDraft {
   const hour = String(Math.min(new Date().getHours() + 1, 23)).padStart(2, '0')
-  return { title: '', category: 'perso', start: `${day}T${hour}:00`, duration_min: 60, recurrence: 'none', description: '', notify: false }
+  return { title: '', category: 'perso', start: `${day}T${hour}:00`, duration_min: 60, recurrence: 'none', description: '', notify: false, rappel: rappelVide() }
 }
 
 export function Agenda() {
@@ -49,16 +53,17 @@ export function Agenda() {
   const [openDay, setOpenDay] = useState<string | null>(null)        // jour déplié dans la vue mois
   const [selected, setSelected] = useState<Occurrence | null>(null)
   const [draft, setDraft] = useState<EventDraft | null>(null)
+  const [sortiesOn, setSortiesOn] = useState(loadSortiesOn)           // sorties Sonarr / Radarr : mémorisé, éteint au départ
 
   const { days, label } = rangeFor(view, anchor)
   const start = days[0]
   const end = days[days.length - 1]
-  const agenda = usePoll<AgendaResp>(() => apiGet(`/agenda?start=${start}&end=${end}`), 120000)
-  useEffect(() => { agenda.refresh() }, [start, end]) // eslint-disable-line react-hooks/exhaustive-deps
+  const agenda = usePoll<AgendaResp>(() => apiGet(`/agenda?start=${start}&end=${end}${sortiesOn ? '&sorties=1' : ''}`), 120000)
+  useEffect(() => { agenda.refresh() }, [start, end, sortiesOn]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const today = iso(new Date())
   // filtre aussi sur la plage : pas d'événements de l'ancienne plage le temps du rechargement
-  const inRange = (agenda.data?.occurrences ?? []).filter((o) => o.start.slice(0, 10) >= start && o.start.slice(0, 10) <= end)
+  const inRange = applySortiesFilter((agenda.data?.occurrences ?? []).filter((o) => o.start.slice(0, 10) >= start && o.start.slice(0, 10) <= end), sortiesOn)
   const occs = inRange.filter((o) => (cats.length === 0 || cats.includes(o.category)) && matchStatus(o, statusF))
   const problems = occs.filter(isProblem).length
   // la fiche ouverte suit les rafraîchissements (fin de sauvegarde, échec ignoré ou relancé)
@@ -75,13 +80,14 @@ export function Agenda() {
   const openLog = (unit: string) => { sessionStorage.setItem(LOG_TARGET, unit); setSelected(null); navigate('outils') }
   const edit = (o: Occurrence) => {
     setSelected(null)
-    setDraft({ id: o.event_id, title: o.title, category: o.category, start: o.event_start, duration_min: o.duration_min, recurrence: o.recurrence, description: o.description, notify: o.notify })
+    setDraft({ id: o.event_id, title: o.title, category: o.category, start: o.event_start, duration_min: o.duration_min, recurrence: o.recurrence, description: o.description, notify: o.notify, rappel: o.rappel ?? rappelVide() })
   }
   const viewProps = { days, today, occs, onSelect: setSelected }
 
   return (
     <>
       <PageTitle help="agenda" title="agenda" desc="Sauvegardes planifiées, rappels et événements perso, avec l'état réel de chaque passage." />
+      <RappelEnCours enabled grand />
 
       <div className="ag-bar">
         <Btn sm onClick={() => shift(-1)}>{'<'}</Btn>
@@ -100,6 +106,7 @@ export function Agenda() {
         {Object.entries(CATEGORY_LABEL).map(([k, name]) => (
           <button key={k} className={`chip ${cats.includes(k) ? 'on' : ''}`} onClick={() => toggleCat(k)}>{name}</button>
         ))}
+        <SortiesFilter on={sortiesOn} onToggle={setSortiesOn} onSettingsChanged={agenda.refresh} />
         <span className="sp" />
         {(['tous', 'à venir', 'problèmes'] as StatusFilter[]).map((f) => (
           <button key={f} className={`chip ${statusF === f ? 'on' : ''}`} onClick={() => setStatusF(f)}>{f}</button>

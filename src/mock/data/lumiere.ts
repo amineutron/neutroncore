@@ -28,6 +28,8 @@ let scenes: Scene[] = [
   scene(11, 'neutron', ['onde', 'phare'], 'neutron', 'x', [73, 3, 50], { mode: '2d', groupe: 'alterne' }),
 ]
 let sets: Jeu[] = [{ id: 'demoset1', nom: 'montée en puissance', boucle: true, pas: [{ scene: 'depart05', mesures: 4 }, { scene: 'depart08', mesures: 4 }, { scene: 'depart07', mesures: 2 }] }]
+type MixDemo = { id: string; nom: string; couches: { scene: string; canaux?: string[] }[] }
+let mixes: MixDemo[] = []
 let commun: Record<string, unknown> = { intensite: 100, sensibilite: 68, attaque: 0, retombee: 60, profondeur: 0, plancher: 0, vie: 0 }
 let peripherique = ''
 let n = 0
@@ -36,7 +38,7 @@ const nouvelId = () => `demo${Date.now().toString(36)}${n++}`
 export const lumiere: [string, string, MockHandler][] = [
   ['GET', '/spatial/ecoute', () => ({ actif: false, pas_ms: 30, plancher: 0, niveaux: [], seuils: [], pris: [] })],
   ['GET', '/spatial', () => ({
-    huebeat: { actif: false }, reel: null, sets, scenes, commun, peripherique,
+    huebeat: { actif: false }, reel: null, sets, scenes, mixes, commun, peripherique,
     peripheriques: [{ nom: 'tele.monitor', label: 'Philips TV', genre: 'sortie', actif: true }, { nom: 'micro.interne', label: 'carte son interne', genre: 'micro', actif: false }],
     canaux: { canaux: {}, noms: {}, manquants: [] },
   })],
@@ -60,10 +62,21 @@ export const lumiere: [string, string, MockHandler][] = [
     sets = sets.map((x) => (x.id === params.id ? { ...j, id: x.id } : x))
     return { success: true, id: params.id }
   }],
+  ['PUT', '/spatial/mixes/:id', ({ params, body }) => {
+    const m = (body as { mix: Omit<MixDemo, 'id'> }).mix
+    if (!m?.nom?.trim() || !Array.isArray(m.couches) || m.couches.length === 0) return { success: false, error: 'un mix a un nom et de 1 à 6 couches' }
+    if (m.couches.some((c) => !scenes.some((s) => s.id === c.scene))) return { success: false, error: 'couche : scène inconnue' }
+    if (params.id === 'new') { const id = nouvelId(); mixes = [...mixes, { ...m, id }]; return { success: true, id } }
+    mixes = mixes.map((x) => (x.id === params.id ? { ...m, id: x.id } : x))
+    return { success: true, id: params.id }
+  }],
   ['DELETE', '/spatial/:quoi/:id', ({ params }) => {
     if (params.quoi === 'scenes') scenes = scenes.filter((x) => x.id !== params.id)
     if (params.quoi === 'sets') { sets = sets.filter((x) => x.id !== params.id) }
+    if (params.quoi === 'mixes') mixes = mixes.filter((x) => x.id !== params.id)
     sets = sets.map((j) => ({ ...j, pas: j.pas.filter((p) => scenes.some((s) => s.id === p.scene)) }))
+    // une scène retirée sort des mix ; un mix sans couche disparaît (comme l'API)
+    mixes = mixes.map((m) => ({ ...m, couches: m.couches.filter((c) => scenes.some((s) => s.id === c.scene)) })).filter((m) => m.couches.length > 0)
     return { success: true }
   }],
   // sans vraies lampes : le grand bouton répond comme l'API quand huebeat ne peut pas démarrer

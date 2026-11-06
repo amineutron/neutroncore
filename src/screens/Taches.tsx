@@ -2,9 +2,12 @@ import { useState } from 'react'
 import { apiGet, apiDelete, withConfirm } from '../lib/api'
 import { confirmDialog } from '../lib/dialog'
 import { usePoll } from '../lib/poll'
+import { journalLines } from '../lib/tachesJournal'
+import '../components/audit-ux.css'
 import { Btn, Card, Chip, Eyebrow, Loader, PageTitle } from '../components/ui'
 import { SessGroup, SessRow, fmtStamp, groupEntries, type Session } from '../components/TaskRows'
 
+const HIDE_DEV_KEY = 'neutroncore_taches_hide_dev' // guard:allow cle localStorage
 type Timer = { unit: string; next: number | null; last: number | null }
 
 export function Taches() {
@@ -14,6 +17,11 @@ export function Taches() {
   const [removed, setRemoved] = useState<string[]>([])
   const [feedback, setFeedback] = useState('')
   const [open, setOpen] = useState<string[]>([])
+  const [hideDev, setHideDev] = useState(() => { try { return localStorage.getItem(HIDE_DEV_KEY) === '1' } catch { return false } })
+  const changeHideDev = (v: boolean) => {
+    setHideDev(v)
+    try { localStorage.setItem(HIDE_DEV_KEY, v ? '1' : '0') } catch { /* stockage indisponible */ }
+  }
   const toggle = (id: string) => setOpen((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id]))
 
   // retrait optimiste : la ligne disparaît tout de suite, sans attendre le poll
@@ -60,7 +68,7 @@ export function Taches() {
       flash(`échec : ${(e as Error).message}`)
     } finally { setBusy(false) }
   }
-  const allLogs = list.flatMap((s) => s.logs.map((l) => ({ ...l, session: s.name }))).sort((a, b) => b.timestamp.localeCompare(a.timestamp)).slice(0, 8)
+  const allLogs = journalLines(list, hideDev)
   const userTimers = (timers.data?.timers ?? []).filter((t) => !t.unit.startsWith('systemd-') && !t.unit.startsWith('dnf'))
 
   return (
@@ -87,9 +95,13 @@ export function Taches() {
         <div>
           <Eyebrow>journal</Eyebrow>
           <Card style={{ marginBottom: 14 }}>
+            <label className="jr-filter">
+              <input type="checkbox" checked={hideDev} onChange={(e) => changeHideDev(e.target.checked)} />
+              masquer les sessions claude code [DEV]
+            </label>
             {allLogs.map((l, i) => (
               <div className="logline" key={i}>
-                <b>{fmtStamp(l.timestamp, false)}</b> {l.session.slice(0, 28)} — {l.message}
+                <b>{fmtStamp(l.timestamp, false)}</b> <span title={l.session}>{l.session.slice(0, 28)}</span> — {l.message}
               </div>
             ))}
             {allLogs.length === 0 && <span style={{ color: 'var(--faint)', fontSize: 12 }}>Pas de logs récents.</span>}

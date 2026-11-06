@@ -7,6 +7,8 @@ import { LINKS } from './links'
 import type { Command } from './palette'
 import { saveSettings, THEMES } from './settings'
 import { runAutomation } from './automationRun'
+import { commandesMinuteurs } from './minuteursCmd'
+import { ouvrirDisque } from './disque'
 
 // Ce que les commandes pilotent dans App (navigation et surcouches)
 export type Shell = {
@@ -68,6 +70,7 @@ export function buildCommands(shell: Shell, dyn: Dynamic): Command[] {
     { id: 'tv:toggle', label: 'mode télé', group: 'affichage', keywords: 'grand ecran dashboard', nav: true, run: shell.toggleTv },
     { id: 'lyra:open', label: 'chat lyra', group: 'affichage', keywords: 'assistant parler', nav: true, run: shell.openLyra },
     { id: 'notifs:open', label: 'notifications', group: 'affichage', keywords: 'cloche alertes historique', nav: true, run: shell.openNotifs },
+    { id: 'disque:open', label: 'ce qui remplit le disque', group: 'affichage', keywords: 'espace place stockage plein du', nav: true, run: () => ouvrirDisque() },
     { id: 'tour:start', label: 'revoir le tutoriel', group: 'affichage', keywords: 'aide visite', nav: true, run: shell.startTour },
     ...THEMES.map((t): Command => ({
       id: `theme:${t.id}`, label: `thème : ${t.label}`, group: 'affichage', keywords: t.dark ? 'sombre couleurs' : 'clair couleurs',
@@ -106,7 +109,7 @@ export function buildCommands(shell: Shell, dyn: Dynamic): Command[] {
     id: `link:${l.name}`, label: `ouvrir ${l.name}`, group: 'liens', keywords: 'interface web onglet', nav: true,
     run: () => { window.open(l.url, '_blank', 'noreferrer') },
   }))
-  return [...go, ...display, ...home, ...launcher, ...links]
+  return [...go, ...display, ...home, ...launcher, ...links, ...commandesMinuteurs((s) => shell.go(s))]
 }
 
 /** Commandes de la palette. `wanted` : charge scènes et favoris (palette ouverte ou raccourcis à afficher).

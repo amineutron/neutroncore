@@ -1,4 +1,5 @@
 import { fmtRemaining } from '../lib/poll'
+import '../components/audit-ux.css'
 import { Bar, Btn, Chip } from './ui'
 
 type Item = { name: string; status: string }
@@ -65,10 +66,10 @@ export function SessRow({ s, opened, busy, onToggle, onRemove }: {
     <div className="sess">
       <div className="head" onClick={onToggle} title="cliquer pour le détail">
         <Chip tone={TPL_TONE[s.template]}>{s.template}</Chip>
-        <span className="nm">{s.name}</span>
+        <span className="nm nm2" title={s.name}>{s.name}</span>
         {remaining && <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--warn)' }}>{remaining}</span>}
         <Chip tone={s.status === 'error' ? 'crit' : s.status === 'done' ? 'ok' : undefined}>{s.status}</Chip>
-        <span onClick={(e) => e.stopPropagation()}>
+        <span className="rm-quiet" onClick={(e) => e.stopPropagation()}>
           <Btn sm danger disabled={busy} onClick={onRemove}>suppr</Btn>
         </span>
       </div>

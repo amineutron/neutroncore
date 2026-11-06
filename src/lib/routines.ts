@@ -10,6 +10,10 @@ export type ParamSpec =
   | { name: string; type: 'otext'; max: number }
   | { name: string; type: 'color' }
   | { name: string; type: 'light' }
+  // listes lues sur la machine (GET /automations/sources) : conteneurs, vms, appareils bluetooth appairés
+  | { name: string; type: 'container' }
+  | { name: string; type: 'vm' }
+  | { name: string; type: 'bluetooth' }
   | { name: string; type: 'tool' }
   | { name: string; type: 'args' }
 export type ActionSpec = { action: string; label: string; params: ParamSpec[] }

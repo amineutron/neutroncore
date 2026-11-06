@@ -16,6 +16,7 @@ export function SessionMetaEditor({ sessionId, meta, controllable, onSaved, onCl
 }) {
   const [alias, setAlias] = useState(meta.alias ?? '')
   const [comment, setComment] = useState(meta.comment ?? '')
+  const [objectif, setObjectif] = useState(meta.objectif ?? '')
   const [color, setColor] = useState(meta.color ?? '')
   const [pinned, setPinned] = useState(!!meta.pinned)
   const [icon, setIcon] = useState(meta.icon ?? '')
@@ -29,7 +30,7 @@ export function SessionMetaEditor({ sessionId, meta, controllable, onSaved, onCl
     try {
       const r = await apiPut<{ meta: SessionMeta; propagated: boolean }>(
         `/launcher/sessions/${sessionId}/meta`,
-        { alias, comment, color, pinned, icon, icon_bg: iconBg },
+        { alias, comment, objectif, color, pinned, icon, icon_bg: iconBg },
       )
       onSaved(r.meta)
       onClose()
@@ -40,11 +41,17 @@ export function SessionMetaEditor({ sessionId, meta, controllable, onSaved, onCl
     <div className="cs-meta" onClick={(e) => e.stopPropagation()}>
       <label className="cs-field">
         <span>nom affiché</span>
-        <input value={alias} maxLength={40} placeholder="(nom automatique)" onChange={(e) => setAlias(e.target.value)} />
+        <input value={alias} maxLength={60} placeholder="(nom automatique)" onChange={(e) => setAlias(e.target.value)} />
       </label>
       <label className="cs-field">
         <span>commentaire (bandeau au-dessus)</span>
         <input value={comment} maxLength={200} placeholder="ex : ne pas toucher à ollama.py" onChange={(e) => setComment(e.target.value)} />
+      </label>
+      <label className="cs-field">
+        <span>objectif (demandé / fait)</span>
+        <textarea value={objectif} maxLength={500} rows={3}
+          placeholder="écrit automatiquement d’après la session ; modifie-le pour le garder tel quel, vide-le pour le faire réécrire"
+          onChange={(e) => setObjectif(e.target.value)} />
       </label>
       <div className="cs-field">
         <span>couleur</span>

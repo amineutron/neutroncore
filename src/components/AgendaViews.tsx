@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
-import { STATUS, dayLabel, hhmm, isProblem, tone, type Occurrence } from './AgendaParts'
+import { STATUS, dayLabel, isProblem, tone, type Occurrence } from './AgendaParts'
+import { timeLabel } from '../lib/sorties'
 
 // Vues de l'agenda (semaine, mois, liste) et calcul des plages de dates affichées
 
@@ -40,7 +41,7 @@ const onDay = (occs: Occurrence[], day: string) => occs.filter((o) => o.start.st
 function EventButton({ o, today, i, onSelect }: { o: Occurrence; today: string; i: number; onSelect: (o: Occurrence) => void }) {
   return (
     <button className={`ag-ev ${tone(o, today)}`} style={stagger(i)} onClick={() => onSelect(o)}>
-      <span className="tm">{hhmm(o.start)}<b>{STATUS[o.status].label}</b></span>
+      <span className="tm">{timeLabel(o)}<b>{STATUS[o.status].label}</b></span>
       {o.title}
     </button>
   )
@@ -80,7 +81,7 @@ export function MonthView({ days, today, occs, onSelect, month, openDay, onToggl
         <span className="dn">{Number(day.slice(8))}</span>
         {list.slice(0, 3).map((o) => (
           <button key={o.id} className={`ag-mini ${tone(o, today)}`} onClick={(e) => { e.stopPropagation(); onSelect(o) }}
-            title={`${hhmm(o.start)} ${o.title} (${STATUS[o.status].label})`}>
+            title={`${timeLabel(o)} ${o.title} (${STATUS[o.status].label})`}>
             <i /><span>{o.title}</span>
           </button>
         ))}

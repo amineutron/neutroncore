@@ -4,6 +4,7 @@ import { usePoll } from '../lib/poll'
 import { getSettings } from '../lib/settings'
 import { Mascot } from './Mascot'
 import { Bar, Btn, Chip, Eyebrow } from './ui'
+import './audit-ux.css'
 
 // Carte « projets suivis » : une ligne par projet (repliable), barre de progression qui
 // s'épaissit quand le projet est déplié, événements colorés sur la ligne de temps pour les
@@ -66,11 +67,12 @@ function eventClass(t: TimelineItem): string | null {
 function Timeline({ p, thick }: { p: Project; thick: boolean }) {
   const mood = MOOD[p.stage]
   const total = Math.max(p.timeline.length, 1)
-  const showMascot = getSettings().mascots && p.totals.total > 0
+  // replié : la mascotte ne s'affiche que si le projet demande quelque chose (elle chevauchait le compteur)
+  const showMascot = getSettings().mascots && p.totals.total > 0 && (thick || p.stage === 'waiting' || p.stage === 'blocked')
   return (
-    <div className={`tl ${thick ? 'thick' : ''} ${p.stage}`}>
+    <div className={`tl ${thick ? 'thick' : ''} ${p.stage} ${showMascot ? 'has-mascot' : ''}`}>
       {showMascot && (
-        <div className={`tl-mascot ${p.stage}`} style={{ left: `${p.totals.percent}%` }} title={`${p.totals.percent} % · ${mood.say}`}>
+        <div className={`tl-mascot ${p.stage}`} style={{ left: `clamp(48px, ${p.totals.percent}%, calc(100% - 48px))` }} title={`${p.totals.percent} % · ${mood.say}`}>
           <span className={`bubble ${mood.tone}`}>{mood.say}</span>
           <Mascot kind="fast" name={getSettings().mascotFast} state={mood.state} size={thick ? 9 : 7} />
         </div>

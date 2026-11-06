@@ -1,0 +1,12 @@
+/* Bandeau hors ligne / mise a jour. Tokens du design system (styles.css). */
+.ofl{position:fixed;left:14px;right:90px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:55;display:flex;flex-direction:column;gap:6px;align-items:flex-start;pointer-events:none}
+.ofl-bar{pointer-events:auto;display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;max-width:100%;padding:8px 12px;border:1px solid var(--line2);border-left:3px solid var(--sc,var(--gold));border-radius:var(--r);background:var(--surface);box-shadow:0 6px 24px #00000055;font-family:var(--mono);font-size:11.5px;color:var(--text)}
+.ofl-bar.off{--sc:var(--rose)}
+.ofl-bar.ok{--sc:var(--ok)}
+.ofl-bar.warn{--sc:var(--warn)}
+.ofl-bar .t{flex:1 1 auto;min-width:0}
+.ofl-bar .btn{padding:4px 10px;font-size:11px}
+/* donnees possiblement perimees : on le voit, meme sans lire le bandeau */
+:root[data-offline] .content{filter:saturate(.55);transition:filter .3s}
+@media (prefers-reduced-motion:reduce){:root[data-offline] .content{transition:none}}
+@media (max-width:560px){.ofl{right:14px;bottom:calc(84px + env(safe-area-inset-bottom))}}

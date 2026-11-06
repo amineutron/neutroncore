@@ -53,15 +53,15 @@ const MAIN: TourStep[] = [
     target: '.rail .nav', targetMobile: '.rail.open .nav', menu: true, mascot: 'comet',
     title: 'les sections',
     lines: [
-      'Les pages sont rangées en quatre groupes : pilotage, média, maison et système.',
-      'Dans pilotage, les automatisations et l’atelier 3d ; dans maison, la caméra, la lumière 3d '
-      + '(effets calés sur la musique) et le plan de pièce.',
+      'Onze entrées seulement, rangées en quatre rubriques : pilotage, dev, maison et système.',
+      'Chaque entrée garde ses pages en onglets : « système » réunit ressources, sauvegardes et mises à jour, '
+      + '« ambiance » la lumière 3d, la caméra et le plan de pièce. Le dernier onglet vu est rouvert.',
       'Ce qui n’est pas installé chez toi le dit sur sa page, sans gêner le reste.',
     ],
     linesMobile: [
-      'Le bouton en haut à gauche ouvre ce menu, rangé en quatre groupes.',
-      'pilotage : accueil, agenda, automatisations, tâches, projets, atelier 3d.',
-      'maison : ambiance, caméra, lumière 3d, plan de pièce, lanceur. Puis média et système.',
+      'Le bouton en haut à gauche ouvre ce menu : onze entrées, quatre rubriques.',
+      'Chaque entrée a ses onglets en haut de page (faits pour défiler du doigt).',
+      'Ctrl K ou « chercher » retrouve n’importe quelle page ou réglage.',
       'Ce qui n’est pas installé chez toi le dit sur sa page.',
     ],
   },

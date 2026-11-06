@@ -191,7 +191,7 @@ export function Plan() {
                 <p className="pl-note">Le tracé actuel est gardé : seuls le nombre et la longueur des segments changent. Rien n'est écrit avant « enregistrer ».</p>
               </Card>
             )}
-            {!seg && (
+            {!seg && sel && selected && (
             <Card title={sel ? sel.name.toLowerCase() : 'lampe ou ruban'} lite={sel ? 'sélectionnée' : 'touche une lampe ou le ruban'}>
               {sel && selected ? (
                 <>
@@ -207,6 +207,7 @@ export function Plan() {
             </Card>
             )}
             <Card title="pièce" lite="en centimètres">
+              {!seg && !sel && <p className="pl-note" style={{ marginTop: 0 }}>Touche une lampe ou le ruban pour régler sa hauteur ou son angle.</p>}
               {AXES.map(({ axis, label }) => (
                 <label className="pl-field" key={axis}>{label}
                   <NumField value={Math.round(draft.roomDims[axis])} min={100} max={3000} step={10}

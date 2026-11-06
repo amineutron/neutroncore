@@ -1,0 +1,15 @@
+.hubtabs{display:flex;gap:4px;margin:0 0 18px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.hubtabs::-webkit-scrollbar{display:none}
+.hubtabs button{flex:0 0 auto;appearance:none;background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;padding:10px 14px;color:var(--muted);font-family:var(--mono);font-size:13px;cursor:pointer;white-space:nowrap}
+.hubtabs button:hover{color:var(--text)}
+.hubtabs button.on{color:var(--text);border-bottom-color:var(--gold)}
+.hubtabs button:focus-visible{outline:2px solid var(--gold);outline-offset:-2px}
+@media (max-width:980px) and (pointer:coarse){.hubtabs button{padding:13px 16px;min-height:44px}}
+/* telephone : un fondu à droite dit que la barre défile ; le fil d'Ariane redouble les onglets, on le masque */
+@media (max-width:560px){
+  .hubtabs{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 32px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 32px),transparent);padding-right:24px}
+  .topbar .crumb{display:none}
+  .at-bulle .at-bulle-tab{margin-top:190px}
+  .lyra-fab{width:46px;height:46px;opacity:.9}
+}
+:root[data-tv] .hubtabs{display:none}
