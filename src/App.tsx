@@ -423,6 +423,11 @@ export default function App() {
           <span className="grow" />
           <button className="pl-open" aria-label="Palette de commandes" onClick={() => setPaletteOpen(true)}>chercher <kbd>ctrl k</kbd></button>
           <MinuteursPuce onOpen={() => nav('minuteurs')} />
+          {djActif && !djVisible && (
+            <button type="button" className="btn sm dj-fond-voyant" onClick={() => nav('djlight')} title="DJ Light pilote tes vraies lampes en fond. Clique pour revenir à son écran (et les arrêter).">
+              <i aria-hidden="true" />dj light en direct
+            </button>
+          )}
           <NotifBell data={notifs.data} open={notifOpen} onToggle={() => setNotifOpen((v) => !v)} />
           <button data-tour="tv" className={`btn sm ${tvMode ? 'solid' : ''}`} onClick={shell.toggleTv}>
             {tvMode ? 'quitter télé' : 'télé'}

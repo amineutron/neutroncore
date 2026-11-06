@@ -143,3 +143,9 @@
   .dj-pas li .dj-mes,.dj-pas li .dj-ord2{grid-column:auto}
 }
 @media (prefers-reduced-motion:reduce){.dj-sw::after,.dj-barre i,.dj-temp i{transition:none}}
+
+/* Voyant « dj light en direct » dans la barre du haut : DJ Light tient les lampes alors qu'on est sur une autre page */
+.dj-fond-voyant{display:inline-flex;align-items:center;gap:7px;border-color:var(--gold);color:var(--gold)}
+.dj-fond-voyant i{width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 0 color-mix(in srgb,var(--gold) 60%,transparent);animation:dj-fond-pouls 1.6s ease-out infinite}
+@keyframes dj-fond-pouls{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--gold) 60%,transparent)}100%{box-shadow:0 0 0 9px transparent}}
+@media (prefers-reduced-motion:reduce){.dj-fond-voyant i{animation:none}}
