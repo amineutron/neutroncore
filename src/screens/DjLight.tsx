@@ -26,12 +26,6 @@ import { couleursCanaux, encoderTrame } from '../lib/djLampes'
 import { ecrireStocke, lireStocke } from '../lib/ciDeps'
 import { nettoyerCouleurs } from '../lib/jeuxCouleurs'
 import { CouleursChoisies } from '../components/djlight/CouleursChoisies'
-import { choisirTeinte, type LampeCouleur } from '../lib/djAmbilightTeinte'
-import { useAmbilight } from '../components/djlight/useAmbilight'
-import { AmbilightPanneau } from '../components/djlight/AmbilightPanneau'
-import { AmbilightBarre } from '../components/djlight/AmbilightBarre'
-import { CADENCE_DEPART, ETAT_DEPART, avancer, couleurDeNiveau, decider, type ReglagesAmbilight } from '../lib/djAmbilight'
-import { CLE_AMBILIGHT, charger as chargerReglagesAmbilight, ecrireStockage, enregistrerDans, lireStockage, nommer, type StockageAmbilight } from '../lib/djAmbilightSaves'
 
 type EtatSpatial = { scenes: Scene[]; commun?: Commun }
 const CLE_SOURCE = 'neutroncore_dj_source'
@@ -67,49 +61,13 @@ export function DjLight() {
   // les vraies lampes sont cadencées par les images audio (30 par seconde), pas par l'animation de l'écran : un onglet
   // caché continue de recevoir des messages réseau, alors que son animation s'arrête
   const tickLampes = useRef<() => void>(() => {})
-  const tickAmbilight = useRef<() => void>(() => {})
-  const couleursLampes = useRef<LampeCouleur[] | null>(null)      // ce que montrent les vraies lampes à la dernière image (null : pas branchées)
-  const { etat: flux, image } = useDjFlux(moteur, source, () => { dropVu.current = true }, () => { tickLampes.current(); tickAmbilight.current() })
+  const { etat: flux, image } = useDjFlux(moteur, source, () => { dropVu.current = true }, () => { tickLampes.current() })
   const { etat: lampes, liaison } = useLampesReelles()
 
-  // couleurs imposées à la scène jouée (kick, balayage, montée...) : à la place de sa palette, pour la pièce, les lampes et l'Ambilight
+  // couleurs imposées à la scène jouée (kick, balayage, montée...) : à la place de sa palette, pour la pièce et les lampes
   const [couleursScene, setCouleursScene] = useState<string[]>(() => nettoyerCouleurs(lireStocke(CLE_COULEURS_SCENE, { couleurs: [] as unknown[] }).couleurs))
   const poserCouleursScene = (c: string[]) => { setCouleursScene(c); ecrireStocke(CLE_COULEURS_SCENE, { couleurs: c }) }
 
-  // l'Ambilight de la télé : réglages et quatre sauvegardes gardés dans le navigateur, niveau calculé à chaque image audio
-  const [ambi, setAmbi] = useState<StockageAmbilight>(() => lireStockage())
-  const majAmbi = (suite: Partial<StockageAmbilight>) => setAmbi((a) => { const n = { ...a, ...suite }; ecrireStockage(CLE_AMBILIGHT, n); return n })
-  const { etat: etatAmbi, liaison: liaisonAmbi } = useAmbilight()
-  const ambiRef = useRef(ambi.reglages)
-  ambiRef.current = ambi.reglages
-  const niveauAmbi = useRef({ etat: ETAT_DEPART, cadence: CADENCE_DEPART, niveau: 0 })
-  const [niveauAffiche, setNiveauAffiche] = useState(0)
-  tickAmbilight.current = () => {
-    if (!liaisonAmbi.prete) return
-    const maintenant = performance.now(), r = ambiRef.current
-    const signal = image.current?.silence ? 0 : moteur.lecture(maintenant).signaux[r.signal]
-    const s = niveauAmbi.current
-    const a = avancer(s.etat, signal, maintenant, r)
-    const d = decider(s.cadence, maintenant, a.niveau, r.cadence)
-    // la cadence n'avance que si la valeur est vraiment partie : sinon on réessaie à l'image suivante
-    const p = dernier.current?.sortie.params
-    const teinte = choisirTeinte({ reglages: r, lampes: couleursLampes.current, scene: p ? couleursDe({ palette: p.palette, couleurs: p.couleurs }) : [], beat: moteur.lecture(maintenant).beat })
-    const cadence = d.envoyer && liaisonAmbi.envoyer(couleurDeNiveau(a.niveau, teinte)) ? d.cadence : s.cadence
-    niveauAmbi.current = { etat: a.etat, cadence, niveau: a.niveau }
-  }
-  const lancerAmbilight = () => {
-    niveauAmbi.current = { etat: ETAT_DEPART, cadence: CADENCE_DEPART, niveau: 0 }
-    void liaisonAmbi.demarrer(ambiRef.current.voie)
-  }
-  const chargerAmbilight = (i: number) => {
-    const r = chargerReglagesAmbilight(ambi.sauvegardes, i)
-    if (!r) return
-    const enMarche = etatAmbi.phase === 'actif' || etatAmbi.phase === 'demarrage'
-    // la voie ne se change pas en cours de route (la télé est préparée pour l'une d'elles) : le reste s'applique
-    const voie = enMarche ? ambi.reglages.voie : r.voie
-    if (enMarche && r.voie !== ambi.reglages.voie) toast('la voie ne change pas en cours de route : arrête l’Ambilight pour la changer. Les autres réglages sont appliqués.', 'warn')
-    majAmbi({ reglages: { ...r, voie }, courante: i })
-  }
 
   useEffect(() => { void apiGet<Plan>('/plan').then(setPlan).catch((e) => setErreur((e as Error).message)) }, [])
   // configuration : celle de l'API ; vide (premier lancement), on y met les profils de départ
@@ -165,12 +123,11 @@ export function DjLight() {
   // ce que reçoivent les vraies lampes : la même pile, la même scène, le même calcul que la pièce 3d, aux positions des canaux
   tickLampes.current = () => {
     const c = ctx.current
-    if (!liaison.prete || !venue || !c.profil || !c.scene) { couleursLampes.current = null; return }
+    if (!liaison.prete || !venue || !c.profil || !c.scene) return
     const l = moteur.lumiere(performance.now(), { profil: c.profil, scene: c.scene, scenes: c.scenes, commun: c.commun, dims: venue.dims })
     dernier.current = l
     const muet = Boolean(image.current?.silence)
     const couleurs = couleursCanaux(liaison.canaux, l.sortie.effets, l.sortie.params, venue.dims, l.beat, muet)
-    couleursLampes.current = couleurs
     liaison.envoyer(encoderTrame(couleurs))
   }
 
@@ -189,7 +146,6 @@ export function DjLight() {
     const id = window.setInterval(() => {
       const now = performance.now(), beat = moteur.lecture(now).beat
       setMuet(Boolean(image.current?.silence))
-      setNiveauAffiche(niveauAmbi.current.niveau)
       setDeclenchee(Object.values(dernier.current?.declenches ?? {}).map((sid) => ctx.current.scenes.find((s) => s.id === sid)?.nom ?? '?'))
       const l = lectureRef.current
       const drop = dropVu.current
@@ -232,7 +188,6 @@ export function DjLight() {
         </div>
         <span className={`chip ${etatFlux}`} role="status">{texteFlux}</span>
         <LampesReelles etat={lampes} avanceMs={avanceMs(reglages)} onDemarrer={() => { void liaison.demarrer() }} onArreter={() => { void liaison.arreter() }} />
-        <AmbilightBarre etat={etatAmbi} onDemarrer={lancerAmbilight} onArreter={() => { void liaisonAmbi.arreter() }} />
       </div>
 
       <Analyseurs image={image} />
@@ -268,13 +223,6 @@ export function DjLight() {
         <ReglagesAnalyse reglages={reglages} bpm={moteur.lecture(performance.now()).bpm} onChange={changerReglages} />
       </Bloc>
 
-      <Bloc id="dj-ambilight" title="ambilight tv" lite={etatAmbi.phase === 'actif' ? `en direct · ${ambi.reglages.min}–${ambi.reglages.max} %` : etatAmbi.phase === 'erreur' ? 'erreur' : 'arrêté'}>
-        <AmbilightPanneau etat={etatAmbi} reglages={ambi.reglages} sauvegardes={ambi.sauvegardes} courante={ambi.courante} niveau={etatAmbi.phase === 'actif' ? niveauAffiche : 0}
-          onChange={(reglages: ReglagesAmbilight) => majAmbi({ reglages })} onDemarrer={lancerAmbilight} onArreter={() => { void liaisonAmbi.arreter() }}
-          onCharger={chargerAmbilight}
-          onEnregistrer={(i) => { majAmbi({ sauvegardes: enregistrerDans(ambi.sauvegardes, i, ambi.reglages), courante: i }); toast(`réglages gardés dans « ${ambi.sauvegardes[i]?.nom} »`) }}
-          onNommer={(i, nom) => majAmbi({ sauvegardes: nommer(ambi.sauvegardes, i, nom) })} />
-      </Bloc>
 
       <Bloc id="dj-sets" title="sets" lite={`${config.sets.length} set${config.sets.length > 1 ? 's' : ''}`}>
         <SetsDj sets={config.sets} scenes={scenes} profils={profils} lecture={lectureSet} beat={beatSet}
