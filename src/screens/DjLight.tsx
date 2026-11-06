@@ -20,6 +20,7 @@ import { Couches } from '../components/djlight/Couches'
 import { Profils } from '../components/djlight/Profils'
 import { SetsDj } from '../components/djlight/SetsDj'
 import { useDjFlux, type SourceDj } from '../components/djlight/useDjFlux'
+import { resterEnFond } from '../lib/djFond'
 import { useLampesReelles } from '../components/djlight/useLampesReelles'
 import { LampesReelles } from '../components/djlight/LampesReelles'
 import { couleursCanaux, encoderTrame } from '../lib/djLampes'
@@ -36,7 +37,12 @@ const lireSource = (): SourceDj => { try { return localStorage.getItem(CLE_SOURC
 
 const CLE_COULEURS_SCENE = 'neutroncore_dj_couleurs_scene'
 
-export function DjLight() {
+type Props = {
+  enFond?: boolean                          // l'écran n'est pas affiché : il continue seulement de piloter les lampes
+  surLampes?: (enFond: boolean) => void     // dit à l'application s'il doit rester monté quand on change de page
+}
+
+export function DjLight({ enFond = false, surLampes }: Props = {}) {
   const spatial = usePoll<EtatSpatial>(() => apiGet('/spatial'), 6000)
   const [plan, setPlan] = useState<Plan | null>(null)
   const [config, setConfig] = useState<ConfigDj | null>(null)
@@ -63,6 +69,7 @@ export function DjLight() {
   const tickLampes = useRef<() => void>(() => {})
   const { etat: flux, image } = useDjFlux(moteur, source, () => { dropVu.current = true }, () => { tickLampes.current() })
   const { etat: lampes, liaison } = useLampesReelles()
+  useEffect(() => { surLampes?.(resterEnFond(lampes.phase)) }, [lampes.phase, surLampes])
 
   // couleurs imposées à la scène jouée (kick, balayage, montée...) : à la place de sa palette, pour la pièce et les lampes
   const [couleursScene, setCouleursScene] = useState<string[]>(() => nettoyerCouleurs(lireStocke(CLE_COULEURS_SCENE, { couleurs: [] as unknown[] }).couleurs))
@@ -168,6 +175,8 @@ export function DjLight() {
   const pasSuivant = () => { const l = lectureRef.current, set = l && configRef.current?.sets.find((s) => s.id === l.set); if (l && set) appliquer(suivant(set, l, moteur.lecture(performance.now()).beat)) }
   const pasPrecedent = () => { const l = lectureRef.current, set = l && configRef.current?.sets.find((s) => s.id === l.set); if (l && set) appliquer(precedent(set, l, moteur.lecture(performance.now()).beat)) }
   const jouerScene = (s: Scene) => { setLectureSet(null); setProfilForce(null); setSceneId(s.id) }
+
+  if (enFond) return null        // en fond : rien à afficher, mais le flux audio et les lampes continuent (tous les hooks ont tourné)
 
   if (!config || !plan || !venue || !spatial.data) {
     return <>{TITRE}{erreur || spatial.error ? <p className="chip crit">indisponible : {erreur || spatial.error}</p> : <Loader label="lecture du plan, des scènes et des profils…" />}</>

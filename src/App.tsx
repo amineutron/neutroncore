@@ -111,7 +111,7 @@ export const BUILD_ID =
     ?.src.match(/index-([\w-]+)\.js/)?.[1] ?? 'dev'
 
 const SCREENS: Record<ScreenId, () => React.JSX.Element> = {
-  accueil: Accueil, agenda: Agenda, automatisations: Automations, atelier: Atelier, camera: Camera, lumiere: Lumiere, djlight: DjLight, films: Media, demandes: Demandes, dl: Downloads, taches: Taches,
+  accueil: Accueil, agenda: Agenda, automatisations: Automations, atelier: Atelier, camera: Camera, lumiere: Lumiere, djlight: () => <DjLight />, films: Media, demandes: Demandes, dl: Downloads, taches: Taches,
   projets: Projets, ambiance: Ambiance, plan: Plan, lanceur: Lanceur, outils: Outils, tests: Tests, parametres: Parametres,
   mises: Mises, sauvegardes: Sauvegardes, ressources: Ressources, vms: Vms, reseau: Reseau, securite: Securite,
   dv: Dv, menage: MediaMenage, cideps: CiDeps, qualite: Qualite, historique: Historique,
@@ -167,6 +167,7 @@ function Setup({ onDone }: { onDone: () => void }) {
 export default function App() {
   // en démo, pas de backend donc pas de clé à saisir
   const [ready, setReady] = useState(() => DEMO || Boolean(getApiKey()))
+  const [djActif, setDjActif] = useState(false)      // DJ Light tient les vraies lampes : il reste monté en fond
   const [screen, setScreen] = useState<ScreenId>(() => {
     const params = new URLSearchParams(window.location.search)
     // lien profond vers un journal (bouton « journal » d'un échec dans la barre Quickshell)
@@ -337,6 +338,7 @@ export default function App() {
   }
 
   const Screen = SCREENS[screen]
+  const djVisible = screen === 'djlight' && !tvMode
   const hub = hubOf(HUBS, screen)
   const tabLabel = hub?.tabs.find((tb) => tb.id === screen)?.label
   const crumbLabel = hub && hub.tabs.length > 1 && tabLabel !== hub.label ? `${hub.label} / ${tabLabel}` : hub?.label
@@ -431,9 +433,11 @@ export default function App() {
           {tvMode ? <TvDashboard /> : (
             <>
               {hub && <HubTabs tabs={hub.tabs} current={screen} onPick={nav} />}
-              <Screen />
+              {screen !== 'djlight' && <Screen />}
             </>
           )}
+          {/* DJ Light reste monté (sans rien afficher) tant que les vraies lampes tournent : changer de page ne les rend pas */}
+          {(djVisible || djActif) && <DjLight enFond={!djVisible} surLampes={setDjActif} />}
         </section>
       </div>
 
