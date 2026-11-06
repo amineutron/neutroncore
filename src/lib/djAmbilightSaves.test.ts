@@ -10,7 +10,7 @@ describe('lireReglagesAmbilight : ce qui manque ou déraille reprend la valeur p
   })
   it('garde les valeurs valides', () => {
     const r = lireReglagesAmbilight({ min: 20, max: 70, lissage: 55, cadence: 6, couleur: '#00ff88', voie: 'lounge', signal: 'basses' })
-    expect(r).toEqual({ min: 20, max: 70, lissage: 55, cadence: 6, couleur: '#00ff88', voie: 'lounge', signal: 'basses', auto: true })
+    expect(r).toEqual({ min: 20, max: 70, lissage: 55, cadence: 6, couleur: '#00ff88', voie: 'lounge', signal: 'basses', auto: true, couleurs: [] })
   })
   it('borne les nombres', () => {
     const r = lireReglagesAmbilight({ min: -50, max: 900, lissage: 1000, cadence: 500 })

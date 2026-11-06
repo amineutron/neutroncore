@@ -23,9 +23,10 @@ export type ReglagesAmbilight = {
   max: number            // 0..100
   lissage: number        // 0..100
   cadence: number        // mises à jour par seconde demandées (bornées à CADENCE_MAX)
-  couleur: string        // #rrggbb : la teinte, dont la luminosité varie
+  couleur: string        // #rrggbb : la teinte de repli (rien d'autre à suivre), dont la luminosité varie
+  couleurs: string[]     // couleurs choisies à la main (vide : on suit les lampes, ou la scène)
 }
-export const REGLAGES_AMBILIGHT: ReglagesAmbilight = { voie: 'cached', signal: 'volume', auto: true, min: 10, max: 100, lissage: 40, cadence: 10, couleur: '#ff8c28' }
+export const REGLAGES_AMBILIGHT: ReglagesAmbilight = { voie: 'cached', signal: 'volume', auto: true, min: 10, max: 100, lissage: 40, cadence: 10, couleur: '#ff8c28', couleurs: [] }
 
 /** `lisse` : le niveau lissé (0..1) ; `bas` et `haut` : la plage que le signal a récemment parcourue (sensibilité auto). */
 export type EtatNiveau = { lisse: number; t: number | null; bas: number; haut: number }

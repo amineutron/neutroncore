@@ -23,6 +23,7 @@ import { useDjFlux, type SourceDj } from '../components/djlight/useDjFlux'
 import { useLampesReelles } from '../components/djlight/useLampesReelles'
 import { LampesReelles } from '../components/djlight/LampesReelles'
 import { couleursCanaux, encoderTrame } from '../lib/djLampes'
+import { choisirTeinte, type LampeCouleur } from '../lib/djAmbilightTeinte'
 import { useAmbilight } from '../components/djlight/useAmbilight'
 import { AmbilightPanneau } from '../components/djlight/AmbilightPanneau'
 import { AmbilightBarre } from '../components/djlight/AmbilightBarre'
@@ -62,6 +63,7 @@ export function DjLight() {
   // caché continue de recevoir des messages réseau, alors que son animation s'arrête
   const tickLampes = useRef<() => void>(() => {})
   const tickAmbilight = useRef<() => void>(() => {})
+  const couleursLampes = useRef<LampeCouleur[] | null>(null)      // ce que montrent les vraies lampes à la dernière image (null : pas branchées)
   const { etat: flux, image } = useDjFlux(moteur, source, () => { dropVu.current = true }, () => { tickLampes.current(); tickAmbilight.current() })
   const { etat: lampes, liaison } = useLampesReelles()
 
@@ -81,7 +83,9 @@ export function DjLight() {
     const a = avancer(s.etat, signal, maintenant, r)
     const d = decider(s.cadence, maintenant, a.niveau, r.cadence)
     // la cadence n'avance que si la valeur est vraiment partie : sinon on réessaie à l'image suivante
-    const cadence = d.envoyer && liaisonAmbi.envoyer(couleurDeNiveau(a.niveau, r.couleur)) ? d.cadence : s.cadence
+    const p = dernier.current?.sortie.params
+    const teinte = choisirTeinte({ reglages: r, lampes: couleursLampes.current, scene: p ? couleursDe({ palette: p.palette, couleurs: p.couleurs }) : [], beat: moteur.lecture(maintenant).beat })
+    const cadence = d.envoyer && liaisonAmbi.envoyer(couleurDeNiveau(a.niveau, teinte)) ? d.cadence : s.cadence
     niveauAmbi.current = { etat: a.etat, cadence, niveau: a.niveau }
   }
   const lancerAmbilight = () => {
@@ -151,11 +155,13 @@ export function DjLight() {
   // ce que reçoivent les vraies lampes : la même pile, la même scène, le même calcul que la pièce 3d, aux positions des canaux
   tickLampes.current = () => {
     const c = ctx.current
-    if (!liaison.prete || !venue || !c.profil || !c.scene) return
+    if (!liaison.prete || !venue || !c.profil || !c.scene) { couleursLampes.current = null; return }
     const l = moteur.lumiere(performance.now(), { profil: c.profil, scene: c.scene, scenes: c.scenes, commun: c.commun, dims: venue.dims })
     dernier.current = l
     const muet = Boolean(image.current?.silence)
-    liaison.envoyer(encoderTrame(couleursCanaux(liaison.canaux, l.sortie.effets, l.sortie.params, venue.dims, l.beat, muet)))
+    const couleurs = couleursCanaux(liaison.canaux, l.sortie.effets, l.sortie.params, venue.dims, l.beat, muet)
+    couleursLampes.current = couleurs
+    liaison.envoyer(encoderTrame(couleurs))
   }
 
   // lecture d'un set : à chaque pas fini, la scène (et le profil) du suivant

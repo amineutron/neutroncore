@@ -4,6 +4,7 @@ import {
   CADENCE_MAX, CADENCE_MIN, SIGNAUX_AMBILIGHT, couleurDeNiveau, type ReglagesAmbilight, type VoieAmbilight,
 } from '../../lib/djAmbilight'
 import { NB_SAUVEGARDES, NOM_SAUVEGARDE_MAX, type SauvegardeAmbilight } from '../../lib/djAmbilightSaves'
+import { CouleursChoisies } from './CouleursChoisies'
 import type { EtatAmbilight } from '../../lib/djLiaisonAmbilight'
 
 const VOIES: { id: VoieAmbilight; label: string; quoi: string }[] = [
@@ -57,7 +58,7 @@ export function AmbilightPanneau({ etat, reglages: r, sauvegardes, courante, niv
       </div>
 
       <div className="dj-ambi-jauge" role="img" aria-label={`Niveau envoyé : ${Math.round(niveau * 100)} %`}>
-        <i style={{ width: `${Math.round(niveau * 100)}%`, background: rgb(couleurDeNiveau(Math.max(0.15, niveau), r.couleur)) }} />
+        <i style={{ width: `${Math.round(niveau * 100)}%`, background: rgb(couleurDeNiveau(Math.max(0.15, niveau), r.couleurs[0] ?? r.couleur)) }} />
         <span>{Math.round(niveau * 100)} %</span>
       </div>
 
@@ -76,9 +77,10 @@ export function AmbilightPanneau({ etat, reglages: r, sauvegardes, courante, niv
             {SIGNAUX_AMBILIGHT.map((s) => <option key={s} value={s}>{SIGNAUX_INFO[s].label}</option>)}
           </select>
         </label>
-        <label className="at-champ">couleur
-          <input type="color" value={r.couleur} aria-label="Couleur de l’Ambilight" onChange={(e) => poser({ couleur: e.target.value })} />
-        </label>
+        <div>
+          <CouleursChoisies couleurs={r.couleurs} depart={[r.couleur]} onChange={(couleurs) => poser({ couleurs })} />
+          {r.couleurs.length === 0 && <p className="dj-note">L’Ambilight reprend la couleur des lampes (ou, sans lampes branchées, celles de la scène jouée) ; seul le son règle sa luminosité.</p>}
+        </div>
         <div>
           <label className="dj-inverse"><input type="checkbox" checked={r.auto} onChange={(e) => poser({ auto: e.target.checked })} />sensibilité auto</label>
           <p className="dj-note">{r.auto
@@ -122,7 +124,7 @@ function Case({ i, s, courante, onCharger, onEnregistrer, onNommer }: {
       <input className="bp-text" value={brouillon ?? s.nom} maxLength={NOM_SAUVEGARDE_MAX} aria-label={`Nom de la sauvegarde ${i + 1}`}
         onChange={(e) => setBrouillon(e.target.value)} onBlur={fin} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }} />
       <span className="dj-note">{s.reglages.voie === 'lounge' ? 'douce' : 'rapide'} · {SIGNAUX_INFO[s.reglages.signal].label} · {s.reglages.min}–{s.reglages.max} % · {s.reglages.cadence}/s</span>
-      <span className="dj-ambi-case-couleur" style={{ background: s.reglages.couleur }} aria-hidden="true" />
+      <span className="dj-ambi-case-couleur" style={{ background: s.reglages.couleurs[0] ?? s.reglages.couleur }} aria-hidden="true" />
       <div className="dj-actions">
         <button type="button" className="btn sm" onClick={() => onCharger(i)}>charger</button>
         <button type="button" className="btn sm" onClick={() => onEnregistrer(i)}>enregistrer ici</button>

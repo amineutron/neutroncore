@@ -3,6 +3,7 @@
 import {
   CADENCE_MAX, CADENCE_MIN, REGLAGES_AMBILIGHT, SIGNAUX_AMBILIGHT, VOIES_AMBILIGHT, type ReglagesAmbilight,
 } from './djAmbilight'
+import { nettoyerCouleurs } from './jeuxCouleurs'
 import { lireStocke, ecrireStocke as ecrireStockeBrut } from './ciDeps'
 
 export const NB_SAUVEGARDES = 4
@@ -30,14 +31,15 @@ export function lireReglagesAmbilight(brut: unknown): ReglagesAmbilight {
     lissage: nombre(o.lissage, 0, 100, d.lissage),
     cadence: nombre(o.cadence, CADENCE_MIN, CADENCE_MAX, d.cadence),
     couleur: typeof o.couleur === 'string' && /^#[0-9a-f]{6}$/i.test(o.couleur.trim()) ? o.couleur.trim().toLowerCase() : d.couleur,
+    couleurs: Array.isArray(o.couleurs) ? nettoyerCouleurs(o.couleurs) : [],
   }
 }
 
 // Les quatre cases de départ : de quoi essayer tout de suite, à renommer et à écraser.
 export const SAUVEGARDES_DEPART: SauvegardeAmbilight[] = [
-  { nom: 'douce', reglages: { voie: 'lounge', signal: 'volume_court', auto: true, min: 5, max: 55, lissage: 75, cadence: 4, couleur: '#ff8c28' } },
-  { nom: 'soirée', reglages: { voie: 'cached', signal: 'volume', auto: true, min: 10, max: 100, lissage: 40, cadence: 10, couleur: '#ff8c28' } },
-  { nom: 'punchy', reglages: { voie: 'cached', signal: 'basses', auto: true, min: 0, max: 100, lissage: 15, cadence: 12, couleur: '#ff2bd6' } },
+  { nom: 'douce', reglages: { voie: 'lounge', signal: 'volume_court', auto: true, min: 5, max: 55, lissage: 75, cadence: 4, couleur: '#ff8c28', couleurs: [] } },
+  { nom: 'soirée', reglages: { voie: 'cached', signal: 'volume', auto: true, min: 10, max: 100, lissage: 40, cadence: 10, couleur: '#ff8c28', couleurs: [] } },
+  { nom: 'punchy', reglages: { voie: 'cached', signal: 'basses', auto: true, min: 0, max: 100, lissage: 15, cadence: 12, couleur: '#ff2bd6', couleurs: [] } },
   { nom: 'libre', reglages: { ...REGLAGES_AMBILIGHT } },
 ]
 
