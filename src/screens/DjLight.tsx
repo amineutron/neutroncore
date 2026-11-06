@@ -6,7 +6,7 @@ import { toast } from '../lib/dialog'
 import type { Plan } from '../lib/plan'
 import { COMMUN_DEFAUT, couleursDe, EFFETS, type Commun, type Scene } from '../lib/spatialFx'
 import { lieux } from '../lib/spatialVenues'
-import { CONFIG_DEPART, type ConfigDj, type Couche, type Profil, type SetDj } from '../lib/djCouches'
+import { CONFIG_DEPART, avecCouleursDeRangee, type ConfigDj, type Couche, type Profil, type SetDj } from '../lib/djCouches'
 import { DjMoteur, type Lumiere } from '../lib/djMoteur'
 import { avancerSet, demarrerSet, pasEnCours, precedent, suivant, type LectureSet } from '../lib/djSet'
 import { Loader, PageTitle } from '../components/ui'
@@ -23,6 +23,9 @@ import { useDjFlux, type SourceDj } from '../components/djlight/useDjFlux'
 import { useLampesReelles } from '../components/djlight/useLampesReelles'
 import { LampesReelles } from '../components/djlight/LampesReelles'
 import { couleursCanaux, encoderTrame } from '../lib/djLampes'
+import { ecrireStocke, lireStocke } from '../lib/ciDeps'
+import { nettoyerCouleurs } from '../lib/jeuxCouleurs'
+import { CouleursChoisies } from '../components/djlight/CouleursChoisies'
 import { choisirTeinte, type LampeCouleur } from '../lib/djAmbilightTeinte'
 import { useAmbilight } from '../components/djlight/useAmbilight'
 import { AmbilightPanneau } from '../components/djlight/AmbilightPanneau'
@@ -36,6 +39,8 @@ const CLE_REGLAGES = 'neutroncore_dj_reglages'
 const lireReglagesGardes = (): ReglagesDj => { try { const brut = localStorage.getItem(CLE_REGLAGES); return brut ? lireReglages(JSON.parse(brut)) : REGLAGES_DEFAUT } catch { return REGLAGES_DEFAUT } }
 const TITRE = <PageTitle help="djlight" title="dj light" desc="La musique pilote la lumière : volume, grosse caisse, drop, tonalité, branchés sur les réglages de tes scènes, avec une priorité entre eux." />
 const lireSource = (): SourceDj => { try { return localStorage.getItem(CLE_SOURCE) === 'simule' ? 'simule' : 'direct' } catch { return 'direct' } }
+
+const CLE_COULEURS_SCENE = 'neutroncore_dj_couleurs_scene'
 
 export function DjLight() {
   const spatial = usePoll<EtatSpatial>(() => apiGet('/spatial'), 6000)
@@ -66,6 +71,10 @@ export function DjLight() {
   const couleursLampes = useRef<LampeCouleur[] | null>(null)      // ce que montrent les vraies lampes à la dernière image (null : pas branchées)
   const { etat: flux, image } = useDjFlux(moteur, source, () => { dropVu.current = true }, () => { tickLampes.current(); tickAmbilight.current() })
   const { etat: lampes, liaison } = useLampesReelles()
+
+  // couleurs imposées à la scène jouée (kick, balayage, montée...) : à la place de sa palette, pour la pièce, les lampes et l'Ambilight
+  const [couleursScene, setCouleursScene] = useState<string[]>(() => nettoyerCouleurs(lireStocke(CLE_COULEURS_SCENE, { couleurs: [] as unknown[] }).couleurs))
+  const poserCouleursScene = (c: string[]) => { setCouleursScene(c); ecrireStocke(CLE_COULEURS_SCENE, { couleurs: c }) }
 
   // l'Ambilight de la télé : réglages et quatre sauvegardes gardés dans le navigateur, niveau calculé à chaque image audio
   const [ambi, setAmbi] = useState<StockageAmbilight>(() => lireStockage())
@@ -135,8 +144,9 @@ export function DjLight() {
   const venues = useMemo(() => (plan ? lieux(plan) : []), [plan])
   const venue = venues.find((v) => v.id === 'piece') ?? venues[0]
 
-  const ctx = useRef({ profil, scene, scenes, commun })
-  ctx.current = { profil, scene, scenes, commun }
+  const sceneJouee = scene ? avecCouleursDeRangee(scene, { couleurs: couleursScene }) : scene
+  const ctx = useRef({ profil, scene: sceneJouee, scenes, commun })
+  ctx.current = { profil, scene: sceneJouee, scenes, commun }
   const [muet, setMuet] = useState(false)
   const silence = flux.moteur === 'ok' && muet
   const silenceRef = useRef(silence)
@@ -239,6 +249,7 @@ export function DjLight() {
               </button>
             ))}
           </div>
+          <CouleursChoisies couleurs={couleursScene} depart={scene ? couleursDe(scene) : []} onChange={poserCouleursScene} />
           <p className="dj-note">La scène choisie est la base ; les couches ci-dessous la modulent avec la musique. Les réglages communs (pulsation, intensité) se règlent dans « lumière 3d » : ici ils servent de point de départ.</p>
         </div>
         <div className="dj-droite card">
