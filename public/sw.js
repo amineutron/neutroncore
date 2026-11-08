@@ -1,6 +1,6 @@
 /* Service worker de la coque neutroncore (sert /app/ uniquement).
  *
- * Il ne touche JAMAIS a l'API : seules les requetes sous sa portee (/app/...) sont
+ * Il ne touche JAMAIS a l'API : seules les requetes sous sa portee (chemins sous /app/) sont
  * traitees, tout le reste (API a la racine de l'origine) passe sans lui. Le cache des
  * donnees est fait par la page (src/lib/offline) : il a besoin de l'horodatage, de
  * l'etat reseau et marche aussi hors contexte securise (coque Android en http).
