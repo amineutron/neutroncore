@@ -1330,3 +1330,24 @@ Non commite. Detail et commandes de verification : `docs/vms-hub.md`.
   PIEGE : un effet React qui change `phase` et pose son minuteur de retour dans le MEME effet voit ce minuteur
   annule par son propre nettoyage (la rangee restait « fait ») : le retour au repos est un effet a part.
   20 scenarios e2e.
+- **Lot 3 (2026-11-08, branche `feat/vm-view`) : onglet « écran » et terminal serie.** `components/vmhub/Screen.tsx`
+  (entre snapshots et materiel) : GET `/vms-console/{vm}/view` puis verdict pur (`lib/vmView.ts` : eteinte « démarre-la
+  pour la voir », SPICE ou sans affichage -> bouton « passer en VNC » / « ajouter un affichage VNC » = `/edit
+  {display:'vnc'}`, grise avec la raison si la machine tourne, VNC -> « se connecter »). On ne se connecte JAMAIS tout
+  seul : jeton `vm_view_<vm>` de 30 s (`vmHubApi.viewToken`, la chaine va dans l'adresse du WebSocket, jamais la cle
+  API) et vue exclusive. `Serial.tsx` = sous-onglet « terminal » de la console (l'ancien ExecPanel est « commandes ») :
+  xterm.js, flux binaire, `{"resize":[cols,rows]}` en texte. Les composants ne connaissent qu'une interface de source
+  (`lib/vmViewSources.ts`) : `vmViewVnc.ts` / `vmViewSerial.ts` en vrai, `mock/vmViewDemo.ts` en demo (faux ecran
+  anime, faux terminal a echo) ; la condition lit `import.meta.env` DANS ce module, sinon le bundler ne replie pas la
+  branche morte et noVNC entre dans la demo.
+  **Dependances de production** `@novnc/novnc` 1.7.0, `@xterm/xterm` 6.0.0, `@xterm/addon-fit` 0.11.0 (versions
+  exactes) : des clients de protocole, pas des bibliotheques d'interface — la regle « aucune lib UI » tient. Chargees
+  par `import()` : blocs a part `rfb` 187 Ko (56 Ko gzip) et `vmTerminal` 333 Ko (84 Ko gzip). noVNC n'a pas de types :
+  `src/novnc.d.ts`.
+  **Plein ecran** : classe `.vh-plein` (vmhub.css) qui reprend la regle de l'encoche de god eye (`stage.css`) :
+  haut decale de `max(env(safe-area-inset-top), 30px)` sur tactile, autres bords par `env()`. PIEGE : l'animation
+  d'entree `.vh-enter>*` (transform, fill-mode both) fait de chaque bloc un contenant pour `position:fixed`, meme finie ;
+  `.vh-enter>*:has(.vh-plein){animation:none}` la retire. Codes de fermeture du pont traduits (`closeReason`) : 4401
+  arrive comme une poignee de main echouee (jamais ouvert -> « jeton refusé ou expiré »), 4404, 4409, 4503, 1009, 1000.
+  Aide : `screen-vnc`, `serial`, `cad`, `fullscreen-kbd`, `hw-display` complete. 22 scenarios e2e. Non verifie contre
+  la vraie API (voir docs/vms-hub.md).

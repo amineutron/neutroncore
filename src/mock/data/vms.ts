@@ -29,6 +29,8 @@ const SPECIAL: Record<string, (vm: string, cap: number | null) => Hardware> = {
   'ubuntu-preprod': (vm, cap) => ({ ...HW_UEFI(vm, cap), usb: ['046d:c52b'] }),
   'kali-pentest': (vm, cap) => ({ ...HW_UEFI(vm, cap), secure_boot: false, display: 'vnc', network: 'isole' }),
   'fedora-exam-reseaux': (vm, cap) => ({ ...HW_BIOS(vm, cap), network: 'isole', boot_order: ['hd'] }),
+  'tp-linux-01': (vm, cap) => ({ ...HW_BIOS(vm, cap), display: 'vnc' }),          // en marche + vnc : l'ecran se connecte
+  'fedora-host-clone': (vm, cap) => ({ ...HW_BIOS(vm, cap), display: 'none' }),   // sans affichage : « ajouter un affichage VNC »
 }
 function confOf(vm: string): Conf {
   if (!conf[vm]) {
@@ -117,10 +119,22 @@ function applyEdit(vm: string, b: EditBody) {
 
 const startJob = (action: string, vm: string, message: string) => addJob(action, vm, message)
 
+// ----------------------------------------------------------- ecran et console serie
+/** GET /vms-console/{vm}/view : ce que la machine expose. `state` brut comme l'API (`running` / `shut off` / `paused`),
+ *  `display` lu dans le materiel, port VNC en 5900 + rang de la machine, hote local du pont. */
+function viewOf(vm: string) {
+  const st = stateOf(vm)
+  const display = confOf(vm).hw.display
+  const running = st === 'running'
+  const vnc = running && display === 'vnc' ? { host: '127.0.0.1', port: 5900 + (vm.length % 10) } : null
+  const reason = !running ? 'machine éteinte' : display === 'spice' ? 'affichage SPICE : le navigateur ne sait pas l\'afficher' : display === 'none' ? 'aucun affichage défini' : ''
+  return { success: true, state: st === 'stopped' ? 'shut off' : st, display, vnc, serial: running, reason }
+}
+
 export const vmsConsole: [string, string, MockHandler][] = [
   ['GET', '/vms-console/token', ({ query }) => {
     // meme garde que le backend : seules les actions du catalogue ont un jeton
-    if (!/^vm_(snapshot_create|snapshot_restore|snapshot_delete|clone|export|import|edit|exec|destroy|template|deploy|start|stop|force_stop|pause|resume|reboot)_[A-Za-z0-9_-]+$/.test(query.get('action') ?? '')) throw new Error('Action inconnue')
+    if (!/^vm_(snapshot_create|snapshot_restore|snapshot_delete|clone|export|import|edit|exec|destroy|template|deploy|view|start|stop|force_stop|pause|resume|reboot)_[A-Za-z0-9_-]+$/.test(query.get('action') ?? '')) throw new Error('Action inconnue')
     return { token: 'demo' }
   }],
   ['GET', '/vms-console/catalogue', () => ({
@@ -129,6 +143,7 @@ export const vmsConsole: [string, string, MockHandler][] = [
     archives: [{ name: 'fedora-test-export-20261001-classic.tar.gz', size: 4_200_000_000, mtime: 1_790_000_000 }],
   })],
   ['GET', '/vms-console/jobs', () => ({ jobs: jobsView() })],
+  ['GET', '/vms-console/:vm/view', ({ params }) => viewOf(params.vm)],
   ['GET', '/vms-console/:vm/snapshots', ({ params }) => ({ success: true, error: null, snapshots: snaps[params.vm] ?? [], current: snapOf(params.vm, current[params.vm]) ? current[params.vm] : null })],
   ['POST', '/vms-console/:vm/snapshots', ({ params, body }) => {
     const name = String((body as { name: string }).name)

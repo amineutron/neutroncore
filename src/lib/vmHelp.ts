@@ -98,7 +98,21 @@ export const HELP: Record<string, HelpEntry> = {
   'hw-display': { t: 'Affichage : spice ou vnc', p: [
     'SPICE est conçu pour les machines virtuelles : presse-papiers partagé, fenêtre qui se redimensionne avec l\'écran, son, redirection USB depuis le client. C\'est le bon choix pour une machine de bureau utilisée depuis virt-manager ou virt-viewer.',
     'VNC est plus simple et universel : n\'importe quel client VNC s\'y connecte, y compris depuis un autre système, mais sans ces conforts. Préfère-le pour un serveur ou un accès occasionnel.',
-    'Le changement prend effet à la prochaine connexion à la console.'] },
+    'Ici, c\'est VNC qu\'il faut : l\'onglet « écran » embarque un client VNC (noVNC) qui tourne dans le navigateur, et aucun navigateur ne sait afficher du SPICE. Le changement se fait machine arrêtée et prend effet au démarrage suivant.'] },
+  'screen-vnc': { t: 'Écran (VNC)', p: [
+    'L\'écran de la machine, comme si tu étais devant : clavier et souris passent à l\'invité. Le flux VNC de QEMU est relayé par l\'API dans un WebSocket, et noVNC le dessine dans la page.',
+    'La connexion est exclusive (une vue à la fois sur une machine) et le jeton qui l\'ouvre ne vit que 30 secondes : c\'est pourquoi on se connecte à la demande, jamais tout seul.',
+    'Il faut que la machine tourne et expose un affichage VNC ; une machine SPICE ou sans affichage se règle d\'abord (machine arrêtée).'] },
+  serial: { t: 'Console série', p: [
+    'Un terminal texte branché sur le port série virtuel (ttyS0) de la machine : il marche sans affichage graphique, dès le démarrage, et même quand le réseau de l\'invité est cassé.',
+    'La machine ne parle sur ce port que si son système y a lancé une console : les images cloud le font d\'office ; une Fedora Workstation ou une Debian installées normalement non, à moins d\'ajouter console=ttyS0 à la ligne de commande du noyau.',
+    'Écran noir à l\'ouverture ? Appuie sur Entrée : l\'invite de connexion se réveille. Le terminal envoie sa taille (colonnes, lignes) à l\'ouverture et à chaque redimensionnement.'] },
+  cad: { t: 'Ctrl+Alt+Suppr', p: [
+    'Envoie la combinaison à la machine virtuelle, pas à ton ordinateur (le navigateur l\'intercepterait). Sous Linux elle redémarre ou ouvre le gestionnaire de sessions ; sous Windows elle ouvre l\'écran de verrouillage et de connexion.',
+    'Le bouton « coller » tape le contenu de ton presse-papiers dans la machine, caractère par caractère : utile pour un mot de passe ou une commande longue, sans presse-papiers partagé.'] },
+  'fullscreen-kbd': { t: 'Plein écran, clavier sur téléphone', p: [
+    'Le plein écran couvre toute la fenêtre et met l\'écran de la machine à l\'échelle. Sur téléphone, la barre d\'outils laisse la place à l\'encoche et à la barre d\'état. Échap quitte le plein écran quand le clavier n\'est pas tenu par la machine ; sinon, le bouton.',
+    'Sur un écran tactile, le clavier n\'apparaît pas tout seul : le bouton « clavier » donne le focus au champ caché qui le fait monter. Toucher l\'écran de la machine déplace et clique la souris.'] },
   'hw-usb': { t: 'Périphériques USB', p: [
     'Un périphérique branché sur l\'hôte (clé, lecteur de carte, token, dongle) peut être donné à la machine : elle le voit comme branché directement sur elle.',
     'Pendant ce temps l\'hôte ne l\'a plus : une clé USB attribuée disparaît de ton bureau jusqu\'à ce que tu la débranches de la machine. L\'identifiant vvvv:pppp (vendeur:produit) se lit avec lsusb.',

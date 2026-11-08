@@ -30,6 +30,24 @@ describe('aide pedagogique', () => {
     expect(HELP['hw-grow'].p.join(' ')).toMatch(/partition/)
     expect(HELP['pause'].p.join(' ')).toMatch(/mémoire reste/)
   })
+  it('écran et console série : vnc dans le navigateur, spice vs vnc complété, ttyS0, ctrl+alt+suppr, plein écran et clavier', () => {
+    for (const k of ['screen-vnc', 'serial', 'cad', 'fullscreen-kbd']) {
+      const h = helpOf(k)
+      expect(h, k).not.toBeNull()
+      expect(h!.p.length, k).toBeGreaterThanOrEqual(2)
+      expect(h!.p.length, k).toBeLessThanOrEqual(4)
+    }
+    expect(HELP['hw-display'].p.join(' ')).toMatch(/noVNC/)
+    expect(HELP['hw-display'].p.join(' ')).toMatch(/machine arrêtée/)
+    expect(HELP['screen-vnc'].p.join(' ')).toMatch(/30 secondes/)
+    expect(HELP['screen-vnc'].p.join(' ')).toMatch(/exclusive/)
+    expect(HELP['serial'].p.join(' ')).toMatch(/ttyS0/)
+    expect(HELP['serial'].p.join(' ')).toMatch(/images cloud/)
+    expect(HELP['serial'].p.join(' ')).toMatch(/Entrée/)
+    expect(HELP['cad'].p.join(' ')).toMatch(/pas à ton ordinateur/)
+    expect(HELP['fullscreen-kbd'].p.join(' ')).toMatch(/encoche/)
+    expect(HELP['fullscreen-kbd'].p.join(' ')).toMatch(/clavier/)
+  })
   it('cle inconnue : null', () => { expect(helpOf('zzz')).toBeNull() })
 })
 
