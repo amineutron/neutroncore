@@ -5,6 +5,7 @@ import type { EditResult, HardwarePayload } from './vmHardware'
 import type { Overview, VmMeta } from './vmHub'
 import type { LibEntry } from './vmLibrary'
 import type { TaskJob } from './vmTasks'
+import type { ViewRes } from './vmView'
 
 // Acces reseau du hub des VMs : lectures (overview, bibliotheque, travaux) et ecritures
 // (modele, metadonnees). Toute ecriture destructive passe par le jeton X-Confirm existant.
@@ -66,3 +67,16 @@ export type DeployBody = { image: string; name: string; vcpus: number; ram_mb: n
 export async function deployImage(body: DeployBody): Promise<void> {
   await apiPost('/vms-console/deploy', body, await consoleConfirm('deploy', body.name))
 }
+
+/** Ce que la machine expose a l'ecran : affichage (vnc, spice, aucun), port VNC, console serie. */
+export const fetchView = (vm: string): Promise<ViewRes> => apiGet<ViewRes>(`/vms-console/${enc(vm)}/view`)
+
+/** Jeton de vue `vm_view_<vm>` (30 s) : la CHAINE, a mettre dans l'adresse du WebSocket (il ne peut pas porter
+ *  d'en-tete). Meme route que les autres jetons de la console ; a demander juste avant d'ouvrir le flux. */
+export async function viewToken(vm: string): Promise<string> {
+  const h = await consoleConfirm('view', vm)
+  return h['X-Confirm']
+}
+
+/** Passe l'affichage en VNC (ou en ajoute un) : meme edition que l'onglet materiel, machine arretee. */
+export const addVncDisplay = (vm: string): Promise<EditResult> => editHardware(vm, { display: 'vnc' })

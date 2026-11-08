@@ -13,21 +13,25 @@ import { Btn, Card } from '../ui'
 import { Hardware } from './Hardware'
 import { Q } from './Help'
 import { KindPill, Provenance } from './Kind'
+import { Screen } from './Screen'
+import { Serial } from './Serial'
 import { SnapshotsHub } from './SnapshotsHub'
 
-type Tab = 'apercu' | 'snapshots' | 'materiel' | 'copies' | 'console'
+type Tab = 'apercu' | 'snapshots' | 'ecran' | 'materiel' | 'copies' | 'console'
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'apercu', label: 'aperçu' }, { id: 'snapshots', label: 'snapshots' }, { id: 'materiel', label: 'matériel' }, { id: 'copies', label: 'copies et exports' }, { id: 'console', label: 'console' },
+  { id: 'apercu', label: 'aperçu' }, { id: 'snapshots', label: 'snapshots' }, { id: 'ecran', label: 'écran' }, { id: 'materiel', label: 'matériel' }, { id: 'copies', label: 'copies et exports' }, { id: 'console', label: 'console' },
 ]
 type DetailRes = { success: boolean; error: string | null; detail: Detail; settings: SettingsInfo | null }
+type Sub = 'commandes' | 'terminal'
 
-/** Fiche d'une machine : en-tete (type, etat, alimentation), onglets aperçu, snapshots, matériel, copies, console. */
+/** Fiche d'une machine : en-tete (type, etat, alimentation), onglets aperçu, snapshots, écran, matériel, copies, console. */
 export function MachineDetail({ vm, vms, jobs, names, cat, onStarted, onOpen, onRefresh, onTemplate, onUntemplate, initialTab }: {
   vm: HubVm; vms: HubVm[]; jobs: TaskJob[]; names: string[]; cat: Catalogue | null
   onStarted: () => void; onOpen: (n: string) => void; onRefresh: () => void
   onTemplate: (v: HubVm) => void; onUntemplate: (v: HubVm) => void; initialTab?: string; onOpenTask?: (id: string) => void
 }) {
   const [tab, setTab] = useState<Tab>(TABS.some((t) => t.id === initialTab) ? (initialTab as Tab) : 'apercu')
+  const [sub, setSub] = useState<Sub>('commandes')
   const [notes, setNotes] = useState(vm.meta.notes)
   const kind = kindOf(vm)
   const job = runningFor(jobs, vm.name)
@@ -83,6 +87,7 @@ export function MachineDetail({ vm, vms, jobs, names, cat, onStarted, onOpen, on
         </div>
       )}
       {tab === 'snapshots' && <SnapshotsHub vm={vm.name} running={vm.state === 'running'} busyVm={busyVm} onStarted={onStarted} />}
+      {tab === 'ecran' && <Screen vm={vm.name} state={vm.state} onApplied={() => { onStarted(); setTimeout(detail.refresh, 1500) }} />}
       {tab === 'materiel' && (
         <div className="nc-stack">
           {!vm.meta.template && <SettingsPanel vm={vm.name} up={up} detail={detail.data?.detail ?? {}} info={detail.data?.settings ?? null} onStarted={onStarted} busyVm={busyVm} />}
@@ -93,7 +98,15 @@ export function MachineDetail({ vm, vms, jobs, names, cat, onStarted, onOpen, on
       {tab === 'copies' && <div className="nc-stack"><Copies vm={vm.name} names={names} cat={cat} onStarted={onStarted} busyVm={busyVm} />
         <DangerPanel vm={vm.name} up={up} onStarted={onStarted} busyVm={busyVm} />
         {!destroyOk.ok && <p className="lite">{destroyOk.reason}</p>}</div>}
-      {tab === 'console' && <ExecPanel vm={vm.name} up={vm.state === 'running'} cat={cat} onStarted={onStarted} busyVm={busyVm} />}
+      {tab === 'console' && (
+        <div className="nc-stack">
+          <div className="vh-seg vh-sub" role="tablist" aria-label="console" style={{ marginTop: 0 }}>
+            {(['commandes', 'terminal'] as const).map((s) => <button key={s} type="button" role="tab" aria-selected={sub === s} className={sub === s ? 'on' : ''} onClick={() => setSub(s)}>{s}</button>)}
+          </div>
+          {sub === 'commandes' && <ExecPanel vm={vm.name} up={vm.state === 'running'} cat={cat} onStarted={onStarted} busyVm={busyVm} />}
+          {sub === 'terminal' && <Serial vm={vm.name} up={vm.state === 'running'} />}
+        </div>
+      )}
     </div>
   )
 }

@@ -12,7 +12,7 @@ vi.mock('./api', () => ({
   withConfirm: vi.fn(async (action: string) => { calls.push({ verb: 'AUTH', path: action }); return { 'X-Confirm': 'jeton-auth' } }),
 }))
 
-const { cloneVm, deployImage, editHardware, importArchive, powerVm, saveMeta, setTemplate } = await import('./vmHubApi')
+const { addVncDisplay, cloneVm, deployImage, editHardware, fetchView, importArchive, powerVm, saveMeta, setTemplate, viewToken } = await import('./vmHubApi')
 
 beforeEach(() => { calls.length = 0 })
 
@@ -74,5 +74,22 @@ describe('jetons des ecritures du hub', () => {
   it('fiche : profil et notes, sans jeton (non destructif)', async () => {
     await saveMeta('x', { profile: 'examen', notes: 'n' })
     expect(calls).toEqual([{ verb: 'PUT', path: '/vms-console/meta/x', body: { profile: 'examen', notes: 'n' } }])
+  })
+})
+
+describe('ecran et console serie', () => {
+  it('viewToken demande vm_view_<vm> sur /vms-console/token et rend la chaine (elle va dans l\'adresse du WebSocket)', async () => {
+    const t = await viewToken('tp-linux 01')
+    expect(calls).toEqual([{ verb: 'GET', path: '/vms-console/token?action=vm_view_tp-linux%2001' }])
+    expect(t).toBe('jeton-test')
+  })
+  it('fetchView lit GET /vms-console/<vm>/view sans jeton', async () => {
+    await fetchView('a/b')
+    expect(calls).toEqual([{ verb: 'GET', path: '/vms-console/a%2Fb/view' }])
+  })
+  it('addVncDisplay = edition materielle { display: vnc } avec le jeton vm_edit_<vm>', async () => {
+    await addVncDisplay('debian-sandbox')
+    expect(calls[0].path).toBe('/vms-console/token?action=vm_edit_debian-sandbox')
+    expect(calls[1]).toMatchObject({ verb: 'POST', path: '/vms-console/debian-sandbox/edit', body: { display: 'vnc' }, extra: { 'X-Confirm': 'jeton-test' } })
   })
 })
