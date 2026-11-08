@@ -1,0 +1,733 @@
+{
+ "overview": {
+  "success": true,
+  "error": null,
+  "stale": false,
+  "meta_error": null,
+  "host": {
+   "cpu": 32,
+   "ram_mb": 63679,
+   "pool_gb": 31.1,
+   "pool_used_gb": 1.6
+  },
+  "vms": [
+   {
+    "name": "tpl",
+    "state": "stopped",
+    "status": "down",
+    "vcpus": 2,
+    "ram_mb": 4096,
+    "disk_used_gb": 3.0,
+    "disk_total_gb": 20.0,
+    "ip": "192.168.122.7",
+    "snapshot_count": 4,
+    "meta": {
+     "profile": "normal",
+     "template": true,
+     "origin": "own",
+     "base": null,
+     "from": null,
+     "lineage": [],
+     "notes": ""
+    }
+   },
+   {
+    "name": "clone",
+    "state": "running",
+    "status": "up",
+    "vcpus": 2,
+    "ram_mb": 4096,
+    "disk_used_gb": 3.0,
+    "disk_total_gb": 20.0,
+    "ip": "192.168.122.7",
+    "snapshot_count": 4,
+    "meta": {
+     "profile": "normal",
+     "template": false,
+     "origin": "cow",
+     "base": "tpl",
+     "from": "tpl",
+     "lineage": [
+      {
+       "id": "tpl",
+       "rel": "cow",
+       "ext": false
+      }
+     ],
+     "notes": ""
+    }
+   },
+   {
+    "name": "copie",
+    "state": "stopped",
+    "status": "down",
+    "vcpus": 2,
+    "ram_mb": 4096,
+    "disk_used_gb": 3.0,
+    "disk_total_gb": 20.0,
+    "ip": "192.168.122.7",
+    "snapshot_count": 4,
+    "meta": {
+     "profile": "examen",
+     "template": false,
+     "origin": "copy",
+     "base": null,
+     "from": "tpl",
+     "lineage": [
+      {
+       "id": "tpl",
+       "rel": "copy",
+       "ext": false
+      }
+     ],
+     "notes": ""
+    }
+   },
+   {
+    "name": "seule",
+    "state": "stopped",
+    "status": "down",
+    "vcpus": 2,
+    "ram_mb": 4096,
+    "disk_used_gb": 3.0,
+    "disk_total_gb": 20.0,
+    "ip": "192.168.122.7",
+    "snapshot_count": 4,
+    "meta": {
+     "profile": "normal",
+     "template": false,
+     "origin": "own",
+     "base": null,
+     "from": null,
+     "lineage": [],
+     "notes": ""
+    }
+   }
+  ],
+  "archives": []
+ },
+ "library": {
+  "success": true,
+  "error": null,
+  "entries": [
+   {
+    "id": "cirros",
+    "dist": "cirros",
+    "nom": "CirrOS",
+    "ver": "0.6",
+    "fmt": "cloud",
+    "mb": 21,
+    "ram": 256,
+    "disk": 2,
+    "tags": [
+     "léger"
+    ],
+    "ui": "aucune",
+    "pk": "minimal",
+    "os": "CirrOS 0.6",
+    "src": "download.cirros-cloud.net",
+    "desc": "Image de test minuscule, utilisée par OpenStack. Parfaite pour essayer snapshots, clones et réseau sans attendre.",
+    "pour": "tester cette interface",
+    "cached": false,
+    "deployable": false,
+    "reason": "outil de creation d'image absent du MCP fedora-agents (roadmap)"
+   },
+   {
+    "id": "tinycore",
+    "dist": "tinycore",
+    "nom": "Tiny Core Linux",
+    "ver": "15 Core",
+    "fmt": "iso",
+    "mb": 17,
+    "ram": 256,
+    "disk": 2,
+    "tags": [
+     "léger"
+    ],
+    "ui": "aucune",
+    "pk": "minimal",
+    "os": "Tiny Core Linux 15",
+    "src": "tinycorelinux.net",
+    "desc": "Un système de 17 Mo qui tourne entièrement en mémoire. Utile pour des tests très légers.",
+    "pour": "démonstrations, tests très légers",
+    "cached": false,
+    "deployable": false,
+    "reason": "outil de creation d'image absent du MCP fedora-agents (roadmap)"
+   },
+   {
+    "id": "alpine",
+    "dist": "alpine",
+    "nom": "Alpine Linux 3.22",
+    "ver": "virt (pour VM)",
+    "fmt": "iso",
+    "mb": 65,
+    "ram": 512,
+    "disk": 4,
+    "tags": [
+     "léger",
+     "serveur"
+    ],
+    "ui": "aucune",
+    "pk": "minimal",
+    "os": "Alpine Linux 3.22",
+    "src": "alpinelinux.org",
+    "desc": "Distribution minimale (busybox, musl). L'édition virt est faite pour les VM et démarre en quelques secondes.",
+    "pour": "services simples, routeur ou pare-feu de TP",
+    "cached": false,
+    "deployable": false,
+    "reason": "outil de creation d'image absent du MCP fedora-agents (roadmap)"
+   },
+   {
+    "id": "alpine-std",
+    "dist": "alpine",
+    "nom": "Alpine Linux 3.22",
+    "ver": "standard",
+    "fmt": "iso",
+    "mb": 220,
+    "ram": 512,
+    "disk": 4,
+    "tags": [
+     "léger",
+     "serveur"
+    ],
+    "ui": "aucune",
+    "pk": "serveur",
+    "os": "Alpine Linux 3.22",
+    "src": "alpinelinux.org",
+    "desc": "Édition générale avec plus de pilotes et d'outils que virt.",
+    "pour": "installation sur matériel ou VM variée",
+    "cached": false,
+    "deployable": false,
+    "reason": "outil de creation d'image absent du MCP fedora-agents (roadmap)"
+   },
+   {
+    "id": "debian-cloud",
+    "dist": "debian",
+    "nom": "Debian 12",
+    "ver": "genericcloud",
+    "fmt": "cloud",
+    "mb": 340,
+    "ram": 1024,
+    "disk": 10,
+    "tags": [
+     "léger",
+     "serveur"
+    ],
+    "ui": "aucune",
+    "pk": "minimal",
+    "os": "Debian 12",
+    "src": "cloud.debian.org",
+    "desc": "Disque déjà installé, configuré au premier démarrage par cloud-init (utilisateur, clé ssh). Se déploie en 30 secondes.",
+    "pour": "serveurs de TP, base de modèle",
+    "cached": true,
+    "deployable": false,
+    "reason": "outil de creation d'image absent du MCP fedora-agents (roadmap)"
+   },
+   {
+    "id": "vb-debian",
+    "dist": "debian",
+    "nom": "Debian 12",
+    "ver": "virt-builder",
+    "fmt": "vb",
+    "mb": 250,
+    "ram": 1024,
+    "disk": 10,
+    "tags": [
+     "léger",
+     "serveur"
+    ],
+    "ui": "aucune",
+    "pk": "minimal",
+    "os": "Debian 12",
+    "src": "libguestfs.org",
+    "desc": "virt-builder assemble l'image à la demande et y injecte mot de passe root, clé ssh et nom d'hôte avant le premier démarrage.",
+    "pour": "machines jetables et reproductibles",
+    "cached": false,
+    "deployable": false,
+    "reason": "outil de creation d'image absent du MCP fedora-agents (roadmap)"
+   },
+   {
+    "id": "debian-netinst",
+    "dist": "debian",
+    "nom": "Debian 12",
+    "ver": "netinst (au choix)",
+    "fmt": "iso",
+    "mb": 650,
+    "ram": 2048,
+    "disk": 20,
+    "tags": [
+     "serveur"
+    ],
+    "ui": "aucune",
+    "pk": "au choix",
+    "os": "Debian 12",
+    "src": "debian.org",
+    "desc": "Petit installateur qui télécharge le reste : tu choisis toi-même les paquets et l'environnement de bureau.",
+    "pour": "installation sur mesure",
+    "cached": false,
+    "deployable": false,
+    "reason": "outil de creation d'image absent du MCP fedora-agents (roadmap)"
+   },
+   {
+    "id": "debian-gnome",
+    "dist": "debian",
+    "nom": "Debian 12",
+    "ver": "Live GNOME",
+    "fmt": "iso",
+    "mb": 3000,
+    "ram": 4096,
+    "disk": 25,
+    "tags": [
+     "bureau"
+    ],
+    "ui": "GNOME",
+    "pk": "bureau complet",
+    "os": "Debian 12 (GNOME)",
+    "src": "debian.org",
+    "desc": "Bureau GNOME complet avec navigateur, bureautique et installateur graphique.",
+    "pour": "poste de travail prêt à l'emploi",
+    "cached": false,
+    "deployable": false,
+    "reason": "outil de creation d'image absent du MCP fedora-agents (roadmap)"
+   },
+   {
+    "id": "debian-kde",
+    "dist": "debian",
+    "nom": "Debian 12",
+    "ver": "Live KDE Plasma",
+    "fmt": "iso",
+    "mb": 3100,
+    "ram": 4096,
+    "disk": 25,
+    "tags": [
+     "bureau"
+    ],
+    "ui": "KDE Plasma",
+    "pk": "bureau complet",
+    "os": "Debian 12 (KDE)",
+    "src": "debian.org",
+    "desc": "Bureau KDE Plasma, très personnalisable.",
+    "pour": "poste de travail configurable",
+    "cached": false,
+    "deployable": false,
+    "reason": "outil de creation d'image absent du MCP fedora-agents (roadmap)"
+   },
+   {
+    "id": "debian-xfce",
+    "dist": "debian",
+    "nom": "Debian 12",
+    "ver": "Live Xfce",
+    "fmt": "iso",
+    "mb": 2800,
+    "ram": 2048,
+    "disk": 20,
+    "tags": [
+     "bureau",
+     "léger"
+    ],
+    "ui": "Xfce",
+    "pk": "bureau complet",
+    "os": "Debian 12 (Xfce)",
+    "src": "debian.org",
+    "desc": "Bureau Xfce, plus léger en mémoire que GNOME et KDE.",
+    "pour": "bureau fluide sur peu de ressources",
+    "cached": false,
+    "deployable": false,
+    "reason": "outil de creation d'image absent du MCP fedora-agents (roadmap)"
+   },
+   {
+    "id": "fedora-cloud",
+    "dist": "fedora",
+    "nom": "Fedora 43",
+    "ver": "Cloud Base",
+    "fmt": "cloud",
+    "mb": 480,
+    "ram": 2048,
+    "disk": 15,
+    "tags": [
+     "serveur"
+    ],
+    "ui": "aucune",
+    "pk": "minimal",
+    "os": "Fedora Cloud 43",
+    "src": "download.fedoraproject.org",
+    "desc": "Fedora minimale pré-installée, prête pour cloud-init. Même famille que ton système hôte.",
+    "pour": "tester des paquets et configurations Fedora",
+    "cached": false,
+    "deployable": false,
+    "reason": "outil de creation d'image absent du MCP fedora-agents (roadmap)"
+   },
+   {
+    "id": "vb-fedora",
+    "dist": "fedora",
+    "nom": "Fedora 43",
+    "ver": "virt-builder",
+    "fmt": "vb",
+    "mb": 300,
+    "ram": 2048,
+    "disk": 15,
+    "tags": [
+     "serveur"
+    ],
+    "ui": "aucune",
+    "pk": "minimal",
+    "os": "Fedora 43",
+    "src": "libguestfs.org",
+    "desc": "Image Fedora assemblée à la demande par virt-builder, avec injection de la clé ssh.",
+    "pour": "base de modèle Fedora",
+    "cached": false,
+    "deployable": false,
+    "reason": "outil de creation d'image absent du MCP fedora-agents (roadmap)"
+   },
+   {
+    "id": "fedora-server",
+    "dist": "fedora",
+    "nom": "Fedora 43",
+    "ver": "Server (netinst)",
+    "fmt": "iso",
+    "mb": 900,
+    "ram": 2048,
+    "disk": 20,
+    "tags": [
+     "serveur"
+    ],
+    "ui": "aucune",
+    "pk": "serveur",
+    "os": "Fedora Server 43",
+    "src": "fedoraproject.org",
+    "desc": "Installateur réseau de Fedora Server, avec console web Cockpit.",
+    "pour": "serveur Fedora configuré à la main",
+    "cached": false,
+    "deployable": false,
+    "reason": "outil de creation d'image absent du MCP fedora-agents (roadmap)"
+   },
+   {
+    "id": "fedora-ws",
+    "dist": "fedora",
+    "nom": "Fedora 43",
+    "ver": "Workstation (GNOME)",
+    "fmt": "iso",
+    "mb": 2300,
+    "ram": 4096,
+    "disk": 30,
+    "tags": [
+     "bureau"
+    ],
+    "ui": "GNOME",
+    "pk": "bureau complet",
+    "os": "Fedora Workstation 43",
+    "src": "fedoraproject.org",
+    "desc": "Bureau GNOME complet avec installateur. Lourd, mais idéal pour tester une interface graphique.",
+    "pour": "poste de travail de test",
+    "cached": false,
+    "deployable": false,
+    "reason": "outil de creation d'image absent du MCP fedora-agents (roadmap)"
+   },
+   {
+    "id": "fedora-kde",
+    "dist": "fedora",
+    "nom": "Fedora 43",
+    "ver": "KDE Plasma",
+    "fmt": "iso",
+    "mb": 2400,
+    "ram": 4096,
+    "disk": 30,
+    "tags": [
+     "bureau"
+    ],
+    "ui": "KDE Plasma",
+    "pk": "bureau complet",
+    "os": "Fedora KDE 43",
+    "src": "fedoraproject.org",
+    "desc": "Fedora avec le bureau KDE Plasma.",
+    "pour": "bureau KDE à jour",
+    "cached": false,
+    "deployable": false,
+    "reason": "outil de creation d'image absent du MCP fedora-agents (roadmap)"
+   },
+   {
+    "id": "fedora-xfce",
+    "dist": "fedora",
+    "nom": "Fedora 43",
+    "ver": "Xfce",
+    "fmt": "iso",
+    "mb": 2000,
+    "ram": 2048,
+    "disk": 25,
+    "tags": [
+     "bureau",
+     "léger"
+    ],
+    "ui": "Xfce",
+    "pk": "bureau complet",
+    "os": "Fedora Xfce 43",
+    "src": "fedoraproject.org",
+    "desc": "Fedora avec le bureau Xfce, plus léger.",
+    "pour": "bureau fluide",
+    "cached": false,
+    "deployable": false,
+    "reason": "outil de creation d'image absent du MCP fedora-agents (roadmap)"
+   },
+   {
+    "id": "fedora-sway",
+    "dist": "fedora",
+    "nom": "Fedora 43",
+    "ver": "Sway (tuilage)",
+    "fmt": "iso",
+    "mb": 2000,
+    "ram": 2048,
+    "disk": 25,
+    "tags": [
+     "bureau",
+     "léger"
+    ],
+    "ui": "Sway",
+    "pk": "bureau complet",
+    "os": "Fedora Sway 43",
+    "src": "fedoraproject.org",
+    "desc": "Gestionnaire de fenêtres en tuilage Wayland, proche de Hyprland dans l'esprit : bon point de départ pour retrouver ton environnement.",
+    "pour": "retrouver un bureau en tuilage",
+    "cached": false,
+    "deployable": false,
+    "reason": "outil de creation d'image absent du MCP fedora-agents (roadmap)"
+   },
+   {
+    "id": "ubuntu-cloud",
+    "dist": "ubuntu",
+    "nom": "Ubuntu 24.04 LTS",
+    "ver": "cloud image",
+    "fmt": "cloud",
+    "mb": 600,
+    "ram": 2048,
+    "disk": 15,
+    "tags": [
+     "serveur"
+    ],
+    "ui": "aucune",
+    "pk": "minimal",
+    "os": "Ubuntu Server 24.04",
+    "src": "cloud-images.ubuntu.com",
+    "desc": "Image officielle Ubuntu LTS pré-installée, configurée par cloud-init.",
+    "pour": "serveurs de pré-production",
+    "cached": false,
+    "deployable": false,
+    "reason": "outil de creation d'image absent du MCP fedora-agents (roadmap)"
+   },
+   {
+    "id": "ubuntu-iso",
+    "dist": "ubuntu",
+    "nom": "Ubuntu 24.04 LTS",
+    "ver": "Server (live)",
+    "fmt": "iso",
+    "mb": 2800,
+    "ram": 2048,
+    "disk": 20,
+    "tags": [
+     "serveur"
+    ],
+    "ui": "aucune",
+    "pk": "serveur",
+    "os": "Ubuntu Server 24.04",
+    "src": "ubuntu.com",
+    "desc": "Installateur complet d'Ubuntu Server.",
+    "pour": "installation classique",
+    "cached": false,
+    "deployable": false,
+    "reason": "outil de creation d'image absent du MCP fedora-agents (roadmap)"
+   },
+   {
+    "id": "ubuntu-desktop",
+    "dist": "ubuntu",
+    "nom": "Ubuntu 24.04 LTS",
+    "ver": "Desktop (GNOME)",
+    "fmt": "iso",
+    "mb": 6000,
+    "ram": 4096,
+    "disk": 30,
+    "tags": [
+     "bureau"
+    ],
+    "ui": "GNOME",
+    "pk": "bureau complet",
+    "os": "Ubuntu Desktop 24.04",
+    "src": "ubuntu.com",
+    "desc": "Bureau GNOME d'Ubuntu avec ses applications.",
+    "pour": "poste de travail Ubuntu",
+    "cached": false,
+    "deployable": false,
+    "reason": "outil de creation d'image absent du MCP fedora-agents (roadmap)"
+   },
+   {
+    "id": "xubuntu",
+    "dist": "ubuntu",
+    "nom": "Ubuntu 24.04 LTS",
+    "ver": "Xubuntu (Xfce)",
+    "fmt": "iso",
+    "mb": 3900,
+    "ram": 2048,
+    "disk": 25,
+    "tags": [
+     "bureau",
+     "léger"
+    ],
+    "ui": "Xfce",
+    "pk": "bureau complet",
+    "os": "Xubuntu 24.04",
+    "src": "xubuntu.org",
+    "desc": "Ubuntu avec le bureau Xfce.",
+    "pour": "bureau léger",
+    "cached": false,
+    "deployable": false,
+    "reason": "outil de creation d'image absent du MCP fedora-agents (roadmap)"
+   },
+   {
+    "id": "arch-cloud",
+    "dist": "arch",
+    "nom": "Arch Linux",
+    "ver": "cloud image (basic)",
+    "fmt": "cloud",
+    "mb": 520,
+    "ram": 1024,
+    "disk": 10,
+    "tags": [
+     "léger"
+    ],
+    "ui": "aucune",
+    "pk": "minimal",
+    "os": "Arch Linux",
+    "src": "geo.mirror.pkgbuild.com",
+    "desc": "Image Arch minimale prête pour cloud-init. Les paquets (hyprland, quickshell...) viennent directement des dépôts.",
+    "pour": "retrouver ton environnement rapidement",
+    "cached": false,
+    "deployable": false,
+    "reason": "outil de creation d'image absent du MCP fedora-agents (roadmap)"
+   },
+   {
+    "id": "arch-iso",
+    "dist": "arch",
+    "nom": "Arch Linux",
+    "ver": "ISO (installation manuelle)",
+    "fmt": "iso",
+    "mb": 1300,
+    "ram": 2048,
+    "disk": 20,
+    "tags": [
+     "léger"
+    ],
+    "ui": "aucune",
+    "pk": "minimal",
+    "os": "Arch Linux",
+    "src": "archlinux.org",
+    "desc": "ISO d'installation avec archinstall. Rien d'installé par défaut.",
+    "pour": "installation maîtrisée",
+    "cached": false,
+    "deployable": false,
+    "reason": "outil de creation d'image absent du MCP fedora-agents (roadmap)"
+   },
+   {
+    "id": "rocky",
+    "dist": "rocky",
+    "nom": "Rocky Linux 9",
+    "ver": "minimal",
+    "fmt": "iso",
+    "mb": 1700,
+    "ram": 2048,
+    "disk": 20,
+    "tags": [
+     "serveur"
+    ],
+    "ui": "aucune",
+    "pk": "minimal",
+    "os": "Rocky Linux 9",
+    "src": "rockylinux.org",
+    "desc": "Compatible Red Hat Enterprise Linux, pour s'entraîner sur cet écosystème.",
+    "pour": "TP de type entreprise",
+    "cached": false,
+    "deployable": false,
+    "reason": "outil de creation d'image absent du MCP fedora-agents (roadmap)"
+   },
+   {
+    "id": "kali",
+    "dist": "kali",
+    "nom": "Kali Linux 2026.3",
+    "ver": "installer (Xfce)",
+    "fmt": "iso",
+    "mb": 4200,
+    "ram": 4096,
+    "disk": 40,
+    "tags": [
+     "bureau",
+     "sécurité"
+    ],
+    "ui": "Xfce",
+    "pk": "bureau complet",
+    "os": "Kali Linux 2026.3",
+    "src": "kali.org",
+    "desc": "Outils de test d'intrusion préinstallés. À isoler du réseau.",
+    "pour": "exercices de sécurité",
+    "cached": false,
+    "deployable": false,
+    "reason": "outil de creation d'image absent du MCP fedora-agents (roadmap)"
+   }
+  ],
+  "dists": [
+   "cirros",
+   "tinycore",
+   "alpine",
+   "debian",
+   "fedora",
+   "ubuntu",
+   "arch",
+   "rocky",
+   "kali"
+  ],
+  "images_dir_present": true
+ },
+ "snapshots": {
+  "success": true,
+  "error": null,
+  "snapshots": [
+   {
+    "name": "base",
+    "depth": 0
+   },
+   {
+    "name": "a",
+    "depth": 1
+   },
+   {
+    "name": "a1",
+    "depth": 2
+   },
+   {
+    "name": "b",
+    "depth": 1
+   }
+  ],
+  "tree": [
+   {
+    "name": "base",
+    "parent": null,
+    "depth": 0
+   },
+   {
+    "name": "a",
+    "parent": "base",
+    "depth": 1
+   },
+   {
+    "name": "a1",
+    "parent": "a",
+    "depth": 2
+   },
+   {
+    "name": "b",
+    "parent": "base",
+    "depth": 1
+   }
+  ]
+ },
+ "jobs": {
+  "jobs": []
+ }
+}

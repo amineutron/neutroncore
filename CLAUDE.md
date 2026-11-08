@@ -1294,3 +1294,30 @@ Backend : `routers/godeye*.py` et `lib/godeye_*.py` dans lyra-control-api. Demo 
 - **Non verifie en reel** : flux live (USGS, EONET, CelesTrak, adsb.lol `/v2/hex`, Digitraffic), trace des satellites
   et polyligne des objets marques a l'ecran, regroupement visuel (la demo a moins de 40 objets), rotation automatique,
   synchro serveur bout en bout, cache apres rechargement hors ligne, mode « zone » de la tele avec une vraie zone.
+||||||| parent of 70421b9 (feat(vms): VM hub with families, provenance, snapshot graph, image library and tasks)
+
+## Hub des VMs (2026-11-08)
+Non commite. Detail et commandes de verification : `docs/vms-hub.md`.
+- **Ecran `vms`** refait en six onglets (accueil, machines, bibliotheque, modeles, archives, taches) :
+  `screens/Vms.tsx` + `components/vmhub/*` + `vmhub.css`. Logique pure testee dans `lib/vmHub*.ts`,
+  `vmSnapTree.ts`, `vmLibrary.ts`, `vmEnv.ts`, `vmTasks.ts`, `vmHelp.ts`.
+- **Quatre types de machines**, couleur ET forme : modele (losange violet), clone lie COW (rond turquoise),
+  copie integrale (carre or), autonome (anneau vert). La provenance (`meta.lineage`) est conservee meme si un
+  ancetre est supprime. Un modele ne se supprime ni ne redevient machine tant que des clones lies en dependent.
+- **Passage en modele** : dialogue qui explique ou la machine va et pourquoi elle quitte « machines » ; l'onglet
+  « modeles » pulse et la carte arrive en surbrillance.
+- **Taches** : chaque travail (`/vms-console/jobs`) a un titre lisible (`title`), un type, des etapes et un journal.
+  La pastille « tache en cours » d'une machine ouvre sa tache.
+- **Bibliotheque** : recherche cote client a chaque lettre (sans accents, tous les mots), filtres, plusieurs
+  editions par distribution (avec ou sans interface). « Mon environnement » (barre, raccourcis, lanceur, terminal,
+  outils) ; les trois premiers demandent une interface graphique. Le bouton « deployer » reste grise tant que l'outil
+  MCP de creation n'existe pas (`deployable:false` + `reason` renvoyes par l'API).
+- **Backend** (`lyra-control-api`, branche `feat/vms-hub`) : `lib/vm_meta.py` (fiches dans `vm_meta.json`),
+  `vm_overview.py`, `vm_library.py`, `vm_jobs.py`, `vm_snapshots.py`, `routers/vms_hub.py` inclus AVANT
+  `vms_console` dans `main.py` (sinon `/vms-console/overview` est pris pour une VM).
+- **Contrat** : `src/lib/__fixtures__/vmhub.backend.json` = reponse reelle du backend (demon simule), verifiee par
+  `vmHubContract.test.ts`. Regenerer si l'API change.
+- **Tests** : `npm run bench:vms` (budgets), `npm run build:demo && npm run e2e:vms` (16 scenarios dans Chrome via
+  `scripts/e2e/cdp.mjs`, sans dependance ni backend).
+- Piege trouve par le benchmark : une detection de cycle en O(n^2) dans `treeOf` ; un `Math.max(...tableau)` sur
+  20000 noeuds depasse la pile. Garder ces calculs iteratifs.

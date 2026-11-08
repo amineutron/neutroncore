@@ -18,6 +18,7 @@ import { mises } from './data/mises'
 import { sauvegardes } from './data/sauvegardes'
 import { ressources } from './data/ressources'
 import { vmsConsole } from './data/vms'
+import { vmHub } from './data/vmHub'
 import { reseau } from './data/reseau'
 import { securite } from './data/securite'
 import { dv } from './data/dv'
@@ -39,7 +40,7 @@ import { affichageWorldmonitor } from './data/worldmonitor'
 
 export const ROUTES = compileRoutes([
   ['GET', '/auth/token', () => ({ token: 'demo' })],
-  ...ATELIER_ROUTES, ...media, ...requests, ...system, ...godeye, ...godeyeFiabilite, ...godeyeSuivis, ...lumiereOutils, ...lumiereSource, ...lumiere, ...djlight, ...mises, ...sauvegardes, ...ressources, ...vmsConsole, ...reseau, ...securite, ...dv, ...sorties, ...menage, ...ciDeps, ...qualite, ...historique, ...reveilDemo, ...sonoDemo,...lyraMemoire, ...sandbox, ...reglages, ...resume, ...cyber, ...cameraStudio, ...minuteursDemo,
+  ...ATELIER_ROUTES, ...media, ...requests, ...system, ...godeye, ...godeyeFiabilite, ...godeyeSuivis, ...lumiereOutils, ...lumiereSource, ...lumiere, ...djlight, ...mises, ...sauvegardes, ...ressources, ...vmHub, ...vmsConsole, ...reseau, ...securite, ...dv, ...sorties, ...menage, ...ciDeps, ...qualite, ...historique, ...reveilDemo, ...sonoDemo,...lyraMemoire, ...sandbox, ...reglages, ...resume, ...cyber, ...cameraStudio, ...minuteursDemo,
   ['GET', '/tv/affichage', () => affichageWorldmonitor],
   ['POST', '/tv/afficher', () => ({ success: true, error: null })],
   ['POST', '/tv/remettre', () => ({ success: true, error: null })],

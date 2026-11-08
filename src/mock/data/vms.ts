@@ -2,13 +2,18 @@
 // Les snapshots se creent et se suppriment en memoire jusqu'au rechargement.
 // A enregistrer : ...vmsConsole dans src/mock/routes.ts (voir INTEGRATION.md).
 import type { MockHandler } from '../router'
+import { addJob, jobsView } from './vmHub'
 
 type Snap = { name: string; depth: number }
 const snaps: Record<string, Snap[]> = {
   'fedora-test': [{ name: 'base', depth: 0 }, { name: 'avant-maj', depth: 1 }],
   'debian-lab': [], 'win-sandbox': [],
+  'fedora-exam-reseaux': [
+    { name: 'install-propre', depth: 0 }, { name: 'paquets-de-base', depth: 1 }, { name: 'reseau-configure', depth: 2 },
+    { name: 'avant-exam', depth: 3 }, { name: 'exam-jour-1', depth: 4 }, { name: 'exam-jour-1-fin', depth: 5 },
+    { name: 'test-dhcp', depth: 3 }, { name: 'dhcp-casse', depth: 4 }, { name: 'avec-docker', depth: 2 }, { name: 'docker-k3s', depth: 3 }],
+  'ubuntu-preprod': [{ name: 'base', depth: 0 }, { name: 'avant-maj', depth: 1 }, { name: 'apres-maj', depth: 2 }],
 }
-let jobs: Record<string, unknown>[] = []
 
 // Reglages modifiables en memoire (POST /vms-console/:vm/edit) jusqu'au rechargement
 const conf: Record<string, { vcpus: number; memory_mib: number; autostart: boolean }> = {}
@@ -31,20 +36,20 @@ const DETAIL = (vm: string) => {
   }
 }
 
-const startJob = (action: string, vm: string, message: string) => {
-  const id = Math.random().toString(16).slice(2, 14)
-  jobs = [{ id, action, vm, status: 'ok', message, error: null, started: Date.now() / 1000 - 3, ended: Date.now() / 1000 }, ...jobs].slice(0, 20)
-  return { success: true, job: id }
-}
+const startJob = (action: string, vm: string, message: string) => addJob(action, vm, message)
 
 export const vmsConsole: [string, string, MockHandler][] = [
-  ['GET', '/vms-console/token', () => ({ token: 'demo' })],
+  ['GET', '/vms-console/token', ({ query }) => {
+    // meme garde que le backend : seules les actions du catalogue ont un jeton
+    if (!/^vm_(snapshot_create|snapshot_restore|snapshot_delete|clone|export|import|edit|exec|destroy|template|deploy)_[A-Za-z0-9_-]+$/.test(query.get('action') ?? '')) throw new Error('Action inconnue')
+    return { token: 'demo' }
+  }],
   ['GET', '/vms-console/catalogue', () => ({
     exec: [{ id: 'uptime', label: 'temps de marche', command: 'uptime' }, { id: 'disque', label: 'espace disque', command: 'df -h /' }],
     export_modes: ['classic', 'exam'], destructive: ['snapshot_restore', 'snapshot_delete', 'destroy'],
     archives: [{ name: 'fedora-test-export-20261001-classic.tar.gz', size: 4_200_000_000, mtime: 1_790_000_000 }],
   })],
-  ['GET', '/vms-console/jobs', () => ({ jobs })],
+  ['GET', '/vms-console/jobs', () => ({ jobs: jobsView() })],
   ['GET', '/vms-console/:vm/snapshots', ({ params }) => ({ success: true, error: null, snapshots: snaps[params.vm] ?? [] })],
   ['POST', '/vms-console/:vm/snapshots', ({ params, body }) => {
     snaps[params.vm] = [...(snaps[params.vm] ?? []), { name: String((body as { name: string }).name), depth: 0 }]

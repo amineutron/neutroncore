@@ -1,97 +1,123 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { apiGet } from '../lib/api'
+import { confirmDialog, toast } from '../lib/dialog'
 import { usePoll } from '../lib/poll'
-import { useVms } from '../lib/vms'
-import {
-  filterVms, loadFilters, saveFilters, vmName,
-  type Catalogue, type Detail, type Filters, type Job, type SettingsInfo,
-} from '../lib/vmsConsole'
-import { Copies } from '../components/vms/Copies'
-import { Jobs } from '../components/vms/Jobs'
-import { Snapshots } from '../components/vms/Snapshots'
-import { DangerPanel, ExecPanel, SettingsPanel } from '../components/vms/Tools'
-import { VmRow } from '../components/VmRow'
+import { kindOf, type HubVm } from '../lib/vmHub'
+import { powerVm, setTemplate, useJobs, useLibrary, useOverview } from '../lib/vmHubApi'
+import { runningFor, type TaskFilter } from '../lib/vmTasks'
+import type { LibEntry } from '../lib/vmLibrary'
+import type { Catalogue } from '../lib/vmsConsole'
+import { Archives } from '../components/vmhub/Archives'
+import { DeployDialog } from '../components/vmhub/DeployDialog'
+import { KindPill, Legend } from '../components/vmhub/Kind'
+import { Library } from '../components/vmhub/Library'
+import { MachineDetail } from '../components/vmhub/MachineDetail'
+import { Overview } from '../components/vmhub/Overview'
+import { Tasks } from '../components/vmhub/Tasks'
+import { TemplateDialog } from '../components/vmhub/TemplateDialog'
+import { CloneDialog, Templates } from '../components/vmhub/Templates'
 import '../components/ctl.css'
-import { Btn, Card, Chip, Loader, PageTitle } from '../components/ui'
+import '../components/vmhub.css'
+import { Btn, Chip, Loader, PageTitle } from '../components/ui'
 
-type DetailRes = { success: boolean; error: string | null; detail: Detail; settings: SettingsInfo | null }
+type TabId = 'accueil' | 'machines' | 'bibliotheque' | 'modeles' | 'archives' | 'taches'
+type Dlg = { k: 'tpl'; vm: HubVm } | { k: 'deploy'; entry: LibEntry } | { k: 'clone'; vm: HubVm } | null
+const STATE_DOT: Record<string, string> = { running: 'ok', stopped: 'off' }
 
 export function Vms() {
-  const { data, loading, error, refresh } = useVms()
-  const [filters, setFilters] = useState<Filters>(loadFilters)
-  const [sel, setSel] = useState('')
-  const jobs = usePoll<{ jobs: Job[] }>(() => apiGet('/vms-console/jobs'), 3000)
+  const ov = useOverview()
+  const lib = useLibrary()
+  const jobs = useJobs()
   const cat = usePoll<Catalogue>(() => apiGet('/vms-console/catalogue'), 60000)
-  const detail = usePoll<DetailRes>(() => (sel ? apiGet(`/vms-console/${encodeURIComponent(sel)}`) : Promise.resolve({ success: false, error: null, detail: {}, settings: null })), 15000, !!sel)
+  const [tab, setTab] = useState<TabId>('accueil')
+  const [sel, setSel] = useState('')
+  const [deep, setDeep] = useState('apercu')
+  const [dlg, setDlg] = useState<Dlg>(null)
+  const [q, setQ] = useState('')
+  const [taskSel, setTaskSel] = useState('')
+  const [taskFilter, setTaskFilter] = useState<TaskFilter>('toutes')
+  const [just, setJust] = useState<string | null>(null)
 
-  useEffect(() => saveFilters(filters), [filters])
+  const vms = ov.data?.vms ?? []
+  const joblist = jobs.data?.jobs ?? []
+  const running = joblist.filter((j) => j.status === 'running').length
+  const names = vms.map((v) => v.name)
+  const busy = useMemo(() => new Set(joblist.filter((j) => j.status === 'running').map((j) => j.vm)), [joblist])
+  const cur = vms.find((v) => v.name === sel)
 
-  const all = data?.vms ?? []
-  const shown = filterVms(all, filters)
-  const names = all.map(vmName)
-  const cur = all.find((v) => vmName(v) === sel)
-  const busyVm = (jobs.data?.jobs ?? []).some((j) => j.vm === sel && j.status === 'running')
-  const onStarted = () => { jobs.refresh(); setTimeout(() => { refresh(); detail.refresh() }, 3000) }
-  const set = (p: Partial<Filters>) => setFilters((f) => ({ ...f, ...p }))
+  useEffect(() => { if (!just) return; const t = setTimeout(() => setJust(null), 9000); return () => clearTimeout(t) }, [just])
+
+  const refresh = () => { ov.refresh(); jobs.refresh() }
+  const open = (n: string, t = 'apercu') => { const v = vms.find((x) => x.name === n); setSel(n); setDeep(t); setTab(v?.meta.template ? 'modeles' : 'machines') }
+  async function power(n: string, a: 'start' | 'stop') {
+    if (a === 'stop' && !(await confirmDialog({ title: `arrêter ${n} ?`, body: 'Demande d\'arrêt propre envoyée au système.', ok: 'arrêter', danger: true }))) return
+    try { await powerVm(n, a); toast(a === 'start' ? `démarrage de ${n}` : `arrêt de ${n}`); setTimeout(ov.refresh, 3000) } catch (e) { toast(e instanceof Error ? e.message : String(e), 'crit') }
+  }
+  async function untemplate(v: HubVm) {
+    try { await setTemplate(v.name, false); toast(`${v.name} est de nouveau une machine : elle revient dans « machines »`); ov.refresh(); setTab('machines'); setSel(v.name) } catch (e) { toast(e instanceof Error ? e.message : String(e), 'crit') }
+  }
+
+  const act = {
+    open: (n: string) => open(n), console: (n: string) => open(n, 'console'), power, seeVm: (n: string, t?: string) => open(n, t),
+    fromTemplate: (n: string) => { const v = vms.find((x) => x.name === n); if (v) setDlg({ k: 'clone', vm: v }) },
+    deploy: (id: string) => { const e = lib.data?.entries.find((x) => x.id === id); if (e) setDlg({ k: 'deploy', entry: e }) },
+    goLibrary: () => setTab('bibliotheque'), importArchive: () => setTab('archives'), newVm: () => setTab('modeles'),
+  }
+  const shown = vms.filter((v) => !v.meta.template && (!q || v.name.toLowerCase().includes(q.toLowerCase())))
+  const tabs: { id: TabId; label: string; n?: number; live?: boolean; pulse?: boolean }[] = [
+    { id: 'accueil', label: 'accueil' }, { id: 'machines', label: 'machines' }, { id: 'bibliotheque', label: 'bibliothèque' },
+    { id: 'modeles', label: 'modèles', pulse: !!just }, { id: 'archives', label: 'archives', n: ov.data?.archives.length },
+    { id: 'taches', label: 'tâches', n: running || undefined, live: running > 0 },
+  ]
 
   return (
-    <>
-      <PageTitle title="vms" desc="Console des machines virtuelles : état, snapshots, copies, commandes." />
-      <div className="nc-scope nc-stack">
-      <Card title="machines" lite={data ? `${shown.length} / ${all.length}` : undefined}>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
-          {(['all', 'up', 'down'] as const).map((s) => (
-            <Btn key={s} sm solid={filters.state === s} onClick={() => set({ state: s })}>{s === 'all' ? 'toutes' : s === 'up' ? 'allumées' : 'éteintes'}</Btn>
-          ))}
-          <input placeholder="chercher" value={filters.q} onChange={(e) => set({ q: e.target.value })} />
-          <Btn sm onClick={refresh} disabled={loading}>{loading ? '...' : 'actualiser'}</Btn>
-          {data?.stale && <Chip tone="warn">dernier état connu</Chip>}
-        </div>
-        {error && <Chip tone="crit">{error}</Chip>}
-        {!data && <Loader label="lecture des vms (quelques secondes)…" />}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {shown.map((v) => (
-            <Btn key={v.name} sm solid={vmName(v) === sel} onClick={() => setSel(vmName(v))}>
-              {vmName(v)} {v.status === 'up' ? '(allumée)' : ''}
-            </Btn>
-          ))}
-        </div>
-        {data && all.length === 0 && (
-          <p className="lite">
-            aucune vm reçue{data.error ? ` (${data.error})` : data.stale ? ' : le démon lyra ne répond pas encore' : ''}.
-            {' '}Nouvel essai automatique… ou touche « actualiser ».
-          </p>
-        )}
-        {data && all.length > 0 && shown.length === 0 && <p className="lite">aucune vm ne correspond aux filtres</p>}
-      </Card>
+    <div className="vh nc-scope">
+      <PageTitle title="vms" desc="Machines virtuelles : familles, snapshots, bibliothèque d'images, tâches." />
+      <div className="vh-tabs" role="tablist">
+        {tabs.map((t) => (
+          <button key={t.id} role="tab" aria-selected={tab === t.id} className={`${tab === t.id ? 'on' : ''}${t.pulse ? ' pulse' : ''}`} onClick={() => setTab(t.id)}>
+            {t.label}{t.n ? <span className={`cnt${t.live ? ' live' : ''}`}>{t.n}</span> : null}
+          </button>
+        ))}
+      </div>
+      {ov.error && !ov.data && <Chip tone="crit">{ov.error}</Chip>}
+      {!ov.data && !ov.error && <Loader label="lecture des vms (quelques secondes)…" />}
 
-      <Jobs jobs={jobs.data?.jobs ?? []} />
+      {ov.data && tab === 'accueil' && <div className="vh-enter"><Overview ov={ov.data} lib={lib.data?.entries ?? []} busy={busy} act={act} /></div>}
 
-      {!sel && <Card><p className="nc-empty">choisis une vm pour ouvrir sa console</p></Card>}
-      {cur && (
-        <div className="grid g2" style={{ alignItems: 'start' }}>
-          <div className="nc-stack">
-            <Card title={vmName(cur)} lite={detail.data?.detail.state}>
-              <table><tbody><VmRow key={cur.name} vm={cur} onRefresh={() => { refresh(); detail.refresh() }} i={0} /></tbody></table>
-              {detail.data && !detail.data.success && detail.data.error && <Chip tone="crit">{detail.data.error}</Chip>}
-              {detail.data?.success && (
-                <p className="lite mono">
-                  ip {detail.data.detail.ip ?? '-'} - ssh {detail.data.detail.ssh ?? '-'} - {detail.data.detail.snapshot_count ?? 0} snapshot(s)
-                </p>
-              )}
-            </Card>
-            <SettingsPanel vm={sel} up={cur.status !== 'down'} detail={detail.data?.detail ?? {}} info={detail.data?.settings ?? null}
-              onStarted={onStarted} busyVm={busyVm} />
-            <ExecPanel vm={sel} up={cur.status === 'up'} cat={cat.data} onStarted={onStarted} busyVm={busyVm} />
-          </div>
-          <div className="nc-stack">
-            <Snapshots key={sel} vm={sel} onStarted={onStarted} busyVm={busyVm} />
-            <Copies vm={sel} names={names} cat={cat.data} onStarted={onStarted} busyVm={busyVm} />
-            <DangerPanel vm={sel} up={cur.status !== 'down'} onStarted={onStarted} busyVm={busyVm} />
-          </div>
+      {ov.data && tab === 'machines' && (
+        <div className={`vh-enter vh-mgrid${sel ? ' has-sel' : ''}`}>
+          <aside className="nc-stack">
+            <input placeholder="chercher une machine" aria-label="chercher une machine" value={q} onChange={(e) => setQ(e.target.value)} />
+            <Legend kinds={['cow', 'copy', 'own']} />
+            {shown.map((v) => (
+              <button key={v.name} className={`vh-trow${sel === v.name ? ' on' : ''}`} onClick={() => open(v.name)}>
+                <span className={`vm-dot ${STATE_DOT[v.state] ?? 'busy'}`} /><span className="tt mono">{v.name}</span><KindPill kind={kindOf(v)} mini />
+                <span className="tm">{v.vcpus ?? '?'} vcpu · {v.ram_mb ?? '?'} Mo{runningFor(joblist, v.name) ? ' · tâche en cours' : ''}</span>
+              </button>
+            ))}
+            {shown.length === 0 && <div className="vh-empty">aucune machine ne correspond.</div>}
+          </aside>
+          {cur && !cur.meta.template
+            ? <div style={{ minWidth: 0 }}><button className="btn sm vh-back" onClick={() => setSel('')}>← machines</button><MachineDetail key={`${cur.name}-${deep}`} vm={cur} vms={vms} jobs={joblist} names={names} cat={cat.data} onStarted={refresh} onOpen={(n) => open(n)} onRefresh={ov.refresh}
+              onTemplate={(v) => setDlg({ k: 'tpl', vm: v })} onUntemplate={untemplate} initialTab={deep} onOpenTask={(id) => { setTaskSel(id); setTab('taches') }} /></div>
+            : sel ? <div className="vh-empty">cette machine n'est plus dans « machines ».</div> : null}
         </div>
       )}
-      </div>
-    </>
+
+      {tab === 'bibliotheque' && <Library entries={lib.data?.entries ?? []} loading={!lib.data && !lib.error} error={lib.error} dirMissing={lib.data ? !lib.data.images_dir_present : false} onDeploy={(e) => setDlg({ k: 'deploy', entry: e })} />}
+      {ov.data && tab === 'modeles' && (
+        cur?.meta.template
+          ? <div className="vh-enter"><Btn sm onClick={() => setSel('')}>← modèles</Btn><MachineDetail key={cur.name} vm={cur} vms={vms} jobs={joblist} names={names} cat={cat.data} onStarted={refresh} onOpen={(n) => open(n)} onRefresh={ov.refresh}
+            onTemplate={(v) => setDlg({ k: 'tpl', vm: v })} onUntemplate={untemplate} initialTab="apercu" onOpenTask={() => setTab('taches')} /></div>
+          : <Templates vms={vms} just={just} onCreate={(v) => setDlg({ k: 'clone', vm: v })} onOpen={(n) => open(n)} />
+      )}
+      {ov.data && tab === 'archives' && <Archives archives={ov.data.archives} names={names} onImported={refresh} />}
+      {tab === 'taches' && <Tasks jobs={joblist} sel={taskSel} onSel={setTaskSel} filter={taskFilter} onFilter={setTaskFilter} onOpenVm={(n) => open(n)} />}
+
+      {dlg?.k === 'tpl' && <TemplateDialog vm={dlg.vm} onClose={() => setDlg(null)} onDone={() => { setJust(dlg.vm.name); setDlg(null); setSel(''); ov.refresh() }} />}
+      {dlg?.k === 'clone' && <CloneDialog source={dlg.vm} names={names} onClose={() => setDlg(null)} onDone={() => { setDlg(null); refresh(); setTab('taches') }} />}
+      {dlg?.k === 'deploy' && <DeployDialog entry={dlg.entry} names={names} onClose={() => setDlg(null)} onDone={() => { setDlg(null); refresh(); setTab('taches') }} />}
+    </div>
   )
 }
