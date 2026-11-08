@@ -4,9 +4,9 @@ import { COUCHES, type CoucheId } from '../../lib/godeye/modele'
 import type { EtatFlux } from './useFlux'
 
 export type Affichage = { mode: 'globe' | 'plat'; rotation: boolean; jourNuit: boolean; tiroir: Onglet | null }
-export type Onglet = 'fil' | 'filtres' | 'vues' | 'une'
+export type Onglet = 'fil' | 'filtres' | 'vues' | 'une' | 'reglages' | 'zones' | 'chercher' | 'suivis'
 export const ONGLETS: { id: Onglet; nom: string }[] = [
-  { id: 'fil', nom: 'fil' }, { id: 'une', nom: 'à la une' }, { id: 'filtres', nom: 'filtres' }, { id: 'vues', nom: 'vues' },
+  { id: 'chercher', nom: 'chercher' }, { id: 'suivis', nom: 'suivis' }, { id: 'fil', nom: 'fil' },{ id: 'une', nom: 'à la une' }, { id: 'filtres', nom: 'filtres' }, { id: 'vues', nom: 'vues' }, { id: 'zones', nom: 'zones' }, { id: 'reglages', nom: 'réglages' },
 ]
 
 /** Commandes en haut à droite de la scène : mode, rotation, jour et nuit, recentrage, plein écran. */

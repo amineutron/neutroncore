@@ -338,6 +338,73 @@ export const AUTOMATION_CATALOGUE = {
       "type": "gpu_oom",
       "label": "la carte graphique manque de mémoire",
       "params": []
+    },
+    {
+      "type": "godeye",
+      "label": "god eye",
+      "params": [
+        {
+          "name": "quoi",
+          "type": "choice",
+          "choices": [
+            "seisme",
+            "zone",
+            "suivi",
+            "source_en_panne",
+            "resume_du_matin"
+          ]
+        },
+        {
+          "name": "magnitude_min",
+          "type": "int",
+          "min": 0,
+          "max": 9
+        },
+        {
+          "name": "profondeur_max",
+          "type": "int",
+          "min": 0,
+          "max": 800
+        },
+        {
+          "name": "zone",
+          "type": "otext",
+          "max": 40
+        },
+        {
+          "name": "sens",
+          "type": "choice",
+          "choices": [
+            "entree",
+            "sortie",
+            "les_deux"
+          ]
+        },
+        {
+          "name": "type_objet",
+          "type": "choice",
+          "choices": [
+            "tous",
+            "avion",
+            "navire",
+            "satellite"
+          ]
+        },
+        {
+          "name": "suivi",
+          "type": "otext",
+          "max": 40
+        },
+        {
+          "name": "contains",
+          "type": "otext",
+          "max": 60
+        },
+        {
+          "name": "heure",
+          "type": "time"
+        }
+      ]
     }
   ],
   "conditions": [
@@ -494,6 +561,42 @@ export const AUTOMATION_CATALOGUE = {
           "type": "int",
           "min": 0,
           "max": 110
+        }
+      ]
+    },
+    {
+      "type": "godeye",
+      "label": "god eye",
+      "params": [
+        {
+          "name": "quoi",
+          "type": "choice",
+          "choices": [
+            "suivi_dans_zone",
+            "seisme_recent"
+          ]
+        },
+        {
+          "name": "suivi",
+          "type": "otext",
+          "max": 40
+        },
+        {
+          "name": "zone",
+          "type": "otext",
+          "max": 40
+        },
+        {
+          "name": "magnitude_min",
+          "type": "int",
+          "min": 0,
+          "max": 9
+        },
+        {
+          "name": "heures",
+          "type": "int",
+          "min": 1,
+          "max": 48
         }
       ]
     },
@@ -1009,6 +1112,68 @@ export const AUTOMATION_CATALOGUE = {
       "action": "ci.inspect",
       "label": "proposer d'inspecter l'échec de la ci",
       "params": []
+    },
+    {
+      "action": "godeye.suivre",
+      "label": "god eye : suivre un objet",
+      "params": [
+        {
+          "name": "source",
+          "type": "choice",
+          "choices": [
+            "evenement",
+            "id"
+          ]
+        },
+        {
+          "name": "type",
+          "type": "choice",
+          "choices": [
+            "avion",
+            "navire",
+            "satellite"
+          ]
+        },
+        {
+          "name": "id",
+          "type": "otext",
+          "max": 40
+        }
+      ]
+    },
+    {
+      "action": "godeye.zone_activer",
+      "label": "god eye : activer / désactiver une zone",
+      "params": [
+        {
+          "name": "zone",
+          "type": "id"
+        },
+        {
+          "name": "on",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "action": "godeye.notifier_resume",
+      "label": "god eye : envoyer le résumé",
+      "params": [
+        {
+          "name": "heures",
+          "type": "int",
+          "min": 1,
+          "max": 48
+        },
+        {
+          "name": "to",
+          "type": "choice",
+          "choices": [
+            "app",
+            "telephone"
+          ]
+        }
+      ]
     }
   ],
   "variables": [

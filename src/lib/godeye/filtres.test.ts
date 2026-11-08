@@ -11,7 +11,7 @@ const tout = (f: Partial<Filtres['couches']> = {}): Filtres => ({ ...FILTRES_DEF
 
 const avion = (o: Partial<Avion> = {}): Avion => ({
   id: 'a1', indicatif: 'AFR123', immat: 'F-GKXA', type: 'A320', alt: 35_000, sol: false, vitesse: 450, cap: 90,
-  lat: 48, lon: 2, squawk: '1000', urgence: false, militaire: false, ...o,
+  lat: 48, lon: 2, squawk: '1000', urgence: false, militaire: false, helico: false, ...o,
 })
 const donnees = (o: Partial<Donnees> = {}): Donnees => ({ ...DONNEES_VIDES, releveAvions: NOW, releveNavires: NOW, ...o })
 
@@ -21,10 +21,30 @@ describe('lireFiltres', () => {
   })
   it('borne les nombres et ignore les types faux', () => {
     const f = lireFiltres({ seismes: { magMin: 99, profMax: -4, periode: 'an' }, avions: { altMin: 'haut', vitesseMin: 5000 }, evenements: { jours: 400 } })
-    expect(f.seismes).toEqual({ magMin: 8, profMax: 10, periode: 'jour' })
+    expect(f.seismes).toEqual({ magMin: 8, profMax: 10, heures: 24 })
     expect(f.avions.altMin).toBe(0)
     expect(f.avions.vitesseMin).toBe(700)
     expect(f.evenements.jours).toBe(90)
+  })
+  it('reprend la période des vues enregistrées avant les durées libres, et borne la durée', () => {
+    expect(lireFiltres({ seismes: { periode: 'semaine' } }).seismes.heures).toBe(168)
+    expect(lireFiltres({ seismes: { periode: 'jour' } }).seismes.heures).toBe(24)
+    expect(lireFiltres({ seismes: { heures: 6, periode: 'semaine' } }).seismes.heures).toBe(6)   // la durée libre l'emporte
+    expect(lireFiltres({ seismes: { heures: 99999 } }).seismes.heures).toBe(720)
+    expect(lireFiltres({ seismes: { heures: 0 } }).seismes.heures).toBe(1)
+  })
+  it('ne montre que les séismes assez récents par rapport à maintenant', () => {
+    const h = 3_600_000
+    const d = donnees({ seismes: [
+      { id: 'recent', mag: 5, lieu: 'a', lon: 1, lat: 1, prof: 10, t: NOW - 2 * h },
+      { id: 'ancien', mag: 5, lieu: 'b', lon: 2, lat: 2, prof: 10, t: NOW - 30 * h },
+    ] })
+    const f = tout({ avions: false, satellites: false, navires: false, evenements: false, cyber: false })
+    const ids = (heures: number) => appliquer(d, modifier(f, 'seismes', { heures }), ctx).map((o) => o.id).sort()
+    expect(ids(1)).toEqual([])
+    expect(ids(6)).toEqual(['sei:recent'])
+    expect(ids(72)).toEqual(['sei:ancien', 'sei:recent'])
+    expect(resumeFiltres(modifier(f, 'seismes', { heures: 168 }))).toContain('séismes sur 7 jours')
   })
   it("garde altMax >= altMin et écarte les groupes inconnus", () => {
     const f = lireFiltres({ avions: { altMin: 30_000, altMax: 10_000 }, satellites: { groupes: ['gps-ops', 'inconnu'] } })

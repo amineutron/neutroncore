@@ -1,0 +1,30 @@
+.ge-fraicheur{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.ge-fr{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:999px;border:1px solid var(--line);font-size:11.5px;color:var(--muted);max-width:100%}
+.ge-fr i{flex:none;width:8px;height:8px;border-radius:50%;background:#4cd18a}
+.ge-fr b{font-weight:600;color:var(--text)}
+.ge-fr span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ge-fr.warn i{background:#ffb454}.ge-fr.warn{border-color:color-mix(in srgb,#ffb454 45%,var(--line))}
+.ge-fr.crit i{background:#ff5470}.ge-fr.crit{border-color:color-mix(in srgb,#ff5470 55%,var(--line))}
+.ge-fr.perime{opacity:.78}
+.ge-resume{margin:0 0 12px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--surface) 55%,transparent)}
+.ge-resume h3{margin:0 0 6px;font-size:12px;font-weight:600;color:var(--muted)}
+.ge-resume ul{margin:0;padding-left:16px;font-size:13px;line-height:1.5}
+.ge-resume.tele ul{font-size:clamp(18px,2.2vw,30px);padding-left:1.1em}.ge-resume.tele h3{font-size:clamp(14px,1.4vw,20px)}
+.ge-etapes{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.ge-etapes li{display:flex;align-items:center;gap:8px;font-size:12.5px}
+.ge-etapes li span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.ge-etapes button,.ge-etapes-ajout button,.ge-etapes-ajout select{font:inherit;font-size:12px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--text);cursor:pointer}
+.ge-etapes button:disabled,.ge-etapes-ajout button:disabled{opacity:.4;cursor:default}
+.ge-etapes-ajout{display:flex;flex-wrap:wrap;gap:6px}
+@media (pointer:coarse){.ge-etapes button,.ge-etapes-ajout button,.ge-etapes-ajout select{min-height:44px}}
+.ge-tele-barre{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
+.ge-tele-barre button,.ge-tele-barre select{font:inherit;font-size:12.5px;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--text);cursor:pointer}
+.ge-tele-barre button.on{background:rgba(255,212,59,.16);color:#ffd43b;border-color:#ffd43b}
+@media (pointer:coarse){.ge-tele-barre button,.ge-tele-barre select{min-height:44px}}
+.ge-tele-scene{position:relative;height:clamp(320px,56vh,900px);border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#05080f}
+.ge-tele-scene .ge-globe,.ge-tele-scene .ge-plat{position:absolute;inset:0;width:100%;height:100%;aspect-ratio:auto;max-height:none}
+.ge-tele-scene .ge-bandeau{position:absolute;left:10px;right:10px;bottom:10px}
+.ge-tele-resume{position:absolute;left:10px;top:10px;max-width:min(520px,calc(100% - 20px));z-index:5;background:color-mix(in srgb,#05080f 80%,transparent);backdrop-filter:blur(10px)}
+.ge-tele-resume .ge-resume{margin:0;max-height:calc(100% - 70px);overflow:auto}
+.ge-tele-resume .ge-resume.tele ul{font-size:clamp(13px,1.2vw,22px)}
+.ge-tele-resume .ge-resume.tele h3{font-size:clamp(11px,1vw,16px)}

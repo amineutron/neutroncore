@@ -3,11 +3,11 @@ import type { Objet } from './modele'
 import { interet } from './une'
 
 export type ModeVue = 'globe' | 'plat'
-export type OngletId = 'fil' | 'filtres' | 'vues' | 'une'
+export type OngletId = 'fil' | 'filtres' | 'vues' | 'une' | 'reglages' | 'zones'
 export type AffichageStocke = { mode: ModeVue; rotation: boolean; jourNuit: boolean; tiroir: OngletId | null }
 export const CLE_AFFICHAGE = 'neutroncore_godeye_affichage'
 
-const ONGLETS_VALIDES: readonly string[] = ['fil', 'filtres', 'vues', 'une']
+const ONGLETS_VALIDES: readonly string[] = ['fil', 'filtres', 'vues', 'une', 'reglages', 'zones']
 
 /** Relit les réglages d'affichage ; `calme` (préférence « réduire les animations ») coupe la rotation par défaut. */
 export function lireAffichage(brut: string | null, calme = false): AffichageStocke {

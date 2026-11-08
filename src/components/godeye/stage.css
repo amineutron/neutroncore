@@ -43,7 +43,7 @@
 .ge-tog.on .ge-led{background:#3ddc97;box-shadow:0 0 8px #3ddc97}
 .ge-tiroir{position:absolute;right:14px;top:66px;bottom:62px;width:min(410px,calc(100% - 28px));border-radius:16px;display:flex;flex-direction:column;overflow:hidden;background:rgba(8,14,28,.82)}
 .ge-tiroir-tete{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--ge-bord)}
-.ge-onglets{display:flex;gap:2px;flex:1;overflow-x:auto}
+.ge-onglets{display:flex;flex-wrap:wrap;gap:2px;flex:1}
 .ge-onglets button{all:unset;box-sizing:border-box;padding:7px 11px;border-radius:9px;font-size:12.5px;color:var(--ge-doux);cursor:pointer;white-space:nowrap}
 .ge-onglets button.on{background:rgba(255,212,59,.16);color:#ffd43b}
 .ge-x{all:unset;font-size:11.5px;color:var(--ge-doux);cursor:pointer;padding:6px}
@@ -131,7 +131,26 @@
   .ge-etiq-c{width:160px}
 }
 @media (pointer:coarse){.ge-rail-l,.ge-tog,.ge-seg button,.ge-onglets button{min-height:40px}}
+
+/* plein ecran : les commandes restent dans la zone sure (camera frontale, encoche, barre de gestes). Sur un ecran tactile on
+   garde au moins 30 px en haut : en plein ecran navigateur ou immersif, env(safe-area-inset-top) vaut souvent 0 alors que le
+   trou de la camera est bien la. */
+.ge-stage.plein{--ge-haut:env(safe-area-inset-top,0px);--ge-gauche:env(safe-area-inset-left,0px);--ge-droite:env(safe-area-inset-right,0px);--ge-bas:env(safe-area-inset-bottom,0px)}
+@media (pointer:coarse){.ge-stage.plein{--ge-haut:max(env(safe-area-inset-top,0px),30px)}}
+.ge-stage.plein .ge-rail{top:calc(14px + var(--ge-haut));left:calc(14px + var(--ge-gauche))}
+.ge-stage.plein .ge-barre{top:calc(14px + var(--ge-haut));right:calc(14px + var(--ge-droite))}
+.ge-stage.plein .ge-tiroir{top:calc(66px + var(--ge-haut));right:calc(14px + var(--ge-droite));bottom:calc(62px + var(--ge-bas))}
+.ge-stage.plein .ge-bandeau{left:calc(14px + var(--ge-gauche));right:calc(14px + var(--ge-droite));bottom:calc(12px + var(--ge-bas))}
+.ge-stage.plein .ge-zoom{right:calc(14px + var(--ge-droite));bottom:calc(62px + var(--ge-bas))}
+@media (max-width:700px){
+  .ge-stage.plein .ge-rail{top:calc(10px + var(--ge-haut));left:calc(10px + var(--ge-gauche));right:calc(10px + var(--ge-droite))}
+  .ge-stage.plein .ge-barre{top:calc(56px + var(--ge-haut));left:calc(10px + var(--ge-gauche));right:calc(10px + var(--ge-droite))}
+  .ge-stage.plein .ge-tiroir{top:42%;left:calc(10px + var(--ge-gauche));right:calc(10px + var(--ge-droite));bottom:calc(54px + var(--ge-bas))}
+  .ge-stage.plein .ge-detail{left:calc(10px + var(--ge-gauche));bottom:calc(54px + var(--ge-bas))}
+  .ge-stage.plein .ge-bandeau{left:calc(10px + var(--ge-gauche));right:calc(10px + var(--ge-droite));bottom:calc(10px + var(--ge-bas))}
+}
 @media (prefers-reduced-motion:reduce){
   .ge-bandeau-defile{animation:none}.ge-bandeau-piste{overflow-x:auto;mask-image:none}.ge-bandeau-lot[aria-hidden=true]{display:none}
   .ge-etiq-c{transition:none}
 }
+.ge-sw-p{display:inline-block;margin-right:6px;vertical-align:-3px;line-height:0}

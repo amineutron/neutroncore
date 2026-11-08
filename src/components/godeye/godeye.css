@@ -60,6 +60,26 @@
 .ge-puce:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
 .ge-note{margin:0;font-size:11.5px;color:var(--faint);line-height:1.45}
 .ge-note.err{color:var(--rose)}
+
+/* panneau reglages : sections depliables (details natif) */
+.ge-reglages{display:flex;flex-direction:column;gap:10px}
+.ge-section{border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--surface) 55%,transparent)}
+.ge-section>summary{list-style:none;cursor:pointer;display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:12px}
+.ge-section>summary::-webkit-details-marker{display:none}
+.ge-section>summary::before{content:"";flex:none;width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);transition:transform .15s;align-self:center;margin-right:2px}
+.ge-section[open]>summary::before{transform:rotate(45deg)}
+.ge-section>summary:focus-visible{outline:2px solid var(--gold);outline-offset:-2px}
+.ge-section-t{flex:1;font-size:13px;font-weight:600}
+.ge-section-r{font-size:11.5px;color:var(--faint)}
+.ge-section-c{display:flex;flex-direction:column;gap:10px;padding:2px 12px 12px}
+.ge-element{display:flex;flex-direction:column;gap:2px}
+.ge-element-a{font-size:11.5px;color:var(--faint);margin-left:24px;line-height:1.4}
+.ge-lien{all:unset;align-self:flex-start;font-size:12px;color:var(--muted);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.ge-lien:hover{color:var(--gold)}
+.ge-lien:disabled{opacity:.4;cursor:default;text-decoration:none}
+.ge-lien:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.ge-section>summary::before{transition:none}}
+@media (pointer:coarse){.ge-section>summary{min-height:44px;align-items:center}.ge-lien{min-height:40px;display:inline-flex;align-items:center}}
 .ge-global{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);margin-top:6px;padding-top:10px}
 .ge-recherche{display:grid;grid-template-columns:110px 1fr;gap:10px;align-items:center;font-size:12.5px}
 .ge-vues{display:flex;flex-direction:column;gap:10px}
@@ -96,3 +116,26 @@
   .ge-grille{grid-template-columns:1fr}
 }
 @media (pointer:coarse){.ge-plier,.ge-vue-x{min-height:44px;display:inline-flex;align-items:center}.ge-puce{min-height:40px;display:inline-flex;align-items:center}}
+
+/* profils : prêts (pastilles à pictogramme) et personnels (3 emplacements nom + icône) */
+.ge-sous-titre{margin:6px 0 0;font-size:11px;letter-spacing:.06em;color:var(--faint);font-weight:600}
+.ge-picto{flex:none;display:block}
+.ge-profils-prets{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+.ge-profils-prets button{all:unset;box-sizing:border-box;width:100%;display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;font-size:12.5px;cursor:pointer}
+.ge-profils-prets button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ge-profils-prets button:hover,.ge-profils-prets button.on{border-color:var(--gold);color:var(--gold)}
+.ge-profils-prets button:focus-visible,.ge-profil-ico:focus-visible,.ge-profil-icones button:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+.ge-profils{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.ge-profil{border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:8px}
+.ge-profil.on{border-color:var(--gold);background:color-mix(in srgb,var(--gold) 8%,transparent)}
+.ge-profil.libre{border-style:dashed}
+.ge-profil-tete{display:flex;gap:8px;align-items:center}
+.ge-profil-tete input{flex:1;min-width:0}
+.ge-profil-ico{all:unset;box-sizing:border-box;width:36px;height:36px;display:grid;place-items:center;border:1px solid var(--line);border-radius:50%;cursor:pointer;color:var(--gold)}
+.ge-profil-ico:hover,.ge-profil-ico[aria-expanded=true]{border-color:var(--gold)}
+.ge-profil-icones{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:4px}
+.ge-profil-icones button{all:unset;box-sizing:border-box;height:36px;display:grid;place-items:center;border:1px solid var(--line);border-radius:8px;cursor:pointer}
+.ge-profil-icones button:hover,.ge-profil-icones button.on{border-color:var(--gold);color:var(--gold)}
+.ge-profil-actions{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.ge-libres summary{cursor:pointer;font-size:12px;color:var(--faint);padding:4px 0}
+@media (pointer:coarse){.ge-profil-ico,.ge-profil-icones button{min-height:44px;min-width:44px}.ge-profils-prets button{min-height:44px}}

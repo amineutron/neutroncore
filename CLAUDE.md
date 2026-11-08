@@ -1194,3 +1194,91 @@ Non commite. Ecran lumiere, bloc avance « mixer des scenes » (`components/lumi
   cours d'edition est montre dans la piece 3d sans rien envoyer aux lampes ; pour les lampes : enregistrer puis « jouer ».
   Les mix ne sont pas (encore) retenus dans un set enregistre, ni jouables depuis un set ou un moment.
 - Mode demo : `src/mock/data/lumiere.ts` retient les mix en memoire (PUT/DELETE, nettoyage a la suppression d'une scene).
+
+## Regles d'affichage telephone : plein ecran et encoche (2026-11-07, valide sur Pixel 9 Pro)
+Non commite. Regle de conception a appliquer a TOUT ecran qui passe en plein ecran sur telephone.
+- **Probleme** : en plein ecran la barre du haut (filtres, boutons) se retrouvait sous l'encoche de la
+  camera et sous la barre d'etat, donc inatteignable ou masquee.
+- **Regle** : tout element colle au bord haut d'un calque plein ecran est decale par
+  `env(safe-area-inset-top)` AVEC UN MINIMUM de 30 px sur ecran tactile (`pointer: coarse`) :
+  `max(env(safe-area-inset-top), 30px)`. Le minimum sert de filet : en mode
+  immersif (Capacitor) `env()` peut renvoyer 0 alors que l'encoche est bien la. Meme principe pour les bords
+  bas, gauche et droite (`env(safe-area-inset-*)`), sans minimum.
+- **Ou** : bloc plein ecran de `src/components/godeye/stage.css` (valeur ajustable a un seul endroit).
+  Un nouvel ecran plein ecran reprend ce bloc, il n'invente pas son propre decalage.
+- **Verification** : a 390 px de large en mode demo, puis sur le vrai telephone ; l'emulation du
+  navigateur ne reproduit pas l'encoche.
+
+## God Eye : decisions du 2026-11-07 (a realiser, par lots)
+Non commite. Reponses de l'utilisateur a la liste d'ameliorations ; ce qui est refuse est note pour ne pas
+le reproposer.
+- **Oui** : age de position des satellites (traînee visible en permanence) ; pour avions et navires,
+  uniquement sur selection ; pastilles de fraicheur par couche ; repli sur le dernier etat connu par source ;
+  historique 24-48 h, duree reglable dans « reglages » ; regroupement (clusters) ; etiquettes sans
+  chevauchement ; cadre de nuit ; reglage du quadrillage ; texture du globe cochable ; vue type satellite ;
+  recherche sur tous les elements et evenements, avec filtre ; fiche detail ; suivi ; marquer un navire, un
+  avion ou un satellite pour enregistrer sa position a partir de maintenant (plusieurs a la fois) ; zones
+  surveillees (attention au cout sur telephone) ; automatisations en module complet avec tous leurs
+  parametres ; bandeau tele actif par DEFAUT ; source god eye pour la tele (plan, rotation de la terre ou zone
+  precise) ; rotation automatique ; resume du matin ; reglages cote serveur ; decoupage du code ; tests de
+  rendu ; cache hors ligne ; documentation.
+- **Non** (ne pas reproposer) : raccourcis tactiles, vues enregistrees avec camera, seuils d'alerte,
+  mode sans interaction. Navires du monde entier (AISStream) refuses aussi : ils restent Baltique seule.
+
+## God Eye : architecture (2026-11-08)
+Non commite (branche `worktree-s1107-150609`). Tout le front est dans `src/components/godeye/` (composants) et
+`src/lib/godeye/` (logique PURE, testee) ; l'ecran est `src/screens/Worldmonitor.tsx` (qui ne fait que cabler).
+Backend : `routers/godeye*.py` et `lib/godeye_*.py` dans lyra-control-api. Demo : `src/mock/data/godeye*.ts`.
+- **Rendu** : carte plate canvas 2D (`CarteGodEye.tsx`, projection equirectangulaire `projeter`) et globe three.js
+  (`GlobeGodEye.tsx` + `lib/globeScene.ts`) avec un calque 2D par-dessus. Fond Natural Earth 50 m (`world-atlas`,
+  decodeur maison `lib/godeye/fond.ts`, charge a la demande, repli 110 m). Zoom amorti (rAF, espace log, ancre fixe).
+  Plein ecran telephone : voir la regle « encoche » plus haut.
+- **Carte** : regroupement par cases de 46 px (`amas.ts`, actif sous le zoom 6 et a partir de 40 objets) ; cadre de
+  nuit (`nuit.ts`, soleil reel + terminateur, voile sur carte ET globe) ; apparence (`apparence.ts` : pas du
+  quadrillage auto/10/15/30, equateur et tropiques, palettes normale/satellite/fond uni, relief procedural
+  `relief.ts` sans reseau) ; options `elements` ajoutees : regroupement, nuit, texture (vrai par defaut),
+  satellite (faux). Les reglages de quadrillage vivent dans `carteStore.ts` (localStorage
+  `neutroncore_godeye_carte`) et NE sont PAS synchronises avec le serveur. Etiquettes : `placerEtiquettes` (globe.ts).
+- **Exploration** : onglets `chercher` (`recherche.ts`, accents ignores, seulement ce qui est charge), `suivis`,
+  fiche detail (`Fiche.tsx`, feuille basse sur telephone, `fiche.ts`), « garder au centre » (s'arrete au premier
+  geste). Marquer = `POST /godeye/suivis {id,type,nom}` avec l'id BRUT (ICAO, MMSI, NORAD) ; le serveur echantillonne
+  toutes les 60 s (20 suivis, 2000 points). Traînees (`trace.ts`, `dessinTraces.ts`) : satellites en permanence
+  (40 min, depuis les elements orbitaux), avions et navires seulement selectionnes (positions relevees par le navigateur).
+- **Zones** : `zones.ts` (validation = memes bornes que le serveur, haversine, antimeridien), `useZones.ts`
+  (`useZonesSurveillees`, UNE lecture au montage, aucun poll), `Zones.tsx`, `ZoneEditeur.tsx`, `dessinZones.ts`
+  (polygones memoises). Centre = bouton « placer au centre de la vue » ou saisie lat/lon (pas de toucher sur la carte :
+  le globe n'a pas de projection inverse). La rotation lit les memes zones (`lireZones(zonesEtat.zones)`).
+- **Fiabilite** : `fraicheur.ts` + `Fraicheur.tsx` (vert / orange en retard ou copie gardee / rouge en panne), repli
+  par source (`cache.ts` : dernier etat en localStorage, 48 h, plafonds, ecriture <= 1/20 s, jamais bloquant ; la
+  couche n'est jamais effacee), `historique.ts` (GET /godeye/historique seulement si une source echoue ou si la
+  duree depasse 24 h). Service worker de la PWA inchange (coque `/app/` ; le fond 50 m est dans le bundle JS).
+- **Reglages cote serveur** (`reglagesServeur.ts`, `useAvance.tsx`) : elements, filtres, historique_heures et
+  rotation <-> GET/PUT /godeye/reglages. Le serveur GAGNE a l'ouverture (ses parties vides gardent la version locale,
+  qui lui est envoyee) ; ecriture differee 1,5 s ; RIEN n'est ecrit tant que la lecture n'a pas reussi. localStorage
+  reste le repli hors ligne. Rotation automatique (`rotation.ts`) : pause 30 s apres un geste ou si un objet est selectionne.
+- **Telephone/tele** : source tele `godeye` (`GodEyeTele.tsx`, `tele.ts`) en trois modes : plan, rotation (globe qui
+  tourne seul), zone (reglage `neutroncore_tv_godeye`), desactivee par defaut dans la mise en page tele ; bandeau
+  actif par defaut ; resume du matin (`Resume.tsx`, GET /godeye/resume).
+- **Backend** (`/godeye/*`) : `reglages`, `suivis` (POST/GET/DELETE), `zones` (PUT `{id|new}`, DELETE avec jeton
+  `godeye_zone_supprimer`), `historique?heures=1..48` (USGS + EONET relus au plus toutes les 5 min, 48 h retenues),
+  `resume`, `fraicheur` (+ `POST /fraicheur` pour que le navigateur signale les couches qu'il lit lui-meme) ; les flux
+  existants gagnent `perime` et `age_s` (dernier etat bon rendu quand la source tombe). Etat dans `$NEUTRONCORE_STATE`
+  (`godeye_reglages|suivis|zones|historique|journal.json`).
+- **Moteur** (`routers/godeye_moteur.py`, tache du lifespan, une passe par minute, demarre 20 s apres l'API) : cout
+  NUL sans suivi, sans zone active et sans automatisation God Eye. Echantillonne les suivis, evalue les zones
+  (anti-rebond de 2 releves ; le premier releve adopte l'etat sans rien annoncer), detecte les nouveaux seismes, les
+  sources en panne, envoie le resume du matin. Les zones surveillent avions (cercles adsb), navires (Baltique) et seismes ;
+  un satellite n'entre en zone que s'il est suivi. Propagateur de satellite maison (`lib/godeye_orbite.py`, Kepler + J2,
+  a quelques dizaines de km pres) : `sgp4` n'est pas installe dans le `.venv`.
+- **Automatisations** : declencheur `godeye` (`quoi` = seisme | zone | suivi | source_en_panne | resume_du_matin ;
+  `magnitude_min`, `profondeur_max` (0 = sans limite), `zone`, `sens`, `type_objet`, `suivi`, `contains`, `heure`),
+  condition `godeye` (`suivi_dans_zone`, `seisme_recent` ; etat inconnu = aucune branche), actions `godeye.suivre`,
+  `godeye.zone_activer`, `godeye.notifier_resume`. `ref` d'un objet = `avion:3c6444`. Logique pure `lib/godeye_auto.py`.
+  Dans l'editeur, `zone` et `suivi` sont des champs texte libres (pas encore des listes deroulantes).
+- **Pieges** : (1) un seul hook lit `/godeye/zones` dans Worldmonitor ; `useListeZones` (useAvance.tsx) ne sert plus
+  qu'a la source tele. (2) Pas de `npm run build` dans le worktree vers `dist/` directement : build vers un dossier
+  temporaire puis rsync. (3) La barre d'onglets du panneau (8 entrees) passe sur deux lignes (`flex-wrap`), elle
+  ne defile plus : les deux derniers onglets etaient invisibles.
+- **Non verifie en reel** : flux live (USGS, EONET, CelesTrak, adsb.lol `/v2/hex`, Digitraffic), trace des satellites
+  et polyligne des objets marques a l'ecran, regroupement visuel (la demo a moins de 40 objets), rotation automatique,
+  synchro serveur bout en bout, cache apres rechargement hors ligne, mode « zone » de la tele avec une vraie zone.

@@ -1,11 +1,11 @@
 // God Eye : adresses des flux et lecture de leurs réponses (tout ce qui est inattendu est ignoré, jamais d'exception).
-import { THEMES, type Avion, type Evenement, type Faille, type GroupeSat, type Info, type Marche, type Navire, type SourceInfo } from './modele'
+import { THEMES, type AlerteGdacs, type Avion, type Evenement, type Faille, type GroupeSat, type Info, type Marche, type Navire, type SourceInfo } from './modele'
 
 export const URL_EONET = (jours: number): string =>
   `https://eonet.gsfc.nasa.gov/api/v3/events?status=open&days=${Math.round(Math.min(90, Math.max(1, jours)))}&limit=400`
 export const URL_CELESTRAK = (groupe: GroupeSat): string =>
   `https://celestrak.org/NORAD/elements/gp.php?GROUP=${encodeURIComponent(groupe)}&FORMAT=tle`
-export const MAX_PAR_GROUPE: Partial<Record<GroupeSat, number>> = { starlink: 600, geo: 400 }
+export const MAX_PAR_GROUPE: Partial<Record<GroupeSat, number>> = { starlink: 600, geo: 400, oneweb: 400 }
 
 const nb = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
 const bonnePosition = (lon: number | null, lat: number | null): lon is number => lon !== null && lat !== null && Math.abs(lat) <= 90 && Math.abs(lon) <= 180
@@ -38,6 +38,58 @@ export function lireEonet(brut: unknown): Evenement[] {
   return sortie
 }
 
+// ----------------------------------------------------------------------------- GDACS (alertes officielles ONU / Commission européenne)
+
+const GDACS = 'https://www.gdacs.org/gdacsapi/api/events/geteventlist/SEARCH'
+const GDACS_CATEGORIE: Record<string, string> = { TC: 'severeStorms', FL: 'floods', VO: 'volcanoes', DR: 'drought', WF: 'wildfires' }
+const GDACS_NIVEAU: Record<string, AlerteGdacs> = { green: 'verte', orange: 'orange', red: 'rouge' }
+const jour = (ms: number): string => new Date(ms).toISOString().slice(0, 10)
+
+/**
+ * Deux requêtes : tout sauf les incendies à tous les niveaux (cyclones en cours, crues, volcans, sécheresses), puis les incendies
+ * seulement orange ou rouge (les « verts » sont des centaines de petits feux). Les séismes viennent déjà de l'USGS.
+ */
+export function urlsGdacs(maintenant: number, jours: number): [string, string] {
+  const j = Math.round(Math.min(90, Math.max(1, jours)))
+  const dates = `fromdate=${jour(maintenant - j * 86_400_000)}&todate=${jour(maintenant)}`
+  return [`${GDACS}?eventlist=TC;FL;VO;DR&alertlevel=Green;Orange;Red&${dates}`, `${GDACS}?eventlist=WF&alertlevel=Orange;Red&${dates}`]
+}
+
+/** Date GDACS sans fuseau (« 2026-11-07T14:05:55 ») = UTC. */
+const dateGdacs = (v: unknown): number => (typeof v === 'string' ? Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.test(v) ? v : `${v}Z`) : NaN)
+
+export function lireGdacs(brut: unknown): Evenement[] {
+  const liste = (brut as { features?: unknown } | null)?.features
+  if (!Array.isArray(liste)) return []
+  const sortie: Evenement[] = []
+  for (const f of liste as Record<string, unknown>[]) {
+    const p = (f?.properties ?? null) as Record<string, unknown> | null
+    const c = (f?.geometry as { coordinates?: unknown } | null)?.coordinates
+    const cat = typeof p?.eventtype === 'string' ? GDACS_CATEGORIE[p.eventtype] : undefined
+    if (!p || !cat || !Array.isArray(c) || typeof p.name !== 'string' || (typeof p.eventid !== 'number' && typeof p.eventid !== 'string')) continue
+    const lon = nb(c[0]), lat = nb(c[1]), t = dateGdacs(p.datemodified ?? p.todate ?? p.fromdate)
+    if (!bonnePosition(lon, lat) || !Number.isFinite(t)) continue
+    const lien = (p.url as { report?: unknown } | undefined)?.report
+    sortie.push({
+      id: `gdacs:${String(p.eventtype)}:${String(p.eventid)}`, titre: p.name.slice(0, 140), categorie: cat, lon, lat: lat as number, t,
+      lien: typeof lien === 'string' && /^https:\/\//.test(lien) ? lien : '', alerte: GDACS_NIVEAU[String(p.alertlevel).toLowerCase()] ?? 'verte', source: 'gdacs',
+      pays: typeof p.country === 'string' ? p.country.slice(0, 60) : undefined,
+    })
+  }
+  return sortie
+}
+
+const km = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const r = Math.PI / 180, a = Math.sin(((lat2 - lat1) * r) / 2) ** 2 + Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin(((lon2 - lon1) * r) / 2) ** 2
+  return 12_742 * Math.asin(Math.min(1, Math.sqrt(a)))
+}
+
+/** NASA + GDACS sans doublon : un événement NASA de même catégorie, à moins de 400 km et 6 jours d'un GDACS lui cède la place. */
+export function fusionnerEvenements(eonet: readonly Evenement[], gdacs: readonly Evenement[]): Evenement[] {
+  const proche = (e: Evenement): boolean => gdacs.some((g) => g.categorie === e.categorie && Math.abs(g.t - e.t) <= 6 * 86_400_000 && km(g.lat, g.lon, e.lat, e.lon) <= 400)
+  return [...eonet.filter((e) => !proche(e)), ...gdacs]
+}
+
 const COUPLE = (v: unknown): boolean => typeof v === 'number' && Number.isFinite(v)
 
 /** Réponse de GET /godeye/avions (déjà nettoyée côté API) : on revérifie les types avant de s'en servir. */
@@ -48,7 +100,7 @@ export function lireAvionsApi(brut: unknown): Avion[] {
     .map((a) => ({
       id: a.id as string, indicatif: String(a.indicatif ?? ''), immat: String(a.immat ?? ''), type: String(a.type ?? ''),
       alt: a.alt as number, sol: a.sol === true, vitesse: a.vitesse as number, cap: a.cap as number,
-      lat: a.lat as number, lon: a.lon as number, squawk: String(a.squawk ?? ''), urgence: a.urgence === true, militaire: a.militaire === true,
+      lat: a.lat as number, lon: a.lon as number, squawk: String(a.squawk ?? ''), urgence: a.urgence === true, militaire: a.militaire === true, helico: a.helico === true,
     }))
 }
 

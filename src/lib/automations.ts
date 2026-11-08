@@ -77,6 +77,12 @@ const CHOICES: Record<string, Record<string, string>> = {
   source: { hdmi1: 'hdmi 1', hdmi2: 'hdmi 2', hdmi3: 'hdmi 3', hdmi4: 'hdmi 4' },
   screen: { tele: 'le tableau du mode télé', accueil: 'l’accueil', atelier: 'l’atelier 3d', taches: 'les tâches', lanceur: 'le lanceur', agenda: 'l’agenda' },
   level: { any: 'tous niveaux', warn: 'avertissement', crit: 'critique' },
+  quoi: { seisme: 'un séisme', zone: 'une zone', suivi: 'un objet suivi', source_en_panne: 'une source en panne', resume_du_matin: 'le résumé du matin',
+    suivi_dans_zone: 'un objet suivi est dans une zone', seisme_recent: 'un séisme récent' },
+  sens: { entree: 'entrée', sortie: 'sortie', les_deux: 'entrée ou sortie' },
+  type_objet: { tous: 'tous les objets', avion: 'avion', navire: 'navire', satellite: 'satellite' },
+  type: { avion: 'avion', navire: 'navire', satellite: 'satellite' },
+  to: { app: 'dans l’app', telephone: 'sur le téléphone' },
   op: { above: 'au-dessus de', below: 'en dessous de' },
   category: { any: 'toutes catégories', perso: 'perso', systeme: 'système', sauvegardes: 'sauvegardes' },
   mode: { FOLLOW_VIDEO: 'vidéo', FOLLOW_AUDIO: 'audio', LOUNGE_LIGHT: 'lounge', OFF: 'éteint' },
@@ -116,6 +122,28 @@ export function daysLabel(days: number[]): string {
 export const isRoutine = (a: { trigger: Block }) => a.trigger.type === 'manual'
 const filter = (p: Block['params']) => (String(p.contains ?? '').trim() ? ` contenant « ${p.contains} »` : '')
 
+const senseTexte = (s: unknown) => (s === 'entree' ? 'entre dans' : s === 'sortie' ? 'sort de' : 'entre dans ou sort de')
+
+/** Module God Eye : séisme, zone, suivi, source en panne, résumé du matin. */
+function describeGodeyeTrigger(p: Block['params']): string {
+  const zone = String(p.zone ?? '').trim() ? `la zone « ${p.zone} »` : 'une zone'
+  switch (p.quoi) {
+    case 'seisme': {
+      const prof = Number(p.profondeur_max) > 0 ? ` à moins de ${p.profondeur_max} km de profondeur` : ''
+      const lieu = String(p.zone ?? '').trim() ? ` dans la zone « ${p.zone} »` : ''
+      return `quand un séisme${filter(p)} de magnitude ${Number(p.magnitude_min) > 0 ? `${p.magnitude_min} ou plus` : 'quelconque'}${prof}${lieu} est détecté`
+    }
+    case 'zone': {
+      const objet = p.type_objet && p.type_objet !== 'tous' ? choiceLabel('type_objet', String(p.type_objet)) : 'un objet'
+      return `quand ${objet}${filter(p)} ${senseTexte(p.sens)} ${zone}`
+    }
+    case 'suivi': return `quand ${String(p.suivi ?? '').trim() ? `l’objet suivi « ${p.suivi} »` : 'un objet suivi'} ${senseTexte(p.sens)} ${zone}`
+    case 'source_en_panne': return 'quand une source god eye tombe en panne'
+    case 'resume_du_matin': return `chaque jour à ${p.heure || '07:30'}, pour le résumé du matin god eye`
+    default: return 'god eye'
+  }
+}
+
 /** « à 07:30 en semaine », « quand une alerte disque apparaît »… */
 export function describeTrigger(t: Block): string {
   const p = t.params
@@ -148,6 +176,7 @@ export function describeTrigger(t: Block): string {
       return `quand un conteneur docker${filter(p)} ${quoi}${p.code === 'tous' || p.state === 'unhealthy' ? '' : ' (arrêt sur erreur)'}`
     }
     case 'gpu_oom': return 'quand la carte graphique manque de mémoire'
+    case 'godeye': return describeGodeyeTrigger(p)
     default: return t.type
   }
 }
@@ -166,6 +195,11 @@ function conditionText(c: Block): string {
     case 'resource': return `${METRIC[String(p.metric)] ?? p.metric} ${p.op === 'above' ? 'au-dessus de' : 'en dessous de'} ${p.value}${unit(p.metric)}`
     case 'presence': return p.state === 'away' ? 'tu es absent (écrans du pc éteints)' : 'tu es là (un écran du pc allumé)'
     case 'idle': return p.state === 'idle' ? `ni clavier ni souris depuis ${duree(p.minutes)}` : `clavier ou souris touchés dans les ${duree(p.minutes)} dernières`
+    case 'godeye': {
+      if (p.quoi === 'seisme_recent') return `un séisme de magnitude ${p.magnitude_min} ou plus a eu lieu dans les ${p.heures} dernières heures`
+      const qui = String(p.suivi ?? '').trim() ? `l’objet suivi « ${p.suivi} »` : 'un objet suivi'
+      return `${qui} est dans ${String(p.zone ?? '').trim() ? `la zone « ${p.zone} »` : 'une zone surveillée'}`
+    }
     default: return c.type
   }
 }
@@ -196,6 +230,9 @@ export function describeAction(step: Step, catalogue: ActionSpec[], names: Names
       case 'vm.start': return `démarrer la vm ${p.vm || '…'}`
       case 'bt.connect': return `reconnecter ${names[`bt:${p.device}`] ?? (p.device || 'un appareil bluetooth')}`
       case 'ci.inspect': return 'proposer d’ouvrir une session claude pour inspecter l’échec'
+      case 'godeye.suivre': return p.source === 'evenement' ? 'god eye : suivre l’objet de l’événement' : `god eye : suivre ${choiceLabel('type', String(p.type))} ${p.id || '…'}`
+      case 'godeye.zone_activer': return `god eye : ${p.on ? 'activer' : 'désactiver'} la zone « ${p.zone || '…'} »`
+      case 'godeye.notifier_resume': return `god eye : envoyer le résumé des ${p.heures} dernières heures ${choiceLabel('to', String(p.to))}`
       default: return describeStep(step, catalogue, names)
     }
   })()
@@ -279,6 +316,9 @@ export function draftError(raw: AutomationDraft): string {
   if (all.some((s) => s.action === 'bt.connect' && !s.params.device)) return 'choisis l’appareil bluetooth'
   if (all.some((s) => s.action === 'ci.inspect') && d.trigger.type !== 'ci') return '« inspecter l’échec » ne sert qu’avec le déclencheur « la ci github se termine »'
   if (all.some((s) => s.action === 'docker.restart' && s.params.name === 'trigger') && d.trigger.type !== 'docker') return '« le conteneur qui vient de tomber » demande le déclencheur « un conteneur docker tombe »'
+  if (all.some((s) => s.action === 'godeye.suivre' && s.params.source === 'id' && !String(s.params.id ?? '').trim())) return 'god eye : indique l’identifiant de l’objet à suivre'
+  if (all.some((s) => s.action === 'godeye.suivre' && s.params.source === 'evenement') && !(d.trigger.type === 'godeye' && ['zone', 'suivi'].includes(String(d.trigger.params.quoi)))) return '« suivre l’objet de l’événement » demande le déclencheur god eye « zone » ou « suivi »'
+  if (all.some((s) => s.action === 'godeye.zone_activer' && !String(s.params.zone ?? '').trim())) return 'god eye : indique la zone à activer ou désactiver'
   if (d.trigger.type === 'event' && !/^[A-Za-z0-9_-]{1,64}$/.test(String(d.trigger.params.name ?? ''))) return 'nom de l’événement : lettres, chiffres, tirets, sans espace'
   const days = [d.trigger, ...d.conditions].some((b) => Array.isArray(b.params.days) && b.params.days.length === 0)
   if (days) return 'choisis au moins un jour'
@@ -296,7 +336,7 @@ const TRIGGER_SHORT: Record<string, string> = {
   manual: 'à la main', time: 'heure prévue', interval: 'intervalle', alert: 'alerte', resource: 'ressource', download_done: 'téléchargement',
   request: 'demande', agenda: 'agenda', session: 'session claude', service: 'service', tv: 'tv', lights: 'lumières', event: 'événement externe', startup: 'démarrage',
   atelier: 'atelier 3d', session_stuck: 'session immobile', idle: 'inactivité', back: 'retour', ci: 'ci github', docker: 'conteneur docker',
-  gpu_oom: 'carte graphique',
+  gpu_oom: 'carte graphique', godeye: 'god eye',
 }
 export function triggerLabel(trigger: string): string {
   return TRIGGER_SHORT[trigger] ?? trigger
