@@ -106,7 +106,7 @@ export function Vms() {
         </div>
       )}
 
-      {tab === 'bibliotheque' && <Library entries={lib.data?.entries ?? []} loading={!lib.data && !lib.error} error={lib.error} dirMissing={lib.data ? !lib.data.images_dir_present : false} onDeploy={(e) => setDlg({ k: 'deploy', entry: e })} />}
+      {tab === 'bibliotheque' && <Library entries={lib.data?.entries ?? []} loading={!lib.data && !lib.error} error={lib.error} dirMissing={lib.data ? !lib.data.images_dir_present : false} creationReason={lib.data?.creation_tool === false ? lib.data.creation_reason || 'l\'outil de création de machines n\'est pas disponible' : undefined} onDeploy={(e) => setDlg({ k: 'deploy', entry: e })} />}
       {ov.data && tab === 'modeles' && (
         cur?.meta.template
           ? <div className="vh-enter"><Btn sm onClick={() => setSel('')}>← modèles</Btn><MachineDetail key={cur.name} vm={cur} vms={vms} jobs={joblist} names={names} cat={cat.data} onStarted={refresh} onOpen={(n) => open(n)} onRefresh={ov.refresh}

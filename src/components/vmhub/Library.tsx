@@ -8,7 +8,7 @@ function Hl({ text, q }: { text: string; q: string }) {
 }
 
 /** Bibliotheque d'images : recherche reactive a chaque lettre, filtres, plusieurs editions par distribution. */
-export function Library({ entries, onDeploy, loading, error, dirMissing }: { entries: LibEntry[]; onDeploy: (e: LibEntry) => void; loading: boolean; error: string | null; dirMissing: boolean }) {
+export function Library({ entries, onDeploy, loading, error, dirMissing, creationReason }: { entries: LibEntry[]; onDeploy: (e: LibEntry) => void; loading: boolean; error: string | null; dirMissing: boolean; creationReason?: string }) {
   const [q, setQ] = useState('')
   const [f, setF] = useState<LibFilter>('tout')
   const [choice, setChoice] = useState<Record<string, string>>({})
@@ -22,6 +22,7 @@ export function Library({ entries, onDeploy, loading, error, dirMissing }: { ent
   return (
     <div className="vh-enter">
       <div className="vh-ph"><h2>bibliothèque d'images<Q k="lib-fmt" /></h2><span className="lite">Tailles et durées indicatives. Une image téléchargée reste en cache pour les déploiements suivants.{dirMissing ? ' Le dossier d\'images est absent : rien n\'est en cache.' : ''}</span></div>
+      {creationReason && <div className="vh-alert vh-creation" role="status"><span>déploiement indisponible : {creationReason}</span></div>}
       <div className="vh-lsearch">
         <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="chercher : debian, kde, léger, cloud, tuilage…" aria-label="chercher une image" autoComplete="off" />
         <Q k="lib-search" />

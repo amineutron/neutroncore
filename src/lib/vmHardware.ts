@@ -22,8 +22,13 @@ export type Hardware = {
   boot_order: string[]; display: Display | 'none'; network: string | null; disks: HardwareDisk[]; usb: string[]
 }
 export type Choice = { id: string; label: string; hint: string }
-export type HardwareChoices = { cpu_models: Choice[]; firmware: Choice[]; displays: string[]; boot_devices: string[] }
-export type HardwareLimits = { vcpus: [number, number]; memory_mib: [number, number]; description: number; disk_grow_gb: [number, number] }
+/** Toutes les listes de choix sont des entrees libellees (contrat API) : `id` dans la charge utile, `label` a l'ecran, `hint` en aide. */
+export type HardwareChoices = { cpu_models: Choice[]; firmware: Choice[]; displays: Choice[]; boot_devices: Choice[] }
+export type HardwareLimits = { vcpus: [number, number]; memory_mib: [number, number]; description: number; disk_grow_gb: [number, number]; usb_id?: string; network?: string }
+
+/** Libelle d'un choix (repli : l'identifiant lui-meme, ou le libelle local pour les peripheriques de demarrage). */
+export const choiceLabel = (list: Choice[] | undefined, id: string, fallback?: Record<string, string>): string => list?.find((c) => c.id === id)?.label ?? fallback?.[id] ?? id
+export const choiceHint = (list: Choice[] | undefined, id: string): string => list?.find((c) => c.id === id)?.hint ?? ''
 
 /** Ce que l'utilisateur regle ; les nombres restent du texte jusqu'a la validation. */
 export type HardwareDraft = {
@@ -145,13 +150,22 @@ export function describePayload(p: HardwarePayload): string[] {
 }
 
 /** Reponse d'une edition : ce que l'outil a vraiment change (contrat : `changes`, `needs_restart`, `hot`). */
-export type EditResult = { success?: boolean; error?: string | null; needs_restart?: boolean; hot?: string[]; changes?: string[]; result?: { needs_restart?: boolean; hot?: string[]; changes?: string[] } }
-export type EditSummary = { changes: string[]; needsRestart: boolean; hot: string[] }
+export type ToolResult = { needs_restart?: boolean; hot?: string[]; changes?: string[]; skipped?: string[] }
+export type EditResult = ToolResult & { success?: boolean; error?: string | null; job?: string; result?: ToolResult }
+export type EditSummary = { changes: string[]; needsRestart: boolean; hot: string[]; skipped: string[]; fromTool: boolean }
 
 export function summarizeEdit(res: EditResult | null | undefined, sent: HardwarePayload, localNeedsRestart: boolean): EditSummary {
-  const r = res?.result ?? res ?? {}
-  const changes = Array.isArray(r.changes) && r.changes.length ? r.changes.map(String) : describePayload(sent)
-  return { changes, needsRestart: typeof r.needs_restart === 'boolean' ? r.needs_restart : localNeedsRestart, hot: Array.isArray(r.hot) ? r.hot.map(String) : [] }
+  const r: ToolResult = res?.result ?? res ?? {}
+  const fromTool = Array.isArray(r.changes) && r.changes.length > 0
+  const changes = fromTool ? r.changes!.map(String) : describePayload(sent)
+  const list = (x: unknown): string[] => (Array.isArray(x) ? x.map(String) : [])
+  return { changes, needsRestart: typeof r.needs_restart === 'boolean' ? r.needs_restart : localNeedsRestart, hot: list(r.hot), skipped: list(r.skipped), fromTool }
+}
+
+/** Le resultat de l'outil n'arrive que dans le travail (GET /vms-console/jobs) : on l'y lit une fois le travail fini. */
+export function summarizeJob(job: { status: string; result?: unknown } | undefined, sent: HardwarePayload, localNeedsRestart: boolean): EditSummary | null {
+  if (!job || job.status === 'running' || !job.result || typeof job.result !== 'object') return null
+  return summarizeEdit({ result: job.result as ToolResult }, sent, localNeedsRestart)
 }
 
 /** Capacite totale des disques connus, pour afficher « taille actuelle ». */

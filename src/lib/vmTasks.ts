@@ -9,18 +9,20 @@ export type TaskJob = {
   id: string; action: string; vm: string; status: 'running' | 'ok' | 'fail'
   message: string | null; error: string | null; started: number; ended: number | null
   title?: string; kind?: string; log?: string[]; steps?: JobStep[]
+  /** resultat de l'outil une fois le travail fini (edition : needs_restart, hot, changes, skipped) */
+  result?: Record<string, unknown>
 }
 export type TaskState = 'run' | 'ok' | 'error'
 export type TaskFilter = 'toutes' | 'en cours' | 'terminées' | 'échouées'
 export const TASK_FILTERS: TaskFilter[] = ['toutes', 'en cours', 'terminées', 'échouées']
 
 export const KIND_LABEL: Record<string, string> = {
-  export: 'export', import: 'import', clone: 'clonage', snapshot: 'snapshot', edit: 'modification', destroy: 'suppression', exec: 'commande',
+  export: 'export', import: 'import', clone: 'clonage', snapshot: 'snapshot', edit: 'modification', destroy: 'suppression', exec: 'commande', deploy: 'déploiement',
 }
 
 const ACTION_KIND: Record<string, string> = {
   snapshot_create: 'snapshot', snapshot_restore: 'snapshot', snapshot_delete: 'snapshot',
-  clone: 'clone', export: 'export', import: 'import', edit: 'edit', destroy: 'destroy', exec: 'exec',
+  clone: 'clone', export: 'export', import: 'import', edit: 'edit', destroy: 'destroy', exec: 'exec', deploy: 'deploy',
 }
 
 export const kindOfJob = (j: Pick<TaskJob, 'action' | 'kind'>): string => j.kind ?? ACTION_KIND[j.action] ?? j.action
@@ -37,6 +39,7 @@ export function fallbackTitle(j: Pick<TaskJob, 'action' | 'vm'>): string {
     case 'edit': return `Modification de ${v}`
     case 'destroy': return `Suppression de ${v}`
     case 'exec': return `Commande sur ${v}`
+    case 'deploy': return `Déploiement de ${v}`
     default: return `${j.action} : ${v}`
   }
 }

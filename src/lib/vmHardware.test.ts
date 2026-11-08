@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { describePayload, diffHardware, draftFromHardware, moveBoot, stopFields, summarizeEdit, toggleBoot, totalCapacity, validateHardware, type Hardware, type HardwareDraft } from './vmHardware'
+import { BOOT_LABEL, choiceHint, choiceLabel, describePayload, diffHardware, draftFromHardware, moveBoot, stopFields, summarizeEdit, summarizeJob, toggleBoot, totalCapacity, validateHardware, type Hardware, type HardwareDraft } from './vmHardware'
 
 const HW: Hardware = {
   cpu_model: 'host-passthrough', firmware: 'bios', secure_boot: false, tpm: false, boot_order: ['hd', 'cdrom'],
@@ -116,10 +116,25 @@ describe('resume', () => {
     expect(lines).toContain('disque agrandi de 10 Go')
   })
   it('summarizeEdit : les changements de l\'outil gagnent, repli sur les phrases locales', () => {
-    expect(summarizeEdit({ success: true, changes: ['cpu: qemu64'], needs_restart: true, hot: [] }, { cpu_model: 'qemu64' }, false)).toEqual({ changes: ['cpu: qemu64'], needsRestart: true, hot: [] })
-    expect(summarizeEdit({ success: true, result: { changes: ['x'], needs_restart: false, hot: ['display'] } }, { display: 'vnc' }, true)).toEqual({ changes: ['x'], needsRestart: false, hot: ['display'] })
-    expect(summarizeEdit({ success: true, job: 'abc' } as never, { display: 'vnc' }, true)).toEqual({ changes: ['affichage : vnc'], needsRestart: true, hot: [] })
-    expect(summarizeEdit(null, {}, false)).toEqual({ changes: [], needsRestart: false, hot: [] })
+    expect(summarizeEdit({ success: true, changes: ['cpu: qemu64'], needs_restart: true, hot: [] }, { cpu_model: 'qemu64' }, false)).toEqual({ changes: ['cpu: qemu64'], needsRestart: true, hot: [], skipped: [], fromTool: true })
+    expect(summarizeEdit({ success: true, result: { changes: ['x'], needs_restart: false, hot: ['display'], skipped: ['usb_attach'] } }, { display: 'vnc' }, true)).toEqual({ changes: ['x'], needsRestart: false, hot: ['display'], skipped: ['usb_attach'], fromTool: true })
+    expect(summarizeEdit({ success: true, job: 'abc' }, { display: 'vnc' }, true)).toEqual({ changes: ['affichage : vnc'], needsRestart: true, hot: [], skipped: [], fromTool: false })
+    expect(summarizeEdit(null, {}, false)).toEqual({ changes: [], needsRestart: false, hot: [], skipped: [], fromTool: false })
+  })
+  it('summarizeJob : rien tant que le travail court ou sans resultat, puis le resultat de l\'outil', () => {
+    expect(summarizeJob(undefined, { display: 'vnc' }, false)).toBeNull()
+    expect(summarizeJob({ status: 'running', result: { changes: ['x'] } }, { display: 'vnc' }, false)).toBeNull()
+    expect(summarizeJob({ status: 'ok' }, { display: 'vnc' }, false)).toBeNull()
+    expect(summarizeJob({ status: 'ok', result: { changes: ['affichage spice → vnc'], needs_restart: false, hot: ['display'], skipped: [] } }, { display: 'vnc' }, true))
+      .toEqual({ changes: ['affichage spice → vnc'], needsRestart: false, hot: ['display'], skipped: [], fromTool: true })
+  })
+  it('choix libelles : label affiche, id envoye, repli local puis identifiant', () => {
+    const boot = [{ id: 'hd', label: 'disque dur', hint: 'le système' }, { id: 'cdrom', label: 'lecteur', hint: '' }]
+    expect(choiceLabel(boot, 'hd')).toBe('disque dur')
+    expect(choiceLabel(undefined, 'hd', BOOT_LABEL)).toBe('disque')
+    expect(choiceLabel(undefined, 'floppy')).toBe('floppy')
+    expect(choiceHint(boot, 'hd')).toBe('le système')
+    expect(choiceHint(boot, 'network')).toBe('')
   })
   it('capacite totale des disques connus', () => {
     expect(totalCapacity([{ target: 'vda', path: '', capacity_gb: 40 }, { target: 'vdb', path: '', capacity_gb: 10 }])).toBe(50)

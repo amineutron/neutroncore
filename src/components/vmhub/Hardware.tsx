@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { confirmDialog, toast } from '../../lib/dialog'
-import { BOOT_DEVICES, BOOT_LABEL, CPU_MODEL_IDS, DEFAULT_GROW, HARDWARE_NEEDS_STOP, describePayload, diffHardware, draftFromHardware, moveBoot, stopFields, summarizeEdit, toggleBoot, totalCapacity, validateHardware, type EditSummary, type HardwareDraft, type HardwareField } from '../../lib/vmHardware'
+import { BOOT_DEVICES, BOOT_LABEL, CPU_MODEL_IDS, DEFAULT_GROW, HARDWARE_NEEDS_STOP, choiceHint, choiceLabel, describePayload, diffHardware, draftFromHardware, moveBoot, stopFields, summarizeEdit, summarizeJob, toggleBoot, totalCapacity, validateHardware, type Choice, type EditSummary, type HardwareDraft, type HardwareField, type HardwarePayload } from '../../lib/vmHardware'
 import { CPU_MODELS, LEVEL } from '../../lib/vmHelp'
 import { editHardware } from '../../lib/vmHubApi'
 import type { SettingsInfo } from '../../lib/vmsConsole'
+import type { TaskJob } from '../../lib/vmTasks'
 import { Btn, Card, Chip } from '../ui'
 import { Q } from './Help'
 
@@ -14,18 +15,19 @@ function NeedStop() {
   return <span className="vh-tag vh-need">machine arrêtée requise<Q k="needs-stop" /></span>
 }
 
-function Seg<T extends string>({ value, options, onChange, disabled, label }: { value: T; options: readonly T[]; onChange: (v: T) => void; disabled?: boolean; label: string }) {
+/** Segment de choix : `id` envoye, `label` affiche (les listes de l'API sont des entrees libellees). */
+function Seg<T extends string>({ value, options, labels, onChange, disabled, label }: { value: T; options: readonly T[]; labels?: Choice[]; onChange: (v: T) => void; disabled?: boolean; label: string }) {
   return (
     <div className="vh-seg" role="radiogroup" aria-label={label} style={{ marginTop: 0 }}>
-      {options.map((o) => <button key={o} type="button" role="radio" aria-checked={value === o} className={value === o ? 'on' : ''} disabled={disabled} onClick={() => onChange(o)}>{o}</button>)}
+      {options.map((o) => <button key={o} type="button" role="radio" aria-checked={value === o} data-id={o} className={value === o ? 'on' : ''} disabled={disabled} title={choiceHint(labels, o) || undefined} onClick={() => onChange(o)}>{choiceLabel(labels, o)}</button>)}
     </div>
   )
 }
 
 /** Onglet matériel : état réel, puis formulaire des 14 champs du contrat. Un seul « appliquer » n'envoie
  *  que les champs modifiés ; la réponse (`changes`, `needs_restart`) est affichée telle quelle. */
-export function Hardware({ vm, state, info, template, onApplied, busyVm }: {
-  vm: string; state: string; info: SettingsInfo | null; template: boolean; onApplied: () => void; busyVm: boolean
+export function Hardware({ vm, state, info, template, jobs, onApplied, busyVm }: {
+  vm: string; state: string; info: SettingsInfo | null; template: boolean; jobs?: TaskJob[]; onApplied: () => void; busyVm: boolean
 }) {
   const hw = info?.hardware ?? null
   const key = `${vm}|${hw ? JSON.stringify(hw) : 'none'}`   // le brouillon repart des vraies valeurs quand elles changent
@@ -39,7 +41,7 @@ export function Hardware({ vm, state, info, template, onApplied, busyVm }: {
       </Card>
     )
   }
-  return <HardwareForm key={key} vm={vm} state={state} info={info} onApplied={onApplied} busyVm={busyVm} />
+  return <HardwareForm key={key} vm={vm} state={state} info={info} jobs={jobs ?? []} onApplied={onApplied} busyVm={busyVm} />
 }
 
 function CpuGuide({ id, onPick, disabled }: { id?: string; onPick?: (id: string) => void; disabled?: boolean } = {}) {
@@ -60,7 +62,7 @@ function CpuGuide({ id, onPick, disabled }: { id?: string; onPick?: (id: string)
   )
 }
 
-function HardwareForm({ vm, state, info, onApplied, busyVm }: { vm: string; state: string; info: SettingsInfo; onApplied: () => void; busyVm: boolean }) {
+function HardwareForm({ vm, state, info, jobs, onApplied, busyVm }: { vm: string; state: string; info: SettingsInfo; jobs: TaskJob[]; onApplied: () => void; busyVm: boolean }) {
   const hw = info.hardware!
   const initial = draftFromHardware(hw)
   const [d, setD] = useState<HardwareDraft>(initial)
@@ -68,6 +70,7 @@ function HardwareForm({ vm, state, info, onApplied, busyVm }: { vm: string; stat
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [done, setDone] = useState<EditSummary | null>(null)
+  const [sent, setSent] = useState<{ job: string; payload: HardwarePayload; later: boolean } | null>(null)
   const needsStop = info.needs_stop?.length ? info.needs_stop : HARDWARE_NEEDS_STOP
   const grow = info.limits?.disk_grow_gb ?? DEFAULT_GROW
   const up = state !== 'stopped'
@@ -77,9 +80,16 @@ function HardwareForm({ vm, state, info, onApplied, busyVm }: { vm: string; stat
   const dirty = Object.keys(payload).length > 0
   const verdict = validateHardware(payload, state, { needsStop, grow })
   const later = stopFields(payload, needsStop).length > 0
-  const hint = (id: string, list?: { id: string; hint: string }[]) => list?.find((c) => c.id === id)?.hint
   const cap = totalCapacity(hw.disks)
   const bootRows = [...d.boot_order, ...BOOT_DEVICES.filter((b) => !d.boot_order.includes(b))]
+  const bootLabel = (b: string) => choiceLabel(info.choices?.boot_devices, b, BOOT_LABEL)
+
+  // le resultat de l'outil (changes, needs_restart, hot, skipped) n'arrive que dans le travail, une fois fini
+  useEffect(() => {
+    if (!sent) return
+    const s = summarizeJob(jobs.find((j) => j.id === sent.job), sent.payload, sent.later)
+    if (s) { setDone(s); setSent(null) }
+  }, [jobs, sent])
 
   async function apply() {
     if (!verdict.ok) return
@@ -90,6 +100,7 @@ function HardwareForm({ vm, state, info, onApplied, busyVm }: { vm: string; stat
       const res = await editHardware(vm, payload)
       const s = summarizeEdit(res, payload, later)
       setDone(s)
+      if (!s.fromTool && res?.job) setSent({ job: String(res.job), payload, later })
       toast(s.needsRestart ? `${vm} : modifié, effectif au prochain démarrage` : `${vm} : matériel modifié`)
       onApplied()
     } catch (e) { setErr(e instanceof Error ? e.message : String(e)) } finally { setBusy(false) }
@@ -100,8 +111,8 @@ function HardwareForm({ vm, state, info, onApplied, busyVm }: { vm: string; stat
       <dl className="vh-kv vh-hwnow">
         <dt>processeur</dt><dd>{hw.cpu_model ?? 'non précisé'}</dd>
         <dt>firmware</dt><dd>{hw.firmware}{hw.secure_boot ? ' · secure boot' : ''}{hw.tpm ? ' · tpm' : ''}</dd>
-        <dt>démarrage</dt><dd>{hw.boot_order.map((b) => BOOT_LABEL[b] ?? b).join(' → ') || '-'}</dd>
-        <dt>affichage</dt><dd>{hw.display}</dd><dt>réseau</dt><dd>{hw.network ?? '-'}</dd>
+        <dt>démarrage</dt><dd>{hw.boot_order.map(bootLabel).join(' → ') || '-'}</dd>
+        <dt>affichage</dt><dd>{choiceLabel(info.choices?.displays, hw.display)}</dd><dt>réseau</dt><dd>{hw.network ?? '-'}</dd>
         <dt>disques</dt><dd>{hw.disks.length ? hw.disks.map((x) => `${x.target} ${x.capacity_gb != null ? `${x.capacity_gb} Go` : '?'}`).join(', ') : '-'}</dd>
         <dt>usb</dt><dd>{hw.usb.length ? hw.usb.join(', ') : 'aucun'}</dd>
       </dl>
@@ -111,8 +122,8 @@ function HardwareForm({ vm, state, info, onApplied, busyVm }: { vm: string; stat
 
         <div className="vh-box">
           <h3>firmware<Q k="hw-fw" />{needsStop.includes('firmware') && <NeedStop />}</h3>
-          <Seg value={d.firmware} options={['bios', 'uefi'] as const} onChange={(v) => set({ firmware: v, secure_boot: v === 'uefi' ? d.secure_boot : false })} disabled={locked('firmware')} label="firmware" />
-          <p className="lite" style={{ margin: '8px 0 10px' }}>{hint(d.firmware, info.choices?.firmware) ?? ''}</p>
+          <Seg value={d.firmware} options={['bios', 'uefi'] as const} labels={info.choices?.firmware} onChange={(v) => set({ firmware: v, secure_boot: v === 'uefi' ? d.secure_boot : false })} disabled={locked('firmware')} label="firmware" />
+          <p className="lite" style={{ margin: '8px 0 10px' }}>{choiceHint(info.choices?.firmware, d.firmware)}</p>
           <label className="vh-chk"><input type="checkbox" checked={d.tpm} disabled={locked('tpm')} onChange={(e) => set({ tpm: e.target.checked })} /> TPM 2.0<Q k="hw-tpm" />{needsStop.includes('tpm') && <NeedStop />}</label>
           <label className="vh-chk" style={d.firmware !== 'uefi' ? { opacity: 0.6 } : undefined}>
             <input type="checkbox" checked={d.secure_boot} disabled={locked('secure_boot') || d.firmware !== 'uefi'} onChange={(e) => set({ secure_boot: e.target.checked })} /> secure boot<Q k="hw-sb" />{needsStop.includes('secure_boot') && <NeedStop />}
@@ -128,10 +139,10 @@ function HardwareForm({ vm, state, info, onApplied, busyVm }: { vm: string; stat
               const on = i >= 0
               return (
                 <li key={b} className={on ? 'on' : ''}>
-                  <label className="vh-chk" style={{ margin: 0 }}><input type="checkbox" checked={on} disabled={locked('boot_order')} onChange={() => set({ boot_order: toggleBoot(d.boot_order, b) })} /> {on ? `${i + 1}. ` : ''}{BOOT_LABEL[b] ?? b}</label>
+                  <label className="vh-chk" style={{ margin: 0 }}><input type="checkbox" checked={on} disabled={locked('boot_order')} onChange={() => set({ boot_order: toggleBoot(d.boot_order, b) })} /> {on ? `${i + 1}. ` : ''}{bootLabel(b)}</label>
                   {on && <span className="vh-row" style={{ gap: 2 }}>
-                    <button type="button" className="btn sm" aria-label={`monter ${BOOT_LABEL[b]}`} disabled={i === 0 || locked('boot_order')} onClick={() => set({ boot_order: moveBoot(d.boot_order, i, -1) })}>↑</button>
-                    <button type="button" className="btn sm" aria-label={`descendre ${BOOT_LABEL[b]}`} disabled={i === d.boot_order.length - 1 || locked('boot_order')} onClick={() => set({ boot_order: moveBoot(d.boot_order, i, 1) })}>↓</button>
+                    <button type="button" className="btn sm" aria-label={`monter ${bootLabel(b)}`} disabled={i === 0 || locked('boot_order')} onClick={() => set({ boot_order: moveBoot(d.boot_order, i, -1) })}>↑</button>
+                    <button type="button" className="btn sm" aria-label={`descendre ${bootLabel(b)}`} disabled={i === d.boot_order.length - 1 || locked('boot_order')} onClick={() => set({ boot_order: moveBoot(d.boot_order, i, 1) })}>↓</button>
                   </span>}
                 </li>
               )
@@ -141,7 +152,8 @@ function HardwareForm({ vm, state, info, onApplied, busyVm }: { vm: string; stat
 
         <div className="vh-box">
           <h3>affichage et réseau</h3>
-          <div className="vh-row" style={{ gap: 10 }}><span className="vh-lab">console<Q k="hw-display" /></span><Seg value={d.display} options={['spice', 'vnc'] as const} onChange={(v) => set({ display: v })} disabled={locked('display')} label="affichage" /></div>
+          <div className="vh-row" style={{ gap: 10 }}><span className="vh-lab">console<Q k="hw-display" /></span><Seg value={d.display} options={['spice', 'vnc'] as const} labels={info.choices?.displays} onChange={(v) => set({ display: v })} disabled={locked('display')} label="affichage" /></div>
+          {choiceHint(info.choices?.displays, d.display) && <p className="lite" style={{ margin: '6px 0 0' }}>{choiceHint(info.choices?.displays, d.display)}</p>}
           <label className="vh-field" style={{ marginTop: 10 }}><span>réseau<Q k="hw-net" /></span><input value={d.network} disabled={locked('network')} onChange={(e) => set({ network: e.target.value })} placeholder={hw.network ?? 'default'} aria-label="réseau" /></label>
         </div>
 
@@ -178,10 +190,11 @@ function HardwareForm({ vm, state, info, onApplied, busyVm }: { vm: string; stat
       {err && <p className="vm-err">{err}</p>}
       {done && (
         <div className="vh-hwres" role="status">
-          <b>modifié :</b>
+          <b>{done.fromTool ? 'modifié (résultat de l\'outil) :' : sent ? 'demandé (le détail arrivera avec la tâche) :' : 'demandé :'}</b>
           <ul>{done.changes.map((c) => <li key={c}>{c}</li>)}</ul>
           {done.needsRestart && <p className="lite" style={{ margin: 0 }}>effectif au prochain démarrage.</p>}
           {done.hot.length > 0 && <p className="lite" style={{ margin: 0 }}>appliqué à chaud : {done.hot.join(', ')}.</p>}
+          {done.skipped.length > 0 && <p className="lite" style={{ margin: 0, color: 'var(--warn)' }}>ignoré : {done.skipped.join(', ')}.</p>}
         </div>
       )}
     </Card>

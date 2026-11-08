@@ -9,7 +9,11 @@ import type { TaskJob } from './vmTasks'
 // Acces reseau du hub des VMs : lectures (overview, bibliotheque, travaux) et ecritures
 // (modele, metadonnees). Toute ecriture destructive passe par le jeton X-Confirm existant.
 
-export type LibraryRes = { success: boolean; entries: LibEntry[]; dists: string[]; images_dir_present: boolean }
+export type LibraryRes = {
+  success: boolean; entries: LibEntry[]; dists: string[]; images_dir_present: boolean
+  /** le demon connait-il l'outil de creation ? sinon `creation_reason` explique (et chaque entree porte deployable:false) */
+  creation_tool?: boolean; creation_reason?: string
+}
 
 export const useOverview = () => usePoll<Overview>(() => apiGet('/vms-console/overview'), 15000)
 export const useLibrary = () => usePoll<LibraryRes>(() => apiGet('/vms-console/library'), 120000)

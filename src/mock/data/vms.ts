@@ -48,7 +48,8 @@ const CHOICES = {
     { id: 'qemu64', label: 'qemu64', hint: 'très ancien : portable partout, lent' },
   ],
   firmware: [{ id: 'bios', label: 'BIOS', hint: 'héritage, pas de secure boot' }, { id: 'uefi', label: 'UEFI', hint: 'standard actuel, requis pour secure boot et Windows 11' }],
-  displays: ['spice', 'vnc'], boot_devices: ['hd', 'cdrom', 'network'],
+  displays: [{ id: 'spice', label: 'spice', hint: 'presse-papiers, redimensionnement, son, usb : pour une machine de bureau' }, { id: 'vnc', label: 'vnc', hint: 'universel, n\'importe quel client, sans ces conforts' }],
+  boot_devices: [{ id: 'hd', label: 'disque', hint: 'le système installé' }, { id: 'cdrom', label: 'cdrom', hint: 'une ISO d\'installation ou de secours' }, { id: 'network', label: 'réseau', hint: 'démarrage PXE' }],
 }
 
 const stateOf = (vm: string) => hubVm(vm)?.state ?? (vm === 'fedora-test' ? 'running' : 'stopped')
@@ -67,7 +68,7 @@ const DETAIL = (vm: string) => {
     settings: {
       current: { vcpus: c.vcpus, ram, memory_mib: c.memory_mib, autostart_on: c.autostart, disk_used: `${h?.disk_used_gb ?? 52}G`, disk_total: total ? `${total} GiB` : '-', storage: 'local', persistent: 'oui', autostart, description: c.description },
       editable: true, fields: FIELDS, needs_stop: NEEDS_STOP,
-      limits: { vcpus: [1, 32], memory_mib: [512, 65536], description: 256, disk_grow_gb: [1, 2048] },
+      limits: { vcpus: [1, 32], memory_mib: [512, 65536], description: 256, disk_grow_gb: [1, 2048], usb_id: '^[0-9a-fA-F]{4}:[0-9a-fA-F]{4}$', network: '^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$' },
       hardware: c.hw, choices: CHOICES,
     },
   }
@@ -110,7 +111,8 @@ function applyEdit(vm: string, b: EditBody) {
   conf[vm] = { ...c, vcpus: b.vcpus ?? c.vcpus, memory_mib: b.memory_mib ?? c.memory_mib, autostart: b.autostart ?? c.autostart, description: b.description ?? c.description, hw }
   if (b.vcpus !== undefined || b.memory_mib !== undefined) patchHubVm(vm, { ...(b.vcpus !== undefined ? { vcpus: b.vcpus } : {}), ...(b.memory_mib !== undefined ? { ram_mb: b.memory_mib } : {}) })
   const hot = keys.filter((k) => !NEEDS_STOP.includes(k))
-  return { ...addJob('edit', vm, changes.join(' ; ')), error: null, needs_restart: blocked.length > 0, hot, changes }
+  // comme l'API : la reponse ne porte que {success, job} ; le resultat de l'outil arrive dans le travail
+  return addJob('edit', vm, changes.join(' ; '), undefined, 1500, { needs_restart: blocked.length > 0, hot, changes, skipped: [] })
 }
 
 const startJob = (action: string, vm: string, message: string) => addJob(action, vm, message)

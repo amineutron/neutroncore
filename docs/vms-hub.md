@@ -20,13 +20,18 @@ Contrat API attendu (lyra-control-api, ecrit en parallele) :
 
 - `POST /services/vms/{vm}/{action}` : `start|stop|force_stop|pause|resume|reboot`, jeton `vm_<action>_<vm>`, reponse `{success, error}`.
 - `GET /vms-console/{vm}` : `settings.hardware` (`cpu_model, firmware, secure_boot, tpm, boot_order, display, network, disks[], usb[]`),
-  `hardware_error`, `choices` (`cpu_models[{id,label,hint}]`, `firmware[...]`, `displays`, `boot_devices`), `limits.disk_grow_gb`,
+  `hardware_error`, `choices` (`cpu_models`, `firmware`, `displays`, `boot_devices` : TOUS des tableaux `{id, label, hint}` ; `id` dans
+  la charge utile, `label` a l'ecran, `hint` en aide), `limits` (`disk_grow_gb`, plus `usb_id` et `network` : regex en texte),
   `needs_stop` (la liste de l'API fait foi : un champ qu'elle ne nomme pas se change a chaud).
 - `POST /vms-console/{vm}/edit` (jeton `vm_edit_<vm>`) : seuls les champs modifies ; `secure_boot: true` emporte `firmware: 'uefi'`
-  dans le meme envoi ; `boot_order` sans doublon ; `usb_attach|usb_detach` en `vvvv:pppp`. L'ecran lit `needs_restart`, `hot`,
-  `changes` a la racine de la reponse ou sous `result` ; a defaut il affiche son propre resume.
+  dans le meme envoi ; `boot_order` sans doublon ; `usb_attach|usb_detach` en `vvvv:pppp`. La reponse ne porte que `{success, job}` :
+  l'ecran affiche d'abord son propre resume (`describePayload`, « demandé »), puis lit `result` (`needs_restart`, `hot`, `changes`,
+  `skipped`) dans le travail de `GET /vms-console/jobs` une fois fini (`summarizeJob`, « résultat de l'outil »).
 - `GET /vms-console/{vm}/snapshots` : `current: string | null`.
-- `POST /vms-console/deploy` : `{image, name, vcpus, ram_mb, disk_gb, network, profile, env}` ; `env` est seulement enregistre.
+- `GET /vms-console/library` : `creation_tool: bool` + `creation_reason` en tete (bandeau dans la bibliotheque quand l'outil manque),
+  `deployable`/`reason` par entree.
+- `POST /vms-console/deploy` : `{image, name, vcpus, ram_mb, disk_gb, network, profile, env}` ; travail `kind: "deploy"` ; la fiche de
+  la machine a `origin: "own"`, `from: <image>`, `lineage: [{id, rel: "image", ext: true}]`, `env` facultatif (enregistre, pas applique).
 
 Ecarts et points a verifier avec le vrai backend : le piège « redemarrer » (la rangee attend d'avoir VU la machine quitter
 « en marche » avant de dire « fait », ou 45 s) ; la provenance `image` d'une machine deployee est dessinee en pointille

@@ -86,7 +86,7 @@ export function MachineDetail({ vm, vms, jobs, names, cat, onStarted, onOpen, on
       {tab === 'materiel' && (
         <div className="nc-stack">
           {!vm.meta.template && <SettingsPanel vm={vm.name} up={up} detail={detail.data?.detail ?? {}} info={detail.data?.settings ?? null} onStarted={onStarted} busyVm={busyVm} />}
-          <Hardware vm={vm.name} state={vm.state} info={detail.data?.settings ?? null} template={vm.meta.template} busyVm={busyVm}
+          <Hardware vm={vm.name} state={vm.state} info={detail.data?.settings ?? null} template={vm.meta.template} jobs={jobs} busyVm={busyVm}
             onApplied={() => { onStarted(); setTimeout(detail.refresh, 1500) }} />
         </div>
       )}
