@@ -14,13 +14,18 @@ export function usePoll<T>(fetcher: () => Promise<T>, intervalMs: number, enable
   const fetcherRef = useRef(fetcher)
   fetcherRef.current = fetcher
 
+  const seq = useRef(0)       // numero de la derniere requete lancee
+  const applied = useRef(0)   // numero de la derniere reponse appliquee : une plus ancienne est ignoree
   const tick = useCallback(() => {
+    const mine = ++seq.current
     fetcherRef.current()
       .then((d) => {
+        if (mine < applied.current) return
+        applied.current = mine
         setData(d)
         setError(null)
       })
-      .catch((e: Error) => setError(e.message))
+      .catch((e: Error) => { if (mine >= applied.current) setError(e.message) })
   }, [])
 
   useEffect(() => {

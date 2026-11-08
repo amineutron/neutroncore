@@ -17,7 +17,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "build:demo": "VITE_MOCK_API=1 VITE_BASE=/neutroncore/ VITE_MEDIA_HOST=media-server.lan tsc -b && VITE_MOCK_API=1 VITE_BASE=/neutroncore/ VITE_MEDIA_HOST=media-server.lan vite build --outDir dist-demo --emptyOutDir",
-    "check:demo": "node scripts/check-demo-bundle.mjs dist-demo"
+    "check:demo": "node scripts/check-demo-bundle.mjs dist-demo",
+    "e2e:vms": "node scripts/e2e/vms.e2e.mjs",
+    "bench:vms": "vitest run src/lib/vmHubBench.test.ts"
   },
   "dependencies": {
     "react": "^19.3.1",
