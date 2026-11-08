@@ -1,6 +1,5 @@
 import { useEffect, useState, useContext } from 'react'
 import { apiGet, apiPost, withConfirm } from '../lib/api'
-import { confirmDialog } from '../lib/dialog'
 import { Remote } from '../components/Remote'
 import { NavContext } from '../App'
 import { ColorPalette } from '../components/ColorPalette'
@@ -119,11 +118,6 @@ export function Ambiance() {
       setBusy('')
       setTimeout(() => setToast(''), Date.now() - t0 > 5000 ? 6000 : 3500)
     }
-  }
-
-  async function openHalo() {
-    if (!await confirmDialog({ title: 'lancer HALO ?', body: 'L’application s’ouvre sur le PC.', ok: 'lancer' })) return
-    await run('halo', async () => apiPost('/launcher/halo', undefined, await withConfirm('launcher_halo')))
   }
 
   const t = tv.data
@@ -332,13 +326,13 @@ export function Ambiance() {
         <Btn onClick={() => navigate('automatisations')}>ouvrir les automatisations</Btn>
       </Card>
 
-      <Card title="gestion avancée — halo" style={{ marginTop: 14 }}>
+      <Card title="plan de pièce et lumière 3d" style={{ marginTop: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 12.5, color: 'var(--muted)', flex: 1, minWidth: 220 }}>
-            Couleurs Hue précises, plan 2D/3D de la pièce, segments de la bande LED, flux Ambilight live :
-            tout ça vit dans HALO (app Quickshell du PC).
+            Plan 2D/3D de la pièce, segments du ruban LED, couleurs de la TV en direct, effets de lumière dans l'espace.
           </span>
-          <Btn solid onClick={openHalo} disabled={busy === 'halo'}>ouvrir halo sur le pc</Btn>
+          <Btn solid onClick={() => navigate('plan')}>ouvrir le plan</Btn>
+          <Btn onClick={() => navigate('lumiere')}>lumière 3d</Btn>
         </div>
       </Card>
 

@@ -1338,6 +1338,7 @@ input[type=range].bri::-webkit-slider-thumb{-webkit-appearance:none;appearance:n
 .rp-dot{stroke:var(--text)}
 .rp-light.sel .rp-dot{stroke:var(--gold)}
 .rp-light.sel .rp-label{fill:var(--gold)}
+.rp-light.sel .rp-tv,.rp-light:focus-visible .rp-tv{stroke:var(--gold)}
 .pl-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px}
 .pl-hint{font-family:var(--mono);font-size:10px;color:var(--faint)}
 .pl-field{display:flex;align-items:center;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:8px}

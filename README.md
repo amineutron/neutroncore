@@ -118,7 +118,7 @@ Ranges par groupe du menu :
 | media | Stack media | films, series, demandes, telechargements | conteneurs *arr, qBittorrent | « cle API introuvable » sur ces ecrans |
 | maison | Camera | detourage, camera virtuelle | `CAMERA_PYTHON` (torch, OpenCV), module v4l2loopback (`CAMERA_SORTIE`), webcam (`CAMERA_SOURCE`) | bandeau « pas installee », bouton sans effet |
 | maison | Lumiere 3d sur les vraies lampes | effets cales sur la musique | pont Hue avec une zone Entertainment, hue-mcp et huebeat (`HUE_BEAT_PYTHON`, avance reglable par `HUE_BEAT_AVANCE_MS`) | pad, sets et apercu sur la piece 3D restent utilisables |
-| maison | Plan de piece | positions des lampes et du ruban | fichier de plan de HALO | piece par defaut, sans lampes |
+| maison | Plan de piece | positions des lampes et du ruban | plan enregistre par l'API (`plan.json`) | piece par defaut, sans lampes |
 | maison | Sessions Claude Code | lanceur, reponses, notifications | Claude Code, kitty, hooks | liste vide |
 | tous | Notifications telephone | push quand Claude attend | ntfy (`NTFY_URL`, `NTFY_TOKEN`) | pas de push, le reste inchange |
 

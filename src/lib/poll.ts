@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { pollMultiplier } from './settings'
 
-// Polling différencié gaté par visibilité (pattern Backend.qml de HALO) :
+// Polling différencié gaté par visibilité :
 // l'intervalle ne tourne que si l'onglet est visible, refresh immédiat au retour.
 // enabled=false coupe le polling (ex. : suivi de VMs seulement pendant un démarrage).
 export function usePoll<T>(fetcher: () => Promise<T>, intervalMs: number, enabled = true): {

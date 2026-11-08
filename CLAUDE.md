@@ -410,13 +410,12 @@ leur propre scope via `systemd-run --scope`) ; l'arret prend 5 s maximum
 ## Lot 3 des nouveaux volets (2026-10-06)
 - **Plan de piece** (ecran `plan`, groupe maison) : `screens/Plan.tsx` +
   `components/RoomPlan.tsx` (SVG en centimetres, glisser-deposer par pointer
-  events), geometrie pure `lib/plan.ts` (testee). Lit et ecrit GET/PUT /plan,
-  c'est-a-dire le fichier de plan de HALO, qui reste la source de verite et se
-  recharge seul. Rien n'est ecrit avant « enregistrer ». Le ruban LED et la TV
-  sont affiches mais jamais envoyes (`toPayload`). Piege de nommage herite :
-  `roomDims.h` = PROFONDEUR, `roomDims.d` = HAUTEUR. Cote API,
-  `validate_incoming` refuse NaN, infini et dimensions hors 100-3000 cm.
-- **HALO** : POST /screens/ambihue (associer l'Ambilight aux lampes Hue) et
+  events), geometrie pure `lib/plan.ts` (testee). Lit et ecrit GET/PUT /plan
+  (voir « Plan de piece : propriete de neutroncore »). Rien n'est ecrit avant
+  « enregistrer ». Piege de nommage herite : `roomDims.h` = PROFONDEUR,
+  `roomDims.d` = HAUTEUR. Cote API, `validate_update` refuse NaN, infini et
+  dimensions hors 100-3000 cm.
+- **Ambilight et TV** : POST /screens/ambihue (associer l'Ambilight aux lampes Hue) et
   GET /screens/measured (couleurs mesurees par la TV, filtrees en #rrggbb),
   interroge toutes les 3 s seulement quand « couleurs de la tv en direct » est
   active.
@@ -441,20 +440,18 @@ leur propre scope via `systemd-run --scope`) ; l'arret prend 5 s maximum
 
 ## Plan de piece : vue 3D et ruban deplacable (2026-10-06, soir)
 - **Vue 3D** (`components/RoomPlan3D.tsx`, projection pure `lib/plan3d.ts`
-  testee) : meme principe que le Plan3D de HALO, projection orthographique
+  testee) : projection orthographique
   yaw + inclinaison. Lecture seule : on tourne autour (glisser de cote,
   fleches, curseur d'inclinaison), on selectionne en touchant ; le deplacement
   se fait dans la vue de dessus. Un appui ne selectionne qu'au relachement et
   s'il n'a pas tourne la vue. TV, ruban et lampes sont tries par profondeur.
 - **Ruban LED** : chaque segment = centre, angle (degres, sens horaire vu de
-  dessus, 0 = le long de la largeur — convention QML de HALO) et longueur.
-  L'app modifie position et angle ; longueur, nombre de segments et TV restent
-  a HALO. Glisser deplace tout le ruban d'un bloc (case a decocher pour un
+  dessus, 0 = le long de la largeur) et longueur. Glisser deplace tout le
+  ruban d'un bloc (case a decocher pour un
   segment seul). Pas de hauteur stockee : dessine a min(180 cm, plafond - 20).
-- **Ne pas ecraser HALO** : GET /plan renvoie `rev` (empreinte du fichier),
-  PUT la verifie et refuse si HALO a ecrit entre-temps (`stale`). Le ruban
-  n'est envoye que s'il a ete modifie ici (`toPayload(draft, saved)`), et un
-  segment inchange n'est pas reecrit cote API (ni arrondi, ni angle normalise).
+- **Ne pas s'ecraser entre clients** : GET /plan renvoie `rev` (empreinte du plan),
+  PUT la verifie et refuse si le plan a change entre-temps (`stale`). Le ruban
+  et la TV ne sont envoyes que s'ils ont ete modifies ici (`toPayload(draft, saved)`).
 - Piege de hauteur : `tv.pos.z` est une hauteur depuis le SOL, alors que le
   `pos.z` des lampes est centre sur la mi-hauteur.
 
@@ -896,6 +893,21 @@ Non commite.
   Vue 3d : glisser un segment regle sa hauteur (tout le ruban si la case est cochee).
 - Applique le 2026-10-13 sur le plan reel : 7 segments ; copie d'avant dans
   `~/.config/halo_plan.json.avant-ruban-7`.
+- (Historique : le format de fichier decrit ci-dessus est celui de l'ancienne application
+  HALO. Depuis le 2026-11-08 le plan est stocke par l'API au format de l'app, voir plus bas.)
+
+## Plan de piece : propriete de neutroncore (2026-11-08)
+- HALO n'est plus une application a part : l'ambiance, le plan et la lumiere vivent dans
+  neutroncore. Le plan est enregistre par l'API dans `$NEUTRONCORE_STATE/plan.json`, au format
+  de GET /plan (cm, centre de la piece, identifiants Hue reels, `lib/plan_store.py`), sans
+  adaptateur de format. `~/.config/halo_plan.json` n'est plus lu ; il reste tel quel en sauvegarde.
+- Migration unique : `python3 scripts/migrate_halo_plan.py` (depot de l'API ; le demon Lyra doit
+  tourner, il relie les lampes a leur identifiant Hue par le nom). Sans plan enregistre, GET /plan
+  renvoie une piece vide.
+- La TV se deplace dans la vue de dessus (`moveTv`, `TV_ID`) et est envoyee par PUT /plan
+  (`tv: { pos }`) ; sa hauteur reste celle du plan.
+- Reste a retirer cote API (lots suivants) : `/launcher/halo` et le jeton `launcher_halo`, et le
+  script `halo_control.py` qui pilote encore les ecrans (`routers/screens.py`).
 
 ## Lumiere 3d (2026-10-13) — effets dans l'espace, pad, sets, vraies lampes par huebeat
 Non commite. Ecran dedie `lumiere` (groupe maison) ; le plan de piece y renvoie par un bouton.
