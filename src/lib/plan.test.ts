@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { fromSvg, heightFromFloor, isDirty, moveLight, moveSeg, normAngle, resizeRoom, rotateSeg, segEnds, setHeight, toPayload, toSvg, zFromHeight, type Plan, addSeg, removeSeg, resampleStrip, segHeight, setSegHeight, setSegLength } from './plan'
+import { fromSvg, heightFromFloor, isDirty, moveLight, moveSeg, moveTv, normAngle, resizeRoom, rotateSeg, segEnds, setHeight, toPayload, toSvg, zFromHeight, type Plan, addSeg, removeSeg, resampleStrip, segHeight, setSegHeight, setSegLength } from './plan'
 
 const dims = { w: 500, h: 600, d: 270 }
 const plan = (): Plan => ({
   roomDims: dims,
-  configs: { 1: { pos: { x: -61.1, y: 224.9, z: -80 }, name: 'Hue', haloId: 'l3' }, l1: { pos: { x: -124.5, y: -270, z: -25 }, name: 'Play' } },
+  configs: { 1: { pos: { x: -61.1, y: 224.9, z: -80 }, name: 'Hue' }, l1: { pos: { x: -124.5, y: -270, z: -25 }, name: 'Play' } },
   tv: { pos: { x: 114.5, y: -282, z: 116 } },
 })
 
@@ -59,10 +59,33 @@ describe('édition', () => {
   })
 })
 
+describe('TV', () => {
+  it('se déplace sans toucher à sa hauteur, sans muter', () => {
+    const before = plan()
+    const after = moveTv(before, { x: 10, y: -100 })
+    expect(after.tv!.pos).toEqual({ x: 10, y: -100, z: 116 })
+    expect(before.tv!.pos).toEqual({ x: 114.5, y: -282, z: 116 })
+  })
+  it('reste dans la pièce', () => {
+    expect(moveTv(plan(), { x: 9999, y: -9999 }).tv!.pos).toEqual({ x: 245, y: -295, z: 116 })
+  })
+  it('pas de TV au plan : inchangé', () => {
+    const sansTv: Plan = { roomDims: dims, configs: {} }
+    expect(moveTv(sansTv, { x: 1, y: 1 })).toBe(sansTv)
+  })
+  it('l’envoi ne porte la TV que si elle a bougé, et isDirty la voit', () => {
+    const saved = plan()
+    const moved = moveTv(saved, { x: 0, y: -200 })
+    expect(toPayload(saved, saved).tv).toBeUndefined()
+    expect(toPayload(moved, saved).tv).toEqual({ pos: { x: 0, y: -200, z: 116 } })
+    expect(isDirty(saved, moved)).toBe(true)
+  })
+})
+
 describe('envoi', () => {
-  it('sans ruban : dimensions et positions seulement (jamais la TV)', () => {
+  it('sans ruban : dimensions, positions et TV seulement', () => {
     const payload = toPayload(plan())
-    expect(Object.keys(payload)).toEqual(['roomDims', 'configs'])
+    expect(Object.keys(payload)).toEqual(['roomDims', 'configs', 'tv'])
     expect(payload.configs['1']).toEqual({ pos: { x: -61.1, y: 224.9, z: -80 }, name: 'Hue' })
   })
   it('isDirty', () => {

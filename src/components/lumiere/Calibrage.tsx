@@ -11,7 +11,7 @@ type Reponse = { success: boolean; error?: string; huebeat?: boolean }
 const MESSAGE_ATTENTE = 'La lampe est allumée pendant que tu la cherches ; elle est remise comme avant dès que tu passes à la suivante ou que tu arrêtes.'
 
 /** Calibrage guidé : une lampe s'allume à la fois, l'utilisateur touche sur le plan l'endroit où elle se trouve.
- * Rien n'est écrit avant « enregistrer » (PUT /plan : refuse si HALO a modifié le plan entre-temps).
+ * Rien n'est écrit avant « enregistrer » (PUT /plan : refuse si le plan a changé entre-temps).
  * `onEnregistre` : appelé après un enregistrement réussi (pour recharger la position des canaux). */
 export function Calibrage({ onEnregistre }: { onEnregistre?: () => void }) {
   const [saved, setSaved] = useState<Plan | null>(null)
@@ -27,7 +27,7 @@ export function Calibrage({ onEnregistre }: { onEnregistre?: () => void }) {
     setErreur('')
     try {
       const [p, l] = await Promise.all([apiGet<Plan>('/plan'), apiGet<{ success: boolean; error?: string; lampes: LampeInfo[] }>('/spatial/outils/lampes')])
-      if (!p.roomDims || !p.configs) throw new Error('plan HALO introuvable')
+      if (!p.roomDims || !p.configs) throw new Error('plan introuvable')
       setSaved(p); setDraft(p); setLampes(l.lampes ?? [])
       if (!l.success) setErreur(l.error ?? 'lampes illisibles')
     } catch (e) { setErreur((e as Error).message) }
@@ -73,11 +73,11 @@ export function Calibrage({ onEnregistre }: { onEnregistre?: () => void }) {
     try {
       const r = await apiPut<{ success: boolean; error?: string; stale?: boolean; rev?: string }>('/plan', toPayload(draft, saved))
       if (!r.success) {
-        setErreur(r.stale ? 'Le plan a changé dans HALO depuis son ouverture ici : recharge-le (tes repositionnements non enregistrés seront perdus).' : r.error ?? 'refusé')
+        setErreur(r.stale ? 'Le plan a changé depuis son ouverture ici : recharge-le (tes repositionnements non enregistrés seront perdus).' : r.error ?? 'refusé')
         return
       }
       setSaved({ ...draft, rev: r.rev }); setDraft({ ...draft, rev: r.rev }); setErreur('')
-      toast('positions enregistrées — HALO recharge le plan tout seul')
+      toast('positions enregistrées')
       onEnregistre?.()
     } catch (e) { setErreur((e as Error).message) } finally { setOccupe(false) }
   }

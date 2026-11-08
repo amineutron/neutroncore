@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState } from 'react'
-import { apiGet, apiPost, apiPut, withConfirm } from '../lib/api'
+import { apiGet, apiPost, apiPut } from '../lib/api'
 import { confirmDialog, toast } from '../lib/dialog'
-import { heightFromFloor, isDirty, moveLight, moveSeg, resizeRoom, rotateSeg, setHeight, toPayload, type Plan as RoomPlanData, type RoomDims, SEG_MIN_CM, addSeg, removeSeg, resampleStrip, segHeight, setSegHeight, setSegLength } from '../lib/plan'
+import { heightFromFloor, isDirty, moveLight, moveSeg, moveTv, resizeRoom, rotateSeg, setHeight, toPayload, type Plan as RoomPlanData, type RoomDims, SEG_MIN_CM, addSeg, removeSeg, resampleStrip, segHeight, setSegHeight, setSegLength } from '../lib/plan'
 import { usePoll } from '../lib/poll'
 import { NumField } from '../components/NumField'
 import { RoomPlan, segId, segIndex, type Measured } from '../components/RoomPlan'
@@ -17,8 +17,8 @@ const AXES: { axis: keyof RoomDims; label: string }[] = [
   { axis: 'w', label: 'largeur' }, { axis: 'h', label: 'profondeur' }, { axis: 'd', label: 'hauteur' },
 ]
 
-// Plan de la pièce partagé avec HALO (source de vérité : son fichier de plan).
-// HALO surveille ce fichier : un enregistrement ici se voit aussitôt chez lui.
+// Plan de la pièce : où sont les lampes, le ruban LED et la TV. Il est enregistré par l'API (GET/PUT /plan)
+// et sert à toute la maison (lumière 3d, effets).
 export function Plan() {
   const [saved, setSaved] = useState<RoomPlanData | null>(null)
   const [draft, setDraft] = useState<RoomPlanData | null>(null)
@@ -63,9 +63,9 @@ export function Plan() {
     setError('')
     try {
       const p = await apiGet<RoomPlanData>('/plan')
-      if (!p.roomDims || !p.configs) throw new Error('plan HALO introuvable')
+      if (!p.roomDims || !p.configs) throw new Error('plan introuvable')
       // dimensions nulles ou absentes : le dessin n'aurait aucune taille
-      if (![p.roomDims.w, p.roomDims.h, p.roomDims.d].every((v) => Number.isFinite(v) && v > 0)) throw new Error('plan HALO invalide (dimensions)')
+      if (![p.roomDims.w, p.roomDims.h, p.roomDims.d].every((v) => Number.isFinite(v) && v > 0)) throw new Error('plan invalide (dimensions)')
       setSaved(p); setDraft(p)
     } catch (e) { setError((e as Error).message) }
   }
@@ -91,7 +91,7 @@ export function Plan() {
       // nouvelle empreinte du fichier ; le brouillon a pu continuer à bouger pendant l'envoi
       setSaved({ ...draft, rev: r.rev })
       setDraft((d) => (d ? { ...d, rev: r.rev } : d))
-      toast('plan enregistré — HALO le recharge tout seul')
+      toast('plan enregistré')
     } catch (e) { toast(`plan non enregistré : ${(e as Error).message}`, 'crit') } finally { setBusy('') }
   }
   async function toggleAmbihue() {
@@ -103,11 +103,6 @@ export function Plan() {
       screens.refresh()
     } catch (e) { toast(`échec : ${(e as Error).message}`, 'crit') } finally { setBusy('') }
   }
-  async function openHalo() {
-    if (!await confirmDialog({ title: 'lancer HALO ?', body: 'L’application s’ouvre sur le PC.', ok: 'lancer' })) return
-    try { await apiPost('/launcher/halo', undefined, await withConfirm('launcher_halo')); toast('HALO lancé sur le PC') }
-    catch (e) { toast(`échec : ${(e as Error).message}`, 'crit') }
-  }
 
   // couleur des lampes allumées, quand le plan les identifie par leur numéro Hue
   const colors = Object.fromEntries(Object.entries(lights.data?.lights ?? {}).filter(([, l]) => l.on).map(([id, l]) => [id, l.color || '#f6c177']))
@@ -118,9 +113,9 @@ export function Plan() {
 
   return (
     <>
-      <PageTitle help="plan" title="plan de pièce" desc="Où sont les lampes dans la pièce — le plan que HALO utilise pour ses effets." />
+      <PageTitle help="plan" title="plan de pièce" desc="Où sont les lampes, le ruban et la TV dans la pièce — le plan qui sert aux effets de lumière." />
       {error && <div style={{ marginBottom: 12 }}><Chip tone="crit">plan indisponible : {error}</Chip> <Btn sm onClick={load}>réessayer</Btn></div>}
-      {!draft && !error && <Loader label="lecture du plan HALO…" />}
+      {!draft && !error && <Loader label="lecture du plan…" />}
       {draft && (
         <div className="grid pl-layout">
           <Card title={mode === '2d' ? 'vue de dessus' : 'vue 3d'} lite={dirty ? 'modifié — non enregistré' : `${Math.round(draft.roomDims.w)} × ${Math.round(draft.roomDims.h)} cm`}>
@@ -133,7 +128,8 @@ export function Plan() {
               ? (
                 <RoomPlan plan={draft} colors={colors} selected={selected} measured={liveColors}
                   onSelect={setSelected} onMove={(id, xy) => setDraft((d) => (d ? moveLight(d, id, xy) : d))}
-                  onMoveSeg={(i, xy) => setDraft((d) => (d ? moveSeg(d, i, xy, wholeStrip) : d))} />
+                  onMoveSeg={(i, xy) => setDraft((d) => (d ? moveSeg(d, i, xy, wholeStrip) : d))}
+                  onMoveTv={(xy) => setDraft((d) => (d ? moveTv(d, xy) : d))} />
               )
               : (
                 <>
@@ -148,7 +144,7 @@ export function Plan() {
             <div className="pl-actions">
               <Btn solid disabled={!dirty || busy === 'save'} onClick={save}>{busy === 'save' ? 'enregistrement…' : 'enregistrer'}</Btn>
               <Btn disabled={!dirty} onClick={() => { setDraft(saved); setSelected(null) }}>annuler les changements</Btn>
-              <span className="pl-hint">{mode === '2d' ? 'glisse une lampe ou le ruban pour les déplacer · un carreau = 1 m' : 'glisse une lampe ou le ruban de haut en bas pour régler leur hauteur · glisse le fond pour tourner autour'}</span>
+              <span className="pl-hint">{mode === '2d' ? 'glisse une lampe, le ruban ou la TV pour les déplacer · un carreau = 1 m' : 'glisse une lampe ou le ruban de haut en bas pour régler leur hauteur · glisse le fond pour tourner autour'}</span>
             </div>
           </Card>
           <div className="pl-side">
@@ -216,16 +212,15 @@ export function Plan() {
                 </label>
               ))}
             </Card>
-            <Card title="halo" lite={screens.data?.tv_ok ? 'tv joignable' : 'tv injoignable'}>
+            <Card title="télé et ambilight" lite={screens.data?.tv_ok ? 'tv joignable' : 'tv injoignable'}>
               <div className="pl-toggles">
                 <Btn sm solid={Boolean(screens.data?.ambihue)} disabled={busy === 'ambihue' || screens.data?.ambihue == null} onClick={toggleAmbihue}>
                   {busy === 'ambihue' ? '…' : `ambilight + hue : ${screens.data?.ambihue == null ? 'inconnu' : screens.data.ambihue ? 'associés' : 'dissociés'}`}
                 </Btn>
                 <Btn sm solid={live} onClick={() => setLive((v) => !v)}>couleurs de la tv en direct : {live ? 'oui' : 'non'}</Btn>
                 {live && (measured.error || measured.data?.ok === false) && <Chip tone="warn">la tv ne renvoie pas ses couleurs</Chip>}
-                <Btn sm onClick={openHalo}>ouvrir halo sur le pc</Btn>
               </div>
-              <p className="pl-note">La TV se règle dans HALO : elle est affichée ici, sans être modifiable.</p>
+              <p className="pl-note">La TV se replace en la glissant dans la vue de dessus (sa hauteur reste celle du plan).</p>
             </Card>
           </div>
         </div>

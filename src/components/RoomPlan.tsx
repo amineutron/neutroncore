@@ -5,13 +5,13 @@ import { fromSvg, segEnds, toSvg, type Plan } from '../lib/plan'
 
 export type Measured = { left: string[]; top: string[]; right: string[]; bottom: string[] }
 
+export const TV_ID = 'tv:'
 export const segId = (i: number) => `seg:${i}`
 export const segIndex = (id: string | null) => (id?.startsWith('seg:') ? Number(id.slice(4)) : -1)
 
-// Vue de dessus de la pièce, en centimètres. Les lampes et les segments du
-// ruban LED se déplacent au doigt, à la souris ou aux flèches ; la TV est
-// affichée mais reste à HALO.
-export function RoomPlan({ plan, colors, selected, measured, onSelect, onMove, onMoveSeg }: {
+// Vue de dessus de la pièce, en centimètres. Les lampes, les segments du
+// ruban LED et la TV se déplacent au doigt, à la souris ou aux flèches.
+export function RoomPlan({ plan, colors, selected, measured, onSelect, onMove, onMoveSeg, onMoveTv }: {
   plan: Plan
   colors: Record<string, string>          // id de lampe -> couleur quand elle est allumée
   selected: string | null
@@ -19,6 +19,7 @@ export function RoomPlan({ plan, colors, selected, measured, onSelect, onMove, o
   onSelect: (id: string | null) => void
   onMove: (id: string, xy: { x: number; y: number }) => void
   onMoveSeg: (index: number, xy: { x: number; y: number }) => void
+  onMoveTv: (xy: { x: number; y: number }) => void
 }) {
   const svg = useRef<SVGSVGElement>(null)
   // un seul glissement à la fois, lié à SON pointeur (un second doigt ne le détourne pas)
@@ -41,9 +42,10 @@ export function RoomPlan({ plan, colors, selected, measured, onSelect, onMove, o
     const p = point(e)
     if (p) place(drag.current.id, fromSvg({ x: p.x - drag.current.dx, y: p.y - drag.current.dy }, plan.roomDims))
   }
-  const centerOf = (id: string) => (segIndex(id) >= 0 ? plan.strip?.segs?.[segIndex(id)]?.pos : plan.configs[id]?.pos)
+  const centerOf = (id: string) => (id === TV_ID ? plan.tv?.pos : segIndex(id) >= 0 ? plan.strip?.segs?.[segIndex(id)]?.pos : plan.configs[id]?.pos)
   function place(id: string, xy: { x: number; y: number }) {
-    if (segIndex(id) >= 0) onMoveSeg(segIndex(id), xy)
+    if (id === TV_ID) onMoveTv(xy)
+    else if (segIndex(id) >= 0) onMoveSeg(segIndex(id), xy)
     else onMove(id, xy)
   }
   const stop = (e: React.PointerEvent) => { if (drag.current?.pointer === e.pointerId) drag.current = null }
@@ -100,7 +102,10 @@ export function RoomPlan({ plan, colors, selected, measured, onSelect, onMove, o
       })}
 
       {tv && (
-        <g>
+        <g className={`rp-light ${selected === TV_ID ? 'sel' : ''}`} tabIndex={0} role="button" aria-label="La TV, glisse pour la replacer"
+          onFocus={() => onSelect(TV_ID)} onKeyDown={(e) => nudge(e, TV_ID)} onPointerDown={(e) => grab(e, TV_ID)}>
+          {/* cible tactile large, invisible */}
+          <rect x={tv.x - tvW / 2} y={tv.y - unit * 5} width={tvW} height={unit * 10} fill="transparent" />
           {measured && (['left', 'top', 'right'] as const).map((side, i) => {
             const c = glow(measured[side])
             return c ? <circle key={side} cx={tv.x + (i - 1) * tvW * 0.42} cy={tv.y} r={unit * 9} fill={c} opacity={0.55} filter={`url(#${blur})`} pointerEvents="none" /> : null

@@ -184,16 +184,16 @@ export const HELP: Record<string, HelpTopic> = {
   },
   plan: {
     title: 'plan de pièce',
-    intro: 'La pièce vue de dessus : où sont les lampes, la TV et le ruban LED. C’est le plan que HALO utilise.',
+    intro: 'La pièce vue de dessus : où sont les lampes, la TV et le ruban LED. C’est le plan qui sert aux effets de lumière.',
     points: [
       ['déplacer', 'Glisse une lampe pour la replacer. Un carreau fait un mètre.'],
       ['ruban led', 'Glisse le ruban : il se déplace d’un bloc. Touche un segment pour régler son angle, ou le replacer seul.'],
       ['vue 3d', 'Le bouton « 3d » montre la pièce en volume. Glisse le fond pour tourner autour, glisse une lampe de haut en bas pour régler sa hauteur.'],
       ['hauteur', 'Touche une lampe : le curseur règle sa hauteur depuis le sol.'],
-      ['enregistrer', 'Rien n’est écrit avant « enregistrer ». HALO recharge le plan tout seul.'],
-      ['halo', 'Associer l’Ambilight aux lampes Hue, voir les couleurs de la TV en direct, ouvrir HALO sur le PC.'],
+      ['enregistrer', 'Rien n’est écrit avant « enregistrer ».'],
+      ['télé', 'Glisse la TV pour la replacer. Associe l’Ambilight aux lampes Hue et vois les couleurs de la TV en direct.'],
     ],
-    tip: 'Le ruban se règle ici segment par segment (hauteur, angle, longueur, ajout, retrait) ; « reprendre le découpage du ruban hue » lui donne ses vrais segments. La TV se règle dans HALO.',
+    tip: 'Le ruban se règle ici segment par segment (hauteur, angle, longueur, ajout, retrait) ; « reprendre le découpage du ruban hue » lui donne ses vrais segments.',
   },
   ambiance: {
     title: 'ambiance',
@@ -213,7 +213,6 @@ export const HELP: Record<string, HelpTopic> = {
       ['favoris', 'Les dossiers épinglés, modifiables depuis cette page.'],
       ['navigation', 'Parcourir l\'arborescence pour ajouter un nouveau favori.'],
       ['claude code', 'Ouvre un terminal dans le dossier choisi, session prête.'],
-      ['halo', 'Lance l\'interface bureau, avec confirmation.'],
     ],
   },
   outils: {

@@ -1,5 +1,5 @@
-// Plan de la pièce (vue de dessus) : géométrie pure. Le plan vient de HALO via
-// GET /plan : centimètres, origine au CENTRE de la pièce (x = gauche/droite,
+// Plan de la pièce (vue de dessus) : géométrie pure. Le plan vient de GET /plan :
+// centimètres, origine au CENTRE de la pièce (x = gauche/droite,
 // y = avant/arrière, z = hauteur centrée sur la mi-hauteur).
 // Attention au nommage hérité du schéma : roomDims.h = PROFONDEUR, roomDims.d = HAUTEUR.
 
@@ -9,13 +9,13 @@ export type RoomDims = { w: number; h: number; d: number }
 // horaire vu de dessus, 0 = le long de la largeur), longueur en cm
 // `z` : hauteur depuis le sol en cm ; null = jamais réglée (dessinée à 1,80 m, ou sous le plafond)
 export type StripSeg = { pos: { x: number; y: number }; angle: number; length: number; z?: number | null }
-export type LightCfg = { pos: Pos; name: string; haloId?: string }
+export type LightCfg = { pos: Pos; name: string }
 export type Plan = {
   roomDims: RoomDims
   configs: Record<string, LightCfg>
   strip?: { segments: number; segs?: StripSeg[]; length?: number }
   tv?: { pos: Pos }
-  rev?: string   // empreinte du fichier HALO au moment de la lecture, renvoyée à l'enregistrement
+  rev?: string   // empreinte du plan au moment de la lecture, renvoyée à l'enregistrement
 }
 
 export const ROOM_MIN_CM = 100
@@ -52,6 +52,12 @@ export function moveLight(plan: Plan, id: string, xy: { x: number; y: number }):
   const cfg = plan.configs[id]
   if (!cfg) return plan
   return { ...plan, configs: { ...plan.configs, [id]: { ...cfg, pos: { ...cfg.pos, ...clampXY(xy, plan.roomDims) } } } }
+}
+
+/** Déplace la TV dans la vue de dessus ; sa hauteur ne change pas. Sans TV au plan : inchangé. */
+export function moveTv(plan: Plan, xy: { x: number; y: number }): Plan {
+  if (!plan.tv) return plan
+  return { ...plan, tv: { ...plan.tv, pos: { ...plan.tv.pos, ...clampXY(xy, plan.roomDims) } } }
 }
 
 export function setHeight(plan: Plan, id: string, heightCm: number): Plan {
@@ -188,19 +194,20 @@ export function resizeRoom(plan: Plan, axis: keyof RoomDims, valueCm: number): P
   return withSegs({ ...plan, roomDims, configs }, (segs) => segs.map((sg) => ({ ...sg, pos: clampXY(sg.pos, roomDims) })))
 }
 
-// ce que PUT /plan accepte : dimensions, positions des lampes, et les segments du ruban (position,
-// angle, longueur, hauteur ; leur nombre peut changer). La TV reste à HALO.
+// ce que PUT /plan accepte : dimensions, positions des lampes, les segments du ruban (position,
+// angle, longueur, hauteur ; leur nombre peut changer) et la position de la TV.
 export type PlanPayload = {
   roomDims: RoomDims
   configs: Record<string, { pos: Pos; name: string }>
   strip?: { segs: { pos: { x: number; y: number }; angle: number; length: number; z?: number }[] }
+  tv?: { pos: Pos }
   rev?: string
 }
-// une hauteur jamais réglée n'est pas envoyée : HALO garde son propre défaut
+// une hauteur jamais réglée n'est pas envoyée : elle reste « non réglée » côté API
 const stripPart = (plan: Plan) => plan.strip?.segs?.map(({ pos, angle, length, z }) => ({ pos, angle, length, ...(typeof z === 'number' ? { z } : {}) }))
 
-/** `base` : le plan tel qu'enregistré. Le ruban n'est envoyé que s'il a été
- * modifié ici — déplacer une lampe ne doit jamais réécrire un ruban réglé dans HALO. */
+/** `base` : le plan tel qu'enregistré. Le ruban et la TV ne sont envoyés que s'ils ont été
+ * modifiés ici — déplacer une lampe ne doit jamais réécrire un ruban réglé ailleurs. */
 export function toPayload(plan: Plan, base?: Plan): PlanPayload {
   const payload: PlanPayload = {
     roomDims: plan.roomDims,
@@ -208,7 +215,13 @@ export function toPayload(plan: Plan, base?: Plan): PlanPayload {
   }
   const segs = stripPart(plan)
   const touched = segs && (!base || JSON.stringify(segs) !== JSON.stringify(stripPart(base)))
-  return { ...payload, ...(touched ? { strip: { segs } } : {}), ...(plan.rev ? { rev: plan.rev } : {}) }
+  const tvMoved = plan.tv && (!base || JSON.stringify(plan.tv.pos) !== JSON.stringify(base.tv?.pos))
+  return {
+    ...payload,
+    ...(touched ? { strip: { segs } } : {}),
+    ...(plan.tv && tvMoved ? { tv: { pos: plan.tv.pos } } : {}),
+    ...(plan.rev ? { rev: plan.rev } : {}),
+  }
 }
 
 export function isDirty(a: Plan, b: Plan): boolean {
