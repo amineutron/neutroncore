@@ -1,4 +1,5 @@
 import { alertsOf, fmtGb, normHost, type Overview as Ov } from '../../lib/vmHub'
+import type { Power } from '../../lib/vmHubApi'
 import { sizeText, type LibEntry } from '../../lib/vmLibrary'
 import { Btn, Chip } from '../ui'
 import { Families } from './Families'
@@ -7,7 +8,7 @@ import { Legend } from './Kind'
 import { Q } from './Help'
 
 export type OverviewActs = {
-  open: (n: string) => void; console: (n: string) => void; power: (n: string, a: 'start' | 'stop') => void
+  open: (n: string) => void; console: (n: string) => void; power: (n: string, a: Power) => void
   fromTemplate: (n: string) => void; deploy: (libId: string) => void; goLibrary: () => void; importArchive: () => void
   newVm: () => void; seeVm: (n: string, tab?: string) => void
 }

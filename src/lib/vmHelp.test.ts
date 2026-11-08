@@ -17,6 +17,19 @@ describe('aide pedagogique', () => {
       expect(helpOf(k), k).not.toBeNull()
     }
   })
+  it('matériel étendu : firmware, tpm, secure boot, démarrage, affichage, usb, agrandissement, pause, arrêt requis', () => {
+    for (const k of ['hw-fw', 'hw-tpm', 'hw-sb', 'hw-boot', 'hw-display', 'hw-usb', 'hw-grow', 'pause', 'needs-stop']) {
+      const h = helpOf(k)
+      expect(h, k).not.toBeNull()
+      expect(h!.p.length, `${k} : 2 à 4 phrases ou paragraphes`).toBeGreaterThanOrEqual(2)
+      expect(h!.p.length, k).toBeLessThanOrEqual(4)
+    }
+    expect(HELP['hw-fw'].p.join(' ')).toMatch(/Windows 11.*UEFI.*TPM.*Secure Boot/)
+    expect(HELP['hw-usb'].p.join(' ')).toMatch(/l'hôte ne l'a plus/)
+    expect(HELP['hw-grow'].p.join(' ')).toMatch(/jamais/)
+    expect(HELP['hw-grow'].p.join(' ')).toMatch(/partition/)
+    expect(HELP['pause'].p.join(' ')).toMatch(/mémoire reste/)
+  })
   it('cle inconnue : null', () => { expect(helpOf('zzz')).toBeNull() })
 })
 

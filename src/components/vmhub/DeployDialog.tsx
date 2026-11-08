@@ -95,6 +95,7 @@ export function DeployDialog({ entry, names, onClose, onDone }: { entry: LibEntr
                 )
               })}
               <p className="lite" style={{ margin: '6px 0 0' }}>{envIsEmpty(eff) ? 'Rien à appliquer.' : `Sera appliqué : ${envLabels(eff)} — ${envCommand(eff, entry.dist)}`}</p>
+              {!envIsEmpty(eff) && <p className="lite vh-envnote" style={{ margin: '6px 0 0', color: 'var(--warn)' }}>ton environnement sera enregistré dans la fiche de la machine, pas encore appliqué dans la machine.</p>}
             </>
           )}
         </div>

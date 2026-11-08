@@ -1,6 +1,7 @@
 import { apiGet, apiPost, apiPut, withConfirm } from './api'
 import { usePoll } from './poll'
 import { consoleConfirm } from './vmsConsole'
+import type { EditResult, HardwarePayload } from './vmHardware'
 import type { Overview, VmMeta } from './vmHub'
 import type { LibEntry } from './vmLibrary'
 import type { TaskJob } from './vmTasks'
@@ -23,9 +24,13 @@ export async function saveMeta(vm: string, patch: Partial<Pick<VmMeta, 'profile'
   await apiPut(`/vms-console/meta/${encodeURIComponent(vm)}`, patch)
 }
 
-export type Power = 'start' | 'stop' | 'force_stop'
+export type Power = 'start' | 'stop' | 'force_stop' | 'pause' | 'resume' | 'reboot'
+export const POWER_LABEL: Record<Power, { verb: string; toast: string }> = {
+  start: { verb: 'démarrer', toast: 'démarrage de' }, stop: { verb: 'arrêter', toast: 'arrêt de' }, force_stop: { verb: 'forcer l\'arrêt', toast: 'arrêt forcé de' },
+  pause: { verb: 'mettre en pause', toast: 'mise en pause de' }, resume: { verb: 'reprendre', toast: 'reprise de' }, reboot: { verb: 'redémarrer', toast: 'redémarrage de' },
+}
 
-/** Demarre ou arrete une VM (meme route et meme jeton que l'ecran des services). */
+/** Alimentation d'une VM : start, stop, force_stop, pause, resume, reboot (meme route et meme jeton que l'ecran des services). */
 export async function powerVm(name: string, action: Power): Promise<void> {
   const res = await apiPost<{ success: boolean; error: string | null }>(
     `/services/vms/${encodeURIComponent(name)}/${action}`, undefined, await withConfirm(`vm_${action}_${name}`))
@@ -33,6 +38,13 @@ export async function powerVm(name: string, action: Power): Promise<void> {
 }
 
 const enc = encodeURIComponent
+
+/** Edition materielle etendue ; jeton `vm_edit_<vm>`, seuls les champs modifies dans le corps. */
+export async function editHardware(vm: string, payload: HardwarePayload): Promise<EditResult> {
+  const res = await apiPost<EditResult>(`/vms-console/${enc(vm)}/edit`, payload, await consoleConfirm('edit', vm))
+  if (res && res.success === false) throw new Error(res.error ?? 'échec')
+  return res
+}
 
 /** Clone lie ou copie integrale ; jeton `vm_clone_<source>` (meme route que useVmOp). */
 export async function cloneVm(source: string, body: { new_name: string; linked: boolean; network: string; autostart: boolean }): Promise<void> {

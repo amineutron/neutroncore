@@ -48,7 +48,7 @@ export function EditSettings({ vm, up, info, onStarted, busyVm }: {
         {blocked && <Chip tone="warn">arrête la vm pour changer les processeurs ou la mémoire</Chip>}
         {!blocked && stopNeeded && <span className="lite">effectif au prochain démarrage</span>}
       </div>
-      <p className="lite">{info.not_editable}</p>
+      {info.not_editable && <p className="lite">{info.not_editable}</p>}
       {op.err && <p className="vm-err">{op.err}</p>}
     </div>
   )

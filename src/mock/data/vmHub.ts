@@ -120,7 +120,39 @@ const patch = (name: string, f: (v: HubVm) => HubVm) => { vms = vms.map((v) => (
 const jitter = (x: number | null | undefined, lo: number, hi: number) => Math.max(lo, Math.min(hi, (x ?? 20) + (Math.random() * 8 - 4)))
 const fail = (msg: string): never => { throw new Error(msg) }
 
+/** Lecture d'une machine du hub par la console de demo (vms.ts) : memes vcpus, memoire, etat. */
+export const hubVm = (name: string): HubVm | undefined => vms.find((v) => v.name === name)
+/** Retouche d'une machine du hub par la console de demo (edition des parametres). */
+export const patchHubVm = (name: string, p: Partial<Pick<HubVm, 'vcpus' | 'ram_mb' | 'disk_total_gb'>>): void => patch(name, (v) => ({ ...v, ...p }))
+
+// ----------------------------------------------------------- alimentation
+const STATUS: Record<HubVm['state'], string> = { running: 'up', stopped: 'down', paused: 'paused', starting: 'starting', unknown: 'unknown' }
+const TRANSITION_MS = 2500
+const setState = (name: string, state: HubVm['state']) => patch(name, (v) => ({
+  ...v, state, status: STATUS[state],
+  ip: state === 'stopped' ? null : v.ip ?? `192.168.122.${100 + (name.length * 7) % 100}`,
+  ...(state === 'running' ? { cpu_pct: v.cpu_pct ?? 12, mem_pct: v.mem_pct ?? 35 } : {}),
+}))
+/** Transition visible (etat `starting`) puis etat final : la rangee montre « en cours » comme en vrai. */
+const transition = (name: string, to: HubVm['state']) => { setState(name, 'starting'); setTimeout(() => setState(name, to), TRANSITION_MS) }
+
+export function powerDemo(name: string, action: string): { success: boolean; error: string | null } {
+  const v = hubVm(name) ?? fail('machine inconnue')
+  if (v.meta.template) fail('un modèle ne démarre pas : clone-le ou redeviens machine')
+  switch (action) {
+    case 'start': if (v.state !== 'stopped') fail('la machine n\'est pas arrêtée'); transition(name, 'running'); break
+    case 'stop': if (v.state === 'stopped') fail('déjà arrêtée'); transition(name, 'stopped'); break
+    case 'force_stop': if (v.state === 'stopped') fail('déjà arrêtée'); setState(name, 'stopped'); break
+    case 'pause': if (v.state !== 'running') fail('seule une machine en marche se met en pause'); setState(name, 'paused'); break
+    case 'resume': if (v.state !== 'paused') fail('la machine n\'est pas en pause'); setState(name, 'running'); break
+    case 'reboot': if (v.state !== 'running') fail('seule une machine en marche se redémarre'); transition(name, 'running'); break
+    default: fail(`action inconnue : ${action}`)
+  }
+  return { success: true, error: null }
+}
+
 export const vmHub: [string, string, MockHandler][] = [
+  ['POST', '/services/vms/:vm/:action', ({ params }) => powerDemo(params.vm, params.action)],
   ['GET', '/vms-console/overview', () => {
     vms = vms.map((v) => (v.state === 'running' ? { ...v, cpu_pct: jitter(v.cpu_pct, 2, 85), mem_pct: jitter(v.mem_pct, 15, 88) } : v))
     return { success: true, error: null, stale: false, host: { cpu: 16, ram_mb: 32768, pool_gb: 930, pool_used_gb: vms.reduce((s, v) => s + (v.disk_used_gb ?? 0), 0) + archives.reduce((s, a) => s + a.size / 1e9, 0) }, vms, archives }

@@ -1163,6 +1163,7 @@ input[type=range].bri::-webkit-slider-thumb{-webkit-appearance:none;appearance:n
 .vm-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none;margin-right:8px;vertical-align:middle;background:var(--off);transition:background .3s,box-shadow .3s}
 .vm-dot.ok{background:var(--ok);box-shadow:0 0 7px #82d69c66}
 .vm-dot.busy{background:var(--gold);animation:vmBusy 1.1s ease-in-out infinite}
+.vm-dot.warn{background:var(--warn);box-shadow:0 0 7px #f0b45e55}
 .vm-row td:first-child{white-space:nowrap}
 .vm-actions{display:inline-flex;align-items:center;gap:8px;justify-content:flex-end;white-space:nowrap}
 .vm-actions .btn{animation:fade .18s ease-out}
