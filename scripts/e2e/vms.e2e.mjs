@@ -157,6 +157,13 @@ try {
     assert(/résultat de l'outil/.test(res), 'le resume dit venir de l\'outil')
     assert(/prochain démarrage/.test(res), 'needs_restart rendu')
     await b.waitFor(`/qemu64/.test(document.querySelector('.vh-hwnow')?.textContent||'')`, { what: 'etat reel relu apres edition', timeout: 6000 })
+    // l'etat reel a ete relu (le formulaire est remonte) : le resume du travail doit rester affiche
+    await new Promise((r) => setTimeout(r, 3000))
+    const still = await b.text('.vh-hwres')
+    assert(/host-passthrough → qemu64/.test(still) && /résultat de l'outil/.test(still), `resume toujours visible 3 s apres : ${still}`)
+    assert(await b.eval(`document.querySelectorAll('.vh-cpu .vh-seg button.on').length === 1 && document.querySelector('.vh-cpu .vh-seg button.on').textContent === 'qemu64'`), 'segment actif = modele relu')
+    await b.clickText('.vh-hwres button', 'fermer')
+    await b.waitFor(`!document.querySelector('.vh-hwres')`, { what: 'resume ferme a la demande' })
     await tab('tâches')
     await b.waitFor(`[...document.querySelectorAll('.vh-trow .tt')].some(e=>/^Modification de fedora-exam-reseaux$/.test(e.textContent))`, { what: 'tache de modification' })
     await shot('06c-materiel-applique')

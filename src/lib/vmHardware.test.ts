@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BOOT_LABEL, choiceHint, choiceLabel, describePayload, diffHardware, draftFromHardware, moveBoot, stopFields, summarizeEdit, summarizeJob, toggleBoot, totalCapacity, validateHardware, type Hardware, type HardwareDraft } from './vmHardware'
+import { BOOT_LABEL, CPU_MODEL_IDS, choiceHint, choiceLabel, describePayload, diffHardware, draftFromHardware, knownCpu, moveBoot, optionIds, stopFields, summarizeEdit, summarizeJob, toggleBoot, totalCapacity, validateHardware, type Hardware, type HardwareDraft } from './vmHardware'
 
 const HW: Hardware = {
   cpu_model: 'host-passthrough', firmware: 'bios', secure_boot: false, tpm: false, boot_order: ['hd', 'cdrom'],
@@ -37,6 +37,13 @@ describe('diffHardware', () => {
     expect(diffHardware(base, { ...base, usb_attach: ' 046D:C52B ', disk_grow_gb: '10', network: ' default ' })).toEqual({ usb_attach: '046d:c52b', disk_grow_gb: 10 })
     expect(diffHardware(base, { ...base, network: 'isole' })).toEqual({ network: 'isole' })
   })
+  it('agrandissement : seuls les chiffres comptent (« 1e3 », « 0x10 », « 10.5 » donnent NaN, refuse ensuite)', () => {
+    for (const t of ['1e3', '0x10', '10.5', ' 12 ', '-5']) {
+      const p = diffHardware(base, { ...base, disk_grow_gb: t })
+      if (t.trim() === '12') expect(p.disk_grow_gb).toBe(12)
+      else { expect(Number.isNaN(p.disk_grow_gb)).toBe(true); expect(validateHardware(p, 'stopped').ok).toBe(false) }
+    }
+  })
   it('ne modifie pas ses entrees', () => {
     const d = { ...base, boot_order: ['cdrom', 'hd'] }
     const p = diffHardware(base, d)
@@ -60,7 +67,8 @@ describe('validateHardware', () => {
     [{ boot_order: [] }, /vide/],
     [{ boot_order: ['hd', 'usb'] }, /inconnu/],
     [{ boot_order: ['hd', 'hd'] }, /deux fois/],
-    [{ network: 'mon reseau' }, /réseau/],
+    [{ network: 'mon reseau' }, /lettres, chiffres/],
+    [{ network: '' }, /réseau vide/],
     [{ usb_attach: '46d:c52b' }, /vvvv:pppp/],
     [{ usb_detach: 'zzzz:0001' }, /vvvv:pppp/],
     [{ usb_attach: '046d:c52b', usb_detach: '046d:c52b' }, /même périphérique/],
@@ -81,6 +89,25 @@ describe('validateHardware', () => {
     const v = validateHardware({ cpu_model: 'qemu64', tpm: true }, 'running', { needsStop: stop })
     expect(v).toEqual({ ok: false, reason: 'arrête la machine pour changer : modèle de processeur, TPM' })
     expect(validateHardware({ cpu_model: 'qemu64' }, 'paused', { needsStop: stop }).ok).toBe(false)
+  })
+  it('les listes de choix de l\'API font foi, repli sur les constantes', () => {
+    const choices = { cpu_models: [{ id: 'EPYC-Milan', label: 'EPYC Milan', hint: '' }, { id: 'host-passthrough', label: 'hôte', hint: '' }], displays: [{ id: 'sdl', label: 'SDL', hint: '' }] }
+    expect(validateHardware({ cpu_model: 'EPYC-Milan' }, 'stopped', { choices }).ok).toBe(true)
+    expect(validateHardware({ cpu_model: 'qemu64' }, 'stopped', { choices }).ok).toBe(false)
+    expect(validateHardware({ display: 'sdl' as 'vnc' }, 'stopped', { choices })).toEqual({ ok: true })
+    expect(validateHardware({ display: 'vnc' }, 'stopped', { choices }).ok).toBe(false)
+    expect(validateHardware({ firmware: 'uefi' }, 'stopped', { choices })).toEqual({ ok: true })   // liste absente : constante
+    expect(optionIds(undefined, CPU_MODEL_IDS)).toBe(CPU_MODEL_IDS)
+    expect(optionIds([], CPU_MODEL_IDS)).toBe(CPU_MODEL_IDS)
+    expect(optionIds(choices.cpu_models, CPU_MODEL_IDS)).toEqual(['EPYC-Milan', 'host-passthrough'])
+  })
+  it('knownCpu : hors liste ou absent = aucun segment actif', () => {
+    expect(knownCpu('host-model')).toBe('host-model')
+    expect(knownCpu('EPYC-Milan')).toBeNull()
+    expect(knownCpu('Skylake-Client')).toBeNull()
+    expect(knownCpu(null)).toBeNull()
+    expect(knownCpu('')).toBeNull()
+    expect(knownCpu('EPYC-Milan', ['EPYC-Milan'])).toBe('EPYC-Milan')
   })
   it('la liste needs_stop de l\'API fait foi (champ a chaud declare par elle)', () => {
     expect(validateHardware({ tpm: true }, 'running', { needsStop: ['cpu_model'] })).toEqual({ ok: true })

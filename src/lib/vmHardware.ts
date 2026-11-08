@@ -80,7 +80,7 @@ export function diffHardware(initial: HardwareDraft, d: HardwareDraft): Hardware
   if (d.network.trim() !== initial.network.trim()) p.network = d.network.trim()
   if (d.usb_attach.trim()) p.usb_attach = d.usb_attach.trim().toLowerCase()
   if (d.usb_detach.trim()) p.usb_detach = d.usb_detach.trim().toLowerCase()
-  if (d.disk_grow_gb.trim()) p.disk_grow_gb = Number(d.disk_grow_gb.trim())
+  if (d.disk_grow_gb.trim()) p.disk_grow_gb = /^\d+$/.test(d.disk_grow_gb.trim()) ? Number(d.disk_grow_gb.trim()) : NaN   // « 1e3 », « 0x10 » : refuses
   return p.secure_boot === true && p.firmware !== 'uefi' ? { ...p, firmware: 'uefi' } : p
 }
 
@@ -89,19 +89,31 @@ export function stopFields(p: HardwarePayload, needsStop: string[] = HARDWARE_NE
   return (Object.keys(p) as HardwareField[]).filter((k) => needsStop.includes(k))
 }
 
-/** Regles du contrat + etat de la machine. Une raison en francais, la premiere trouvee. */
-export function validateHardware(p: HardwarePayload, state: string, opts: { needsStop?: string[]; grow?: [number, number] } = {}): Verdict {
+/** Identifiants d'une liste de choix de l'API, ou la constante locale quand elle manque ou est vide. */
+export const optionIds = <T extends string>(list: Choice[] | undefined, fallback: readonly T[]): readonly T[] =>
+  (list && list.length ? (list.map((c) => c.id) as T[]) : fallback)
+
+export type ValidateOpts = { needsStop?: string[]; grow?: [number, number]; choices?: Partial<HardwareChoices> | null }
+
+/** Regles du contrat + etat de la machine. Une raison en francais, la premiere trouvee.
+ *  Les listes admises viennent de `choices` (API) quand elles existent, sinon des constantes locales. */
+export function validateHardware(p: HardwarePayload, state: string, opts: ValidateOpts = {}): Verdict {
   const keys = Object.keys(p) as HardwareField[]
   if (keys.length === 0) return { ok: false, reason: 'aucun changement à appliquer' }
-  if (p.cpu_model !== undefined && !(CPU_MODEL_IDS as readonly string[]).includes(p.cpu_model)) return { ok: false, reason: `modèle de processeur inconnu : ${p.cpu_model}` }
-  if (p.firmware !== undefined && !(FIRMWARES as readonly string[]).includes(p.firmware)) return { ok: false, reason: 'firmware : bios ou uefi' }
-  if (p.display !== undefined && !(DISPLAYS as readonly string[]).includes(p.display)) return { ok: false, reason: 'affichage : spice ou vnc' }
+  const cpus = optionIds(opts.choices?.cpu_models, CPU_MODEL_IDS) as readonly string[]
+  const fws = optionIds(opts.choices?.firmware, FIRMWARES) as readonly string[]
+  const disps = optionIds(opts.choices?.displays, DISPLAYS) as readonly string[]
+  const boots = optionIds(opts.choices?.boot_devices, BOOT_DEVICES) as readonly string[]
+  if (p.cpu_model !== undefined && !cpus.includes(p.cpu_model)) return { ok: false, reason: `modèle de processeur inconnu : ${p.cpu_model}` }
+  if (p.firmware !== undefined && !fws.includes(p.firmware)) return { ok: false, reason: `firmware : ${fws.join(' ou ')}` }
+  if (p.display !== undefined && !disps.includes(p.display)) return { ok: false, reason: `affichage : ${disps.join(' ou ')}` }
   if (p.secure_boot === true && p.firmware !== 'uefi') return { ok: false, reason: 'le secure boot demande le firmware uefi' }
   if (p.boot_order !== undefined) {
     if (p.boot_order.length === 0) return { ok: false, reason: 'ordre de démarrage vide' }
-    if (p.boot_order.some((d) => !(BOOT_DEVICES as readonly string[]).includes(d))) return { ok: false, reason: 'périphérique de démarrage inconnu' }
+    if (p.boot_order.some((d) => !boots.includes(d))) return { ok: false, reason: 'périphérique de démarrage inconnu' }
     if (new Set(p.boot_order).size !== p.boot_order.length) return { ok: false, reason: 'un périphérique de démarrage apparaît deux fois' }
   }
+  if (p.network === '') return { ok: false, reason: 'réseau vide : donne le nom du réseau libvirt (ex. default)' }
   if (p.network !== undefined && !NAME_RE.test(p.network)) return { ok: false, reason: 'nom de réseau : lettres, chiffres, - et _' }
   for (const k of ['usb_attach', 'usb_detach'] as const) {
     const v = p[k]
@@ -116,6 +128,10 @@ export function validateHardware(p: HardwarePayload, state: string, opts: { need
   if (blocked.length && state !== 'stopped') return { ok: false, reason: `arrête la machine pour changer : ${blocked.map((k) => FIELD_LABEL[k]).join(', ')}` }
   return { ok: true }
 }
+
+/** Modele de processeur courant vu par le segment : un identifiant de la liste, ou `null` (absent ou hors liste :
+ *  cas reel d'une VM en marche, dont vm_hardware renvoie le modele resolu, ex. EPYC-Milan). Aucun segment ne doit alors paraitre actif. */
+export const knownCpu = (id: string | null | undefined, ids: readonly string[] = CPU_MODEL_IDS): string | null => (id && ids.includes(id) ? id : null)
 
 /** Deplace l'element i d'un cran (dir -1 = monter, +1 = descendre) ; hors bornes : liste inchangee. */
 export function moveBoot<T>(order: readonly T[], i: number, dir: -1 | 1): T[] {

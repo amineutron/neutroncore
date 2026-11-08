@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { confirmDialog, toast } from '../../lib/dialog'
-import { BOOT_DEVICES, BOOT_LABEL, CPU_MODEL_IDS, DEFAULT_GROW, HARDWARE_NEEDS_STOP, choiceHint, choiceLabel, describePayload, diffHardware, draftFromHardware, moveBoot, stopFields, summarizeEdit, summarizeJob, toggleBoot, totalCapacity, validateHardware, type Choice, type EditSummary, type HardwareDraft, type HardwareField, type HardwarePayload } from '../../lib/vmHardware'
+import { BOOT_DEVICES, BOOT_LABEL, CPU_MODEL_IDS, DEFAULT_GROW, DISPLAYS, FIRMWARES, HARDWARE_NEEDS_STOP, choiceHint, choiceLabel, describePayload, diffHardware, draftFromHardware, knownCpu, moveBoot, optionIds, stopFields, summarizeEdit, summarizeJob, toggleBoot, totalCapacity, validateHardware, type Choice, type Display, type EditSummary, type Firmware, type HardwareDraft, type HardwareField, type HardwarePayload } from '../../lib/vmHardware'
 import { CPU_MODELS, LEVEL } from '../../lib/vmHelp'
 import { editHardware } from '../../lib/vmHubApi'
 import type { SettingsInfo } from '../../lib/vmsConsole'
@@ -24,13 +24,26 @@ function Seg<T extends string>({ value, options, labels, onChange, disabled, lab
   )
 }
 
+type Sent = { job: string; payload: HardwarePayload; later: boolean }
+type ResultState = { done: EditSummary | null; sent: Sent | null; setDone: (s: EditSummary | null) => void; setSent: (s: Sent | null) => void }
+
 /** Onglet matériel : état réel, puis formulaire des 14 champs du contrat. Un seul « appliquer » n'envoie
- *  que les champs modifiés ; la réponse (`changes`, `needs_restart`) est affichée telle quelle. */
+ *  que les champs modifiés ; la réponse (`changes`, `needs_restart`) est affichée telle quelle.
+ *  Le résultat (`done`) et le travail attendu (`sent`) vivent ICI : le formulaire est remonté quand l'état
+ *  réel est relu (~1,5 s après l'application), le résultat ne doit pas disparaître avec lui. */
 export function Hardware({ vm, state, info, template, jobs, onApplied, busyVm }: {
   vm: string; state: string; info: SettingsInfo | null; template: boolean; jobs?: TaskJob[]; onApplied: () => void; busyVm: boolean
 }) {
   const hw = info?.hardware ?? null
-  const key = `${vm}|${hw ? JSON.stringify(hw) : 'none'}`   // le brouillon repart des vraies valeurs quand elles changent
+  const key = `${vm}|${hw ? JSON.stringify(hw) : 'none'}`   // seul le BROUILLON repart des vraies valeurs quand elles changent
+  const [done, setDone] = useState<EditSummary | null>(null)
+  const [sent, setSent] = useState<Sent | null>(null)
+  // le resultat de l'outil (changes, needs_restart, hot, skipped) n'arrive que dans le travail, une fois fini
+  useEffect(() => {
+    if (!sent) return
+    const s = summarizeJob((jobs ?? []).find((j) => j.id === sent.job), sent.payload, sent.later)
+    if (s) { setDone(s); setSent(null) }
+  }, [jobs, sent])
   if (template) return <Card title="matériel"><p className="lite" style={{ margin: 0 }}>Un modèle est figé : redeviens machine pour changer son matériel, puis reconvertis-le.</p><CpuGuide /></Card>
   if (!info) return <Card title="matériel"><p className="lite" style={{ margin: 0 }}>lecture des réglages…</p></Card>
   if (!hw) {
@@ -41,36 +54,43 @@ export function Hardware({ vm, state, info, template, jobs, onApplied, busyVm }:
       </Card>
     )
   }
-  return <HardwareForm key={key} vm={vm} state={state} info={info} jobs={jobs ?? []} onApplied={onApplied} busyVm={busyVm} />
+  return <HardwareForm key={key} vm={vm} state={state} info={info} result={{ done, sent, setDone, setSent }} onApplied={onApplied} busyVm={busyVm} />
 }
 
-function CpuGuide({ id, onPick, disabled }: { id?: string; onPick?: (id: string) => void; disabled?: boolean } = {}) {
+/** Guide + choix du modele de processeur. `id` hors liste ou absent (modele resolu d'une VM en marche, ex. EPYC-Milan) :
+ *  aucun segment actif, le modele actuel est dit « hors liste ». Sans `onPick`, guide seul (modele, materiel illisible). */
+function CpuGuide({ id, current, choices, onPick, disabled }: { id?: string | null; current?: string | null; choices?: Choice[]; onPick?: (id: string) => void; disabled?: boolean } = {}) {
   const [local, setLocal] = useState(CPU_MODELS[0].id)
-  const cur = id ?? local
-  const m = CPU_MODELS.find((c) => c.id === cur) ?? CPU_MODELS[0]
+  const ids = optionIds(choices, CPU_MODEL_IDS)
+  const cur = onPick ? knownCpu(id, ids) : local
+  const m = cur ? CPU_MODELS.find((c) => c.id === cur) ?? null : null
   return (
     <div className="vh-box vh-cpu">
       <h3>modèle de processeur<Q k="cpu-model" />{onPick && <NeedStop />}</h3>
-      <Seg value={m.id} options={CPU_MODEL_IDS} onChange={(v) => (onPick ?? setLocal)(v)} disabled={disabled} label="modèle de processeur" />
-      <div style={{ display: 'grid', gap: 5, margin: '10px 0', fontSize: 12, color: 'var(--muted)' }}>
-        <div className="vh-row" style={{ justifyContent: 'space-between' }}>performances {pips(m.speed)}</div>
-        <div className="vh-row" style={{ justifyContent: 'space-between' }}>déplaçable (export) {pips(m.move)}</div>
-        <div className="vh-row" style={{ justifyContent: 'space-between' }}>logiciels compatibles {pips(m.compat)}</div>
-      </div>
-      <p className="lite" style={{ margin: 0 }}>{m.text}</p>
+      {onPick && !cur && <p className="lite vh-cpu-cur" style={{ margin: '0 0 8px' }}>modèle actuel : <b className="mono">{current || 'non précisé'}</b> (hors liste) — choisis un modèle ci-dessous pour le remplacer.</p>}
+      <Seg value={cur ?? ''} options={ids} labels={choices} onChange={(v) => (onPick ?? setLocal)(v)} disabled={disabled} label="modèle de processeur" />
+      {m ? (
+        <>
+          <div style={{ display: 'grid', gap: 5, margin: '10px 0', fontSize: 12, color: 'var(--muted)' }}>
+            <div className="vh-row" style={{ justifyContent: 'space-between' }}>performances {pips(m.speed)}</div>
+            <div className="vh-row" style={{ justifyContent: 'space-between' }}>déplaçable (export) {pips(m.move)}</div>
+            <div className="vh-row" style={{ justifyContent: 'space-between' }}>logiciels compatibles {pips(m.compat)}</div>
+          </div>
+          <p className="lite" style={{ margin: 0 }}>{m.text}</p>
+        </>
+      ) : cur ? <p className="lite" style={{ margin: '10px 0 0' }}>{choiceHint(choices, cur)}</p> : null}
     </div>
   )
 }
 
-function HardwareForm({ vm, state, info, jobs, onApplied, busyVm }: { vm: string; state: string; info: SettingsInfo; jobs: TaskJob[]; onApplied: () => void; busyVm: boolean }) {
+function HardwareForm({ vm, state, info, result, onApplied, busyVm }: { vm: string; state: string; info: SettingsInfo; result: ResultState; onApplied: () => void; busyVm: boolean }) {
+  const { done, sent, setDone, setSent } = result
   const hw = info.hardware!
   const initial = draftFromHardware(hw)
   const [d, setD] = useState<HardwareDraft>(initial)
   const [usbIn, setUsbIn] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
-  const [done, setDone] = useState<EditSummary | null>(null)
-  const [sent, setSent] = useState<{ job: string; payload: HardwarePayload; later: boolean } | null>(null)
   const needsStop = info.needs_stop?.length ? info.needs_stop : HARDWARE_NEEDS_STOP
   const grow = info.limits?.disk_grow_gb ?? DEFAULT_GROW
   const up = state !== 'stopped'
@@ -78,18 +98,14 @@ function HardwareForm({ vm, state, info, jobs, onApplied, busyVm }: { vm: string
   const set = (p: Partial<HardwareDraft>) => setD((x) => ({ ...x, ...p }))
   const payload = diffHardware(initial, d)
   const dirty = Object.keys(payload).length > 0
-  const verdict = validateHardware(payload, state, { needsStop, grow })
+  const verdict = validateHardware(payload, state, { needsStop, grow, choices: info.choices })
+  const firmwares = optionIds(info.choices?.firmware, FIRMWARES)
+  const displays = optionIds(info.choices?.displays, DISPLAYS)
+  const bootDevices = optionIds(info.choices?.boot_devices, BOOT_DEVICES)
   const later = stopFields(payload, needsStop).length > 0
   const cap = totalCapacity(hw.disks)
-  const bootRows = [...d.boot_order, ...BOOT_DEVICES.filter((b) => !d.boot_order.includes(b))]
+  const bootRows = [...d.boot_order, ...bootDevices.filter((b) => !d.boot_order.includes(b))]
   const bootLabel = (b: string) => choiceLabel(info.choices?.boot_devices, b, BOOT_LABEL)
-
-  // le resultat de l'outil (changes, needs_restart, hot, skipped) n'arrive que dans le travail, une fois fini
-  useEffect(() => {
-    if (!sent) return
-    const s = summarizeJob(jobs.find((j) => j.id === sent.job), sent.payload, sent.later)
-    if (s) { setDone(s); setSent(null) }
-  }, [jobs, sent])
 
   async function apply() {
     if (!verdict.ok) return
@@ -100,7 +116,7 @@ function HardwareForm({ vm, state, info, jobs, onApplied, busyVm }: { vm: string
       const res = await editHardware(vm, payload)
       const s = summarizeEdit(res, payload, later)
       setDone(s)
-      if (!s.fromTool && res?.job) setSent({ job: String(res.job), payload, later })
+      setSent(!s.fromTool && res?.job ? { job: String(res.job), payload, later } : null)
       toast(s.needsRestart ? `${vm} : modifié, effectif au prochain démarrage` : `${vm} : matériel modifié`)
       onApplied()
     } catch (e) { setErr(e instanceof Error ? e.message : String(e)) } finally { setBusy(false) }
@@ -118,11 +134,11 @@ function HardwareForm({ vm, state, info, jobs, onApplied, busyVm }: { vm: string
       </dl>
 
       <div className="vh-hw">
-        <CpuGuide id={d.cpu_model || CPU_MODELS[0].id} onPick={(v) => set({ cpu_model: v })} disabled={locked('cpu_model')} />
+        <CpuGuide id={d.cpu_model} current={hw.cpu_model} choices={info.choices?.cpu_models} onPick={(v) => set({ cpu_model: v })} disabled={locked('cpu_model')} />
 
         <div className="vh-box">
           <h3>firmware<Q k="hw-fw" />{needsStop.includes('firmware') && <NeedStop />}</h3>
-          <Seg value={d.firmware} options={['bios', 'uefi'] as const} labels={info.choices?.firmware} onChange={(v) => set({ firmware: v, secure_boot: v === 'uefi' ? d.secure_boot : false })} disabled={locked('firmware')} label="firmware" />
+          <Seg value={d.firmware} options={firmwares} labels={info.choices?.firmware} onChange={(v) => set({ firmware: v as Firmware, secure_boot: v === 'uefi' ? d.secure_boot : false })} disabled={locked('firmware')} label="firmware" />
           <p className="lite" style={{ margin: '8px 0 10px' }}>{choiceHint(info.choices?.firmware, d.firmware)}</p>
           <label className="vh-chk"><input type="checkbox" checked={d.tpm} disabled={locked('tpm')} onChange={(e) => set({ tpm: e.target.checked })} /> TPM 2.0<Q k="hw-tpm" />{needsStop.includes('tpm') && <NeedStop />}</label>
           <label className="vh-chk" style={d.firmware !== 'uefi' ? { opacity: 0.6 } : undefined}>
@@ -152,7 +168,7 @@ function HardwareForm({ vm, state, info, jobs, onApplied, busyVm }: { vm: string
 
         <div className="vh-box">
           <h3>affichage et réseau</h3>
-          <div className="vh-row" style={{ gap: 10 }}><span className="vh-lab">console<Q k="hw-display" /></span><Seg value={d.display} options={['spice', 'vnc'] as const} labels={info.choices?.displays} onChange={(v) => set({ display: v })} disabled={locked('display')} label="affichage" /></div>
+          <div className="vh-row" style={{ gap: 10 }}><span className="vh-lab">console<Q k="hw-display" /></span><Seg value={d.display} options={displays} labels={info.choices?.displays} onChange={(v) => set({ display: v as Display })} disabled={locked('display')} label="affichage" /></div>
           {choiceHint(info.choices?.displays, d.display) && <p className="lite" style={{ margin: '6px 0 0' }}>{choiceHint(info.choices?.displays, d.display)}</p>}
           <label className="vh-field" style={{ marginTop: 10 }}><span>réseau<Q k="hw-net" /></span><input value={d.network} disabled={locked('network')} onChange={(e) => set({ network: e.target.value })} placeholder={hw.network ?? 'default'} aria-label="réseau" /></label>
         </div>
@@ -183,14 +199,17 @@ function HardwareForm({ vm, state, info, jobs, onApplied, busyVm }: { vm: string
 
       <div className="vh-row" style={{ marginTop: 12 }}>
         <Btn sm solid disabled={!dirty || !verdict.ok || busy || busyVm} onClick={apply}>{busy ? 'application…' : 'appliquer'}</Btn>
-        <Btn sm disabled={!dirty || busy} onClick={() => { setD(initial); setDone(null) }}>annuler</Btn>
+        <Btn sm disabled={!dirty || busy} onClick={() => setD(initial)}>annuler</Btn>
         {dirty && !verdict.ok && <Chip tone="warn">{verdict.reason}</Chip>}
         {dirty && verdict.ok && <span className="lite">{describePayload(payload).join(' · ')}{later ? ' — effectif au prochain démarrage' : ''}</span>}
       </div>
       {err && <p className="vm-err">{err}</p>}
       {done && (
         <div className="vh-hwres" role="status">
-          <b>{done.fromTool ? 'modifié (résultat de l\'outil) :' : sent ? 'demandé (le détail arrivera avec la tâche) :' : 'demandé :'}</b>
+          <div className="vh-row" style={{ justifyContent: 'space-between' }}>
+            <b>{done.fromTool ? 'modifié (résultat de l\'outil) :' : sent ? 'demandé (le détail arrivera avec la tâche) :' : 'demandé :'}</b>
+            <button type="button" className="btn sm" aria-label="fermer le résumé" onClick={() => { setDone(null); setSent(null) }}>fermer</button>
+          </div>
           <ul>{done.changes.map((c) => <li key={c}>{c}</li>)}</ul>
           {done.needsRestart && <p className="lite" style={{ margin: 0 }}>effectif au prochain démarrage.</p>}
           {done.hot.length > 0 && <p className="lite" style={{ margin: 0 }}>appliqué à chaud : {done.hot.join(', ')}.</p>}

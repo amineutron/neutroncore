@@ -1167,6 +1167,8 @@ input[type=range].bri::-webkit-slider-thumb{-webkit-appearance:none;appearance:n
 .vm-row td:first-child{white-space:nowrap}
 .vm-actions{display:inline-flex;align-items:center;gap:8px;justify-content:flex-end;white-space:nowrap}
 .vm-actions .btn{animation:fade .18s ease-out}
+.vm-actions .x{background:none;border:0;font-family:var(--mono);font-size:11px;color:var(--faint);cursor:pointer;padding:2px 6px;border-radius:5px}
+.vm-actions .x:hover{color:var(--text)}
 .vm-row.armed td{background:color-mix(in srgb,var(--rose) 9%,transparent)}
 .vm-row.armed td:first-child{box-shadow:inset 3px 0 0 var(--rose);animation:vmArmed 1.2s ease-in-out infinite}
 .vm-countdown{height:2px;margin-top:6px;border-radius:2px;background:var(--line);overflow:hidden}

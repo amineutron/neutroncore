@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { POWER_LABEL } from './vmHubApi'
-import { POWER_ACTIONS, POWER_BUSY, POWER_SHORT, POWER_TARGET, isDangerous, lifeOf } from './vmPower'
+import { FORCE_AFTER_MS, POWER_ACTIONS, POWER_BUSY, POWER_SHORT, POWER_TARGET, REBOOT_MAX_MS, isDangerous, lifeOf, pollVerdict, reachedTarget } from './vmPower'
 
 describe('lifeOf', () => {
   it('hub : vm_state fait foi', () => {
@@ -14,6 +14,23 @@ describe('lifeOf', () => {
     expect(lifeOf({ status: 'down', extra: { vm_state: 'arrêtée' } })).toBe('stopped')
     expect(lifeOf({ status: 'down', extra: {} })).toBe('stopped')
     expect(lifeOf({ status: 'unknown' })).toBe('stopped')
+  })
+})
+
+describe('suivi d\'une action en cours', () => {
+  it('arret trop long : proposer de forcer ; redemarrage jamais vu : conclure (la rangee ne reste pas bloquee)', () => {
+    expect(pollVerdict('stop', FORCE_AFTER_MS - 1)).toEqual({ canForce: false, done: false })
+    expect(pollVerdict('stop', FORCE_AFTER_MS + 1)).toEqual({ canForce: true, done: false })
+    expect(pollVerdict('reboot', REBOOT_MAX_MS - 1)).toEqual({ canForce: false, done: false })
+    expect(pollVerdict('reboot', REBOOT_MAX_MS + 1)).toEqual({ canForce: false, done: true })
+    expect(pollVerdict('pause', 10 * REBOOT_MAX_MS)).toEqual({ canForce: false, done: false })
+  })
+  it('cible atteinte : tout de suite pour pause/reprise/arret, apres avoir vu la transition pour un redemarrage', () => {
+    expect(reachedTarget('pause', 'paused', false)).toBe(true)
+    expect(reachedTarget('pause', 'running', false)).toBe(false)
+    expect(reachedTarget('reboot', 'running', false)).toBe(false)   // la machine n'a pas encore bouge
+    expect(reachedTarget('reboot', 'transition', true)).toBe(false)
+    expect(reachedTarget('reboot', 'running', true)).toBe(true)
   })
 })
 

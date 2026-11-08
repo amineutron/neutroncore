@@ -15,6 +15,18 @@ export const POWER_ACTIONS: Record<Life, Power[]> = { running: ['pause', 'reboot
 /** Une action qui coupe ou interrompt le systeme invite est « dangereuse » (bouton rouge, confirmation). */
 export const isDangerous = (a: Power): boolean => a === 'stop' || a === 'force_stop' || a === 'reboot'
 
+export const FORCE_AFTER_MS = 60000  // arret propre ignore (pas d'OS invite, VM plantee) : proposer de forcer
+export const REBOOT_MAX_MS = 45000   // redemarrage jamais vu passer par la transition (ACPI rapide) : considere fini
+
+/** Ce qu'un releve periodique decide pendant une action en cours, d'apres le temps ecoule. */
+export function pollVerdict(action: Power, elapsedMs: number): { canForce: boolean; done: boolean } {
+  return { canForce: action === 'stop' && elapsedMs > FORCE_AFTER_MS, done: action === 'reboot' && elapsedMs > REBOOT_MAX_MS }
+}
+
+/** L'action est finie quand l'etat vise est atteint ; un redemarrage exige en plus d'avoir VU la machine quitter cet etat. */
+export const reachedTarget = (action: Power, life: Life, left: boolean): boolean =>
+  life === POWER_TARGET[action] && (action !== 'reboot' || left)
+
 /** Etat de vie lu d'abord dans `extra.vm_state` (hub : running/paused/stopped/starting), sinon dans `status`
  *  (ecran des services : up/down). Tout inconnu vaut « éteinte ». */
 export function lifeOf(vm: { status: string; extra?: Record<string, string> | null }): Life {
