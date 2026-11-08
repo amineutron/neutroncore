@@ -25,11 +25,11 @@ const resume = (): EtatReseau['resume'] => {
 }
 
 const tailnet: Tailnet = {
-  etat: 'running', nom: 'exemple.ts.net', en_ligne: 2,
+  etat: 'running', nom: 'tailnet-demo', en_ligne: 2,
   pairs: [
-    { nom: 'pc-bureau', os: 'linux', en_ligne: true, derniere_vue: null, ips: ['100.64.0.1'], relais: '', direct: true, sortie: false, soi: true, etiquettes: [], actif: true },
-    { nom: 'serveur-maison', os: 'linux', en_ligne: true, derniere_vue: null, ips: ['100.64.0.2'], relais: '', direct: true, sortie: true, soi: false, etiquettes: [], actif: false },
-    { nom: 'telephone', os: 'android', en_ligne: false, derniere_vue: now() - 5400, ips: ['100.64.0.3'], relais: 'par', direct: false, sortie: false, soi: false, etiquettes: [], actif: false },
+    { nom: 'pc-bureau', os: 'linux', en_ligne: true, derniere_vue: null, ips: ['198.51.100.1'], relais: '', direct: true, sortie: false, soi: true, etiquettes: [], actif: true },
+    { nom: 'serveur-maison', os: 'linux', en_ligne: true, derniere_vue: null, ips: ['198.51.100.2'], relais: '', direct: true, sortie: true, soi: false, etiquettes: [], actif: false },
+    { nom: 'telephone', os: 'android', en_ligne: false, derniere_vue: now() - 5400, ips: ['198.51.100.3'], relais: 'par', direct: false, sortie: false, soi: false, etiquettes: [], actif: false },
   ],
 }
 
