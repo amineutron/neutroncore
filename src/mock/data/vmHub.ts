@@ -34,9 +34,10 @@ let archives = [
 type Plan = { n: string; log?: string[] }[]
 type DemoJob = {
   id: string; action: string; vm: string; message: string; title: string; kind: string; plan: Plan; startMs: number; durMs: number
+  result?: Record<string, unknown>
 }
 let jobs: DemoJob[] = []
-const KIND: Record<string, string> = { snapshot_create: 'snapshot', snapshot_restore: 'snapshot', snapshot_delete: 'snapshot', clone: 'clone', export: 'export', import: 'import', edit: 'edit', destroy: 'destroy', exec: 'exec', deploy: 'clone', template: 'edit' }
+const KIND: Record<string, string> = { snapshot_create: 'snapshot', snapshot_restore: 'snapshot', snapshot_delete: 'snapshot', clone: 'clone', export: 'export', import: 'import', edit: 'edit', destroy: 'destroy', exec: 'exec', deploy: 'deploy', template: 'edit' }
 const PLANS: Record<string, Plan> = {
   export: [{ n: 'test pré-export : intégrité du disque et espace libre', log: ['qemu-img check : aucune erreur', 'espace libre suffisant'] }, { n: 'assainissement du disque (virt-sysprep)', log: ['machine-id réinitialisé', 'clés ssh d\'hôte supprimées', 'journaux vidés'] }, { n: 'archivage tar.gz', log: ['tar czf …'] }, { n: 'test post-export : archive valide', log: ['archive lisible'] }],
   import: [{ n: 'pré-test : archive et disque qcow2' }, { n: 'extraction vers le dossier des disques' }, { n: 'définition libvirt, nouvel uuid et mac' }, { n: 'post-test : machine définie, disque ok' }],
@@ -60,10 +61,10 @@ export function jobTitle(action: string, vmName: string, extra?: string): string
   }
 }
 
-export function addJob(action: string, vmName: string, message: string, title?: string, durMs?: number): { success: true; job: string } {
+export function addJob(action: string, vmName: string, message: string, title?: string, durMs?: number, result?: Record<string, unknown>): { success: true; job: string } {
   const id = Math.random().toString(16).slice(2, 14)
   const plan = PLANS[action] ?? []
-  jobs = [{ id, action, vm: vmName, message, title: title ?? jobTitle(action, vmName), kind: KIND[action] ?? action, plan, startMs: Date.now() - (plan.length ? 0 : 3000), durMs: durMs ?? DUR[action] ?? (plan.length ? 4000 : 1) }, ...jobs].slice(0, 30)
+  jobs = [{ id, action, vm: vmName, message, title: title ?? jobTitle(action, vmName), kind: KIND[action] ?? action, plan, startMs: Date.now() - (plan.length ? 0 : 3000), durMs: durMs ?? DUR[action] ?? (plan.length ? 4000 : 1), result }, ...jobs].slice(0, 30)
   return { success: true, job: id }
 }
 
@@ -78,6 +79,7 @@ export function jobsView() {
     return {
       id: j.id, action: j.action, vm: j.vm, status: done ? 'ok' : 'running', message: done ? j.message : null, error: null,
       started: j.startMs / 1000, ended: done ? (j.startMs + j.durMs) / 1000 : null, title: j.title, kind: j.kind, steps, log: done && !log.length ? [j.message] : log,
+      ...(done && j.result ? { result: j.result } : {}),   // le resultat de l'outil n'arrive qu'avec la fin du travail
     }
   })
 }
@@ -120,12 +122,44 @@ const patch = (name: string, f: (v: HubVm) => HubVm) => { vms = vms.map((v) => (
 const jitter = (x: number | null | undefined, lo: number, hi: number) => Math.max(lo, Math.min(hi, (x ?? 20) + (Math.random() * 8 - 4)))
 const fail = (msg: string): never => { throw new Error(msg) }
 
+/** Lecture d'une machine du hub par la console de demo (vms.ts) : memes vcpus, memoire, etat. */
+export const hubVm = (name: string): HubVm | undefined => vms.find((v) => v.name === name)
+/** Retouche d'une machine du hub par la console de demo (edition des parametres). */
+export const patchHubVm = (name: string, p: Partial<Pick<HubVm, 'vcpus' | 'ram_mb' | 'disk_total_gb'>>): void => patch(name, (v) => ({ ...v, ...p }))
+
+// ----------------------------------------------------------- alimentation
+const STATUS: Record<HubVm['state'], string> = { running: 'up', stopped: 'down', paused: 'paused', starting: 'starting', unknown: 'unknown' }
+const TRANSITION_MS = 2500
+const setState = (name: string, state: HubVm['state']) => patch(name, (v) => ({
+  ...v, state, status: STATUS[state],
+  ip: state === 'stopped' ? null : v.ip ?? `192.168.122.${100 + (name.length * 7) % 100}`,
+  ...(state === 'running' ? { cpu_pct: v.cpu_pct ?? 12, mem_pct: v.mem_pct ?? 35 } : {}),
+}))
+/** Transition visible (etat `starting`) puis etat final : la rangee montre « en cours » comme en vrai. */
+const transition = (name: string, to: HubVm['state']) => { setState(name, 'starting'); setTimeout(() => setState(name, to), TRANSITION_MS) }
+
+export function powerDemo(name: string, action: string): { success: boolean; error: string | null } {
+  const v = hubVm(name) ?? fail('machine inconnue')
+  if (v.meta.template) fail('un modèle ne démarre pas : clone-le ou redeviens machine')
+  switch (action) {
+    case 'start': if (v.state !== 'stopped') fail('la machine n\'est pas arrêtée'); transition(name, 'running'); break
+    case 'stop': if (v.state === 'stopped') fail('déjà arrêtée'); transition(name, 'stopped'); break
+    case 'force_stop': if (v.state === 'stopped') fail('déjà arrêtée'); setState(name, 'stopped'); break
+    case 'pause': if (v.state !== 'running') fail('seule une machine en marche se met en pause'); setState(name, 'paused'); break
+    case 'resume': if (v.state !== 'paused') fail('la machine n\'est pas en pause'); setState(name, 'running'); break
+    case 'reboot': if (v.state !== 'running') fail('seule une machine en marche se redémarre'); transition(name, 'running'); break
+    default: fail(`action inconnue : ${action}`)
+  }
+  return { success: true, error: null }
+}
+
 export const vmHub: [string, string, MockHandler][] = [
+  ['POST', '/services/vms/:vm/:action', ({ params }) => powerDemo(params.vm, params.action)],
   ['GET', '/vms-console/overview', () => {
     vms = vms.map((v) => (v.state === 'running' ? { ...v, cpu_pct: jitter(v.cpu_pct, 2, 85), mem_pct: jitter(v.mem_pct, 15, 88) } : v))
     return { success: true, error: null, stale: false, host: { cpu: 16, ram_mb: 32768, pool_gb: 930, pool_used_gb: vms.reduce((s, v) => s + (v.disk_used_gb ?? 0), 0) + archives.reduce((s, a) => s + a.size / 1e9, 0) }, vms, archives }
   }],
-  ['GET', '/vms-console/library', () => ({ success: true, entries: CATALOGUE.map((x) => ({ ...x, cached: CACHE.has(x.id) })), dists: [...new Set(CATALOGUE.map((x) => x.dist))], images_dir_present: true })],
+  ['GET', '/vms-console/library', () => ({ success: true, creation_tool: true, creation_reason: '', entries: CATALOGUE.map((x) => ({ ...x, cached: CACHE.has(x.id) })), dists: [...new Set(CATALOGUE.map((x) => x.dist))], images_dir_present: true })],
   ['PUT', '/vms-console/meta/:vm', ({ params, body }) => {
     const b = body as Partial<VmMeta>
     patch(params.vm, (v) => ({ ...v, meta: { ...v.meta, ...(b.profile ? { profile: b.profile } : {}), ...(typeof b.notes === 'string' ? { notes: b.notes } : {}) } }))
@@ -151,11 +185,11 @@ export const vmHub: [string, string, MockHandler][] = [
     return addJob('clone', src.name, 'clone créé', b.linked ? `Clone lié de ${src.name} en ${b.new_name}` : `Copie intégrale de ${src.name} en ${b.new_name}`)
   }],
   ['POST', '/vms-console/deploy', ({ body }) => {
-    const b = body as { image: string; name: string; vcpus: number; ram_mb: number; disk_gb: number; profile: 'normal' | 'examen' }
+    const b = body as { image: string; name: string; vcpus: number; ram_mb: number; disk_gb: number; profile: 'normal' | 'examen'; env?: unknown }
     const img = CATALOGUE.find((x) => x.id === b.image) ?? fail('image inconnue')
     if (vms.some((x) => x.name === b.name)) fail('ce nom est déjà pris')
     CACHE.add(img.id)
-    vms = [...vms, vm(b.name, { vcpus: b.vcpus, ram_mb: b.ram_mb, disk_total_gb: b.disk_gb, disk_used_gb: img.fmt === 'iso' ? 0.1 : Math.round(img.mb * 2.5) / 1000, meta: { profile: b.profile, lineage: [{ id: `${img.nom} ${img.ver}`, rel: 'image', ext: true }] } })]
+    vms = [...vms, vm(b.name, { vcpus: b.vcpus, ram_mb: b.ram_mb, disk_total_gb: b.disk_gb, disk_used_gb: img.fmt === 'iso' ? 0.1 : Math.round(img.mb * 2.5) / 1000, meta: { profile: b.profile, origin: 'own', from: `${img.nom} ${img.ver}`, lineage: [{ id: `${img.nom} ${img.ver}`, rel: 'image', ext: true }], ...(b.env ? { env: b.env } : {}) } })]
     return addJob('deploy', b.name, 'machine déployée', `Déploiement de ${img.nom} (${img.ver}) en ${b.name}`, img.cached ? 4000 : 7000)
   }],
   ['POST', '/vms-console/import', ({ body }) => {

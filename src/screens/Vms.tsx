@@ -3,7 +3,7 @@ import { apiGet } from '../lib/api'
 import { confirmDialog, toast } from '../lib/dialog'
 import { usePoll } from '../lib/poll'
 import { kindOf, type HubVm } from '../lib/vmHub'
-import { powerVm, setTemplate, useJobs, useLibrary, useOverview } from '../lib/vmHubApi'
+import { POWER_LABEL, powerVm, setTemplate, useJobs, useLibrary, useOverview, type Power } from '../lib/vmHubApi'
 import { runningFor, type TaskFilter } from '../lib/vmTasks'
 import type { LibEntry } from '../lib/vmLibrary'
 import type { Catalogue } from '../lib/vmsConsole'
@@ -49,9 +49,10 @@ export function Vms() {
 
   const refresh = () => { ov.refresh(); jobs.refresh() }
   const open = (n: string, t = 'apercu') => { const v = vms.find((x) => x.name === n); setSel(n); setDeep(t); setTab(v?.meta.template ? 'modeles' : 'machines') }
-  async function power(n: string, a: 'start' | 'stop') {
-    if (a === 'stop' && !(await confirmDialog({ title: `arrêter ${n} ?`, body: 'Demande d\'arrêt propre envoyée au système.', ok: 'arrêter', danger: true }))) return
-    try { await powerVm(n, a); toast(a === 'start' ? `démarrage de ${n}` : `arrêt de ${n}`); setTimeout(ov.refresh, 3000) } catch (e) { toast(e instanceof Error ? e.message : String(e), 'crit') }
+  async function power(n: string, a: Power) {
+    const body = { stop: 'Demande d\'arrêt propre envoyée au système.', force_stop: 'Coupure brutale, comme débrancher la machine : des fichiers peuvent être corrompus.', reboot: 'Arrêt propre puis redémarrage ; les programmes ouverts seront fermés.' }[a as string]
+    if (body && !(await confirmDialog({ title: `${POWER_LABEL[a].verb} ${n} ?`, body, ok: POWER_LABEL[a].verb, danger: true }))) return
+    try { await powerVm(n, a); toast(`${POWER_LABEL[a].toast} ${n}`); setTimeout(ov.refresh, 3000) } catch (e) { toast(e instanceof Error ? e.message : String(e), 'crit') }
   }
   async function untemplate(v: HubVm) {
     try { await setTemplate(v.name, false); toast(`${v.name} est de nouveau une machine : elle revient dans « machines »`); ov.refresh(); setTab('machines'); setSel(v.name) } catch (e) { toast(e instanceof Error ? e.message : String(e), 'crit') }
@@ -105,7 +106,7 @@ export function Vms() {
         </div>
       )}
 
-      {tab === 'bibliotheque' && <Library entries={lib.data?.entries ?? []} loading={!lib.data && !lib.error} error={lib.error} dirMissing={lib.data ? !lib.data.images_dir_present : false} onDeploy={(e) => setDlg({ k: 'deploy', entry: e })} />}
+      {tab === 'bibliotheque' && <Library entries={lib.data?.entries ?? []} loading={!lib.data && !lib.error} error={lib.error} dirMissing={lib.data ? !lib.data.images_dir_present : false} creationReason={lib.data?.creation_tool === false ? lib.data.creation_reason || 'l\'outil de création de machines n\'est pas disponible' : undefined} onDeploy={(e) => setDlg({ k: 'deploy', entry: e })} />}
       {ov.data && tab === 'modeles' && (
         cur?.meta.template
           ? <div className="vh-enter"><Btn sm onClick={() => setSel('')}>← modèles</Btn><MachineDetail key={cur.name} vm={cur} vms={vms} jobs={joblist} names={names} cat={cat.data} onStarted={refresh} onOpen={(n) => open(n)} onRefresh={ov.refresh}

@@ -8,12 +8,43 @@ vi.mock('./api', () => ({
   apiPost: vi.fn(async (path: string, body?: unknown, extra?: Record<string, string>) => { calls.push({ verb: 'POST', path, body, extra }); return { success: true, error: null } }),
   apiPut: vi.fn(async (path: string, body: unknown) => { calls.push({ verb: 'PUT', path, body }); return { success: true } }),
   apiDelete: vi.fn(),
-  withConfirm: vi.fn(async () => { throw new Error('withConfirm ne doit pas etre utilise : /auth/token refuse ces actions') }),
+  // /auth/token ne sert qu'a l'alimentation (vm_<action>_<vm>) ; les ecritures de la console passent par /vms-console/token
+  withConfirm: vi.fn(async (action: string) => { calls.push({ verb: 'AUTH', path: action }); return { 'X-Confirm': 'jeton-auth' } }),
 }))
 
-const { cloneVm, deployImage, importArchive, saveMeta, setTemplate } = await import('./vmHubApi')
+const { cloneVm, deployImage, editHardware, importArchive, powerVm, saveMeta, setTemplate } = await import('./vmHubApi')
 
 beforeEach(() => { calls.length = 0 })
+
+describe('alimentation : pause, reprise, redemarrage', () => {
+  it.each(['start', 'stop', 'force_stop', 'pause', 'resume', 'reboot'] as const)('%s : jeton vm_%s_<vm> sur /auth/token puis POST /services/vms/<vm>/%s', async (a) => {
+    await powerVm('kali-pentest', a)
+    expect(calls).toEqual([
+      { verb: 'AUTH', path: `vm_${a}_kali-pentest` },
+      { verb: 'POST', path: `/services/vms/kali-pentest/${a}`, body: undefined, extra: { 'X-Confirm': 'jeton-auth' } },
+    ])
+  })
+  it('un refus du backend devient une erreur lisible', async () => {
+    const { apiPost } = await import('./api')
+    ;(apiPost as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ success: false, error: 'machine introuvable' })
+    await expect(powerVm('x', 'pause')).rejects.toThrow('machine introuvable')
+  })
+})
+
+describe('edition materielle', () => {
+  it('jeton vm_edit_<vm> sur /vms-console/token, corps = seulement les champs envoyes', async () => {
+    const res = await editHardware('debian-sandbox', { cpu_model: 'qemu64', boot_order: ['cdrom', 'hd'] })
+    expect(calls[0]).toMatchObject({ verb: 'GET', path: '/vms-console/token?action=vm_edit_debian-sandbox' })
+    expect(calls[1]).toEqual({ verb: 'POST', path: '/vms-console/debian-sandbox/edit', body: { cpu_model: 'qemu64', boot_order: ['cdrom', 'hd'] }, extra: { 'X-Confirm': 'jeton-test' } })
+    expect(calls.some((c) => c.verb === 'AUTH')).toBe(false)
+    expect(res).toEqual({ success: true, error: null })
+  })
+  it('un echec declare par l\'API est leve', async () => {
+    const { apiPost } = await import('./api')
+    ;(apiPost as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ success: false, error: 'secure boot sans uefi' })
+    await expect(editHardware('x', { secure_boot: true })).rejects.toThrow('secure boot sans uefi')
+  })
+})
 
 describe('jetons des ecritures du hub', () => {
   it('modele : vm_template_<vm>', async () => {

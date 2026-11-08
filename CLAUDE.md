@@ -1294,7 +1294,6 @@ Backend : `routers/godeye*.py` et `lib/godeye_*.py` dans lyra-control-api. Demo 
 - **Non verifie en reel** : flux live (USGS, EONET, CelesTrak, adsb.lol `/v2/hex`, Digitraffic), trace des satellites
   et polyligne des objets marques a l'ecran, regroupement visuel (la demo a moins de 40 objets), rotation automatique,
   synchro serveur bout en bout, cache apres rechargement hors ligne, mode « zone » de la tele avec une vraie zone.
-||||||| parent of 70421b9 (feat(vms): VM hub with families, provenance, snapshot graph, image library and tasks)
 
 ## Hub des VMs (2026-11-08)
 Non commite. Detail et commandes de verification : `docs/vms-hub.md`.
@@ -1321,3 +1320,13 @@ Non commite. Detail et commandes de verification : `docs/vms-hub.md`.
   `scripts/e2e/cdp.mjs`, sans dependance ni backend).
 - Piege trouve par le benchmark : une detection de cycle en O(n^2) dans `treeOf` ; un `Math.max(...tableau)` sur
   20000 noeuds depasse la pile. Garder ces calculs iteratifs.
+- **Lot 2 (2026-11-08, branche `feat/vms-hub-2`)** : alimentation complete (`lib/vmPower.ts` + `VmRow.tsx` : en
+  marche = pause, redemarrer, arreter, forcer ; en pause = reprendre, forcer ; eteinte = demarrer ; meme jeton
+  `vm_<action>_<vm>`), onglet materiel (`components/vmhub/Hardware.tsx`, logique pure `lib/vmHardware.ts` :
+  `diffHardware` n'envoie que les champs modifies et ajoute `firmware: uefi` avec `secure_boot: true`,
+  `validateHardware` applique les regles du contrat et `needs_stop` de l'API, `moveBoot`), aide `hw-*`, `pause`,
+  `needs-stop`, snapshot `current` de l'API marque dans l'arbre, deploiement actif quand `deployable: true`. La
+  demo simule tout (`mock/data/vms.ts` : materiel par machine, edition des 14 champs ; `vmHub.ts` : `powerDemo`).
+  PIEGE : un effet React qui change `phase` et pose son minuteur de retour dans le MEME effet voit ce minuteur
+  annule par son propre nettoyage (la rangee restait « fait ») : le retour au repos est un effet a part.
+  20 scenarios e2e.

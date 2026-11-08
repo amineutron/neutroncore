@@ -1,8 +1,13 @@
 import { buildFamilies, byName, fmtGb, kindOf, type FamNode, type HubVm } from '../../lib/vmHub'
+import type { Power } from '../../lib/vmHubApi'
 import { Btn } from '../ui'
 import { KindPill } from './Kind'
 
-type Act = { open: (n: string) => void; console: (n: string) => void; power: (n: string, a: 'start' | 'stop') => void; fromTemplate: (n: string) => void }
+type Act = { open: (n: string) => void; console: (n: string) => void; power: (n: string, a: Power) => void; fromTemplate: (n: string) => void }
+/** Boutons d'alimentation d'une rangee de famille : courts, selon l'etat (le detail de la machine offre le reste). */
+const POWER_BTNS: Record<string, { a: Power; label: string }[]> = {
+  stopped: [{ a: 'start', label: 'démarrer' }], running: [{ a: 'pause', label: 'pause' }, { a: 'stop', label: 'arrêter' }], paused: [{ a: 'resume', label: 'reprendre' }],
+}
 
 const STATE_LABEL: Record<string, string> = { running: 'en marche', stopped: 'éteinte', paused: 'en pause', starting: 'transition…', unknown: 'inconnu' }
 
@@ -36,7 +41,7 @@ function Node({ n, all, act, i, busy }: { n: FamNode; all: Map<string, HubVm>; a
           {v.meta.template
             ? <Btn sm onClick={() => act.fromTemplate(v.name)}>+ créer</Btn>
             : <>
-              <Btn sm disabled={locked} onClick={() => act.power(v.name, v.state === 'stopped' ? 'start' : 'stop')}>{v.state === 'stopped' ? 'démarrer' : 'arrêter'}</Btn>
+              {(POWER_BTNS[v.state] ?? []).map((p) => <Btn key={p.a} sm disabled={locked} onClick={() => act.power(v.name, p.a)}>{p.label}</Btn>)}
               <Btn sm onClick={() => act.console(v.name)}>console</Btn>
             </>}
         </div>

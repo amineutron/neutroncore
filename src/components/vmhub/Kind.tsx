@@ -30,7 +30,7 @@ export function Provenance({ vm, vms, onOpen }: { vm: HubVm; vms: HubVm[]; onOpe
               ? <button className={`vh-pn k-${n.kind}`} style={{ ['--i' as string]: i * 2 }} onClick={() => onOpen(n.id)}><i />{n.id}</button>
               : <span className={`vh-pn ${n.ext ? 'ext' : 'gone'}`} style={{ ['--i' as string]: i * 2 }} title={n.ext ? 'source externe' : 'machine supprimée depuis'}>{n.id}{n.ext ? '' : ' (supprimée)'}</span>}
           {n.rel && (
-            <span className={`vh-pa ${n.rel === 'copy' || n.rel === 'import' ? 'dash' : ''} ${n.rel}`} style={{ ['--i' as string]: i * 2 + 1 }}>
+            <span className={`vh-pa ${n.rel !== 'cow' ? 'dash' : ''} ${n.rel}`} style={{ ['--i' as string]: i * 2 + 1 }}>
               <em style={{ fontStyle: 'normal' }}>{REL_LABEL[n.rel]}</em><span className="ln"><s /><b /></span>
             </span>
           )}

@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { apiDelete, apiGet, apiPost } from './api'
 import { confirmDialog, toast } from './dialog'
+import type { Hardware, HardwareChoices } from './vmHardware'
 import type { EditLimits } from './vmsEdit'
 import type { Vm } from './vms'
 
@@ -19,8 +20,10 @@ export type Detail = {
 }
 export type SettingsInfo = {
   current: Record<string, string | number | boolean | null | undefined>
-  editable: boolean; fields: string[]; needs_stop: string[]; not_editable: string
-  limits: EditLimits
+  editable: boolean; fields: string[]; needs_stop: string[]; not_editable?: string
+  limits: EditLimits & { disk_grow_gb?: [number, number] }
+  /** etat materiel (contrat 2026-11-08) ; `null` avec `hardware_error` quand la definition n'a pas pu etre lue */
+  hardware?: Hardware | null; hardware_error?: string; choices?: HardwareChoices
 }
 export type Snap = { name: string; depth: number }
 export type Catalogue = {
@@ -67,7 +70,7 @@ export function filterVms(vms: Vm[], f: Filters): Vm[] {
 
 const LABELS: Record<string, string> = {
   snapshot_create: 'snapshot', snapshot_restore: 'restauration', snapshot_delete: 'suppression de snapshot',
-  clone: 'clonage', edit: 'modification', export: 'export', import: 'import', exec: 'commande', destroy: 'suppression de vm',
+  clone: 'clonage', edit: 'modification', export: 'export', import: 'import', exec: 'commande', destroy: 'suppression de vm', deploy: 'déploiement',
 }
 export function jobLabel(action: string): string { return LABELS[action] ?? action }
 

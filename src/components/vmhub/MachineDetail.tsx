@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { apiGet } from '../../lib/api'
 import { usePoll } from '../../lib/poll'
-import { CPU_MODELS, LEVEL } from '../../lib/vmHelp'
 import { REL_LABEL, canDestroy, canMakeTemplate, canUntemplate, fmtGb, kindOf, type HubVm } from '../../lib/vmHub'
 import { runningFor, type TaskJob } from '../../lib/vmTasks'
 import { saveMeta } from '../../lib/vmHubApi'
@@ -11,6 +10,7 @@ import { Copies } from '../vms/Copies'
 import { DangerPanel, ExecPanel, SettingsPanel } from '../vms/Tools'
 import { VmRow } from '../VmRow'
 import { Btn, Card } from '../ui'
+import { Hardware } from './Hardware'
 import { Q } from './Help'
 import { KindPill, Provenance } from './Kind'
 import { SnapshotsHub } from './SnapshotsHub'
@@ -20,25 +20,6 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'apercu', label: 'aperçu' }, { id: 'snapshots', label: 'snapshots' }, { id: 'materiel', label: 'matériel' }, { id: 'copies', label: 'copies et exports' }, { id: 'console', label: 'console' },
 ]
 type DetailRes = { success: boolean; error: string | null; detail: Detail; settings: SettingsInfo | null }
-const pips = (n: number) => <span aria-label={LEVEL[n]} title={LEVEL[n]} style={{ display: 'inline-flex', gap: 2 }}>{[1, 2, 3, 4, 5].map((i) => <span key={i} style={{ width: 14, height: 6, borderRadius: 2, background: i <= n ? 'var(--vh-l1)' : 'var(--raise)' }} />)}</span>
-
-function CpuGuide() {
-  const [id, setId] = useState(CPU_MODELS[0].id)
-  const m = CPU_MODELS.find((c) => c.id === id) ?? CPU_MODELS[0]
-  return (
-    <div className="vh-box">
-      <h3>modèle de processeur<Q k="cpu-model" /></h3>
-      <select value={id} onChange={(e) => setId(e.target.value)} aria-label="modèle de processeur">{CPU_MODELS.map((c) => <option key={c.id}>{c.id}</option>)}</select>
-      <div style={{ display: 'grid', gap: 5, margin: '10px 0', fontSize: 12, color: 'var(--muted)' }}>
-        <div className="vh-row" style={{ justifyContent: 'space-between' }}>performances {pips(m.speed)}</div>
-        <div className="vh-row" style={{ justifyContent: 'space-between' }}>déplaçable (export) {pips(m.move)}</div>
-        <div className="vh-row" style={{ justifyContent: 'space-between' }}>logiciels compatibles {pips(m.compat)}</div>
-      </div>
-      <p className="lite" style={{ margin: 0 }}>{m.text}</p>
-      <p className="lite" style={{ margin: '8px 0 0' }}>Guide en lecture seule : l'outil d'édition des VMs ne gère pas encore ce champ.</p>
-    </div>
-  )
-}
 
 /** Fiche d'une machine : en-tete (type, etat, alimentation), onglets aperçu, snapshots, matériel, copies, console. */
 export function MachineDetail({ vm, vms, jobs, names, cat, onStarted, onOpen, onRefresh, onTemplate, onUntemplate, initialTab }: {
@@ -104,8 +85,9 @@ export function MachineDetail({ vm, vms, jobs, names, cat, onStarted, onOpen, on
       {tab === 'snapshots' && <SnapshotsHub vm={vm.name} running={vm.state === 'running'} busyVm={busyVm} onStarted={onStarted} />}
       {tab === 'materiel' && (
         <div className="nc-stack">
-          <CpuGuide />
           {!vm.meta.template && <SettingsPanel vm={vm.name} up={up} detail={detail.data?.detail ?? {}} info={detail.data?.settings ?? null} onStarted={onStarted} busyVm={busyVm} />}
+          <Hardware vm={vm.name} state={vm.state} info={detail.data?.settings ?? null} template={vm.meta.template} jobs={jobs} busyVm={busyVm}
+            onApplied={() => { onStarted(); setTimeout(detail.refresh, 1500) }} />
         </div>
       )}
       {tab === 'copies' && <div className="nc-stack"><Copies vm={vm.name} names={names} cat={cat} onStarted={onStarted} busyVm={busyVm} />

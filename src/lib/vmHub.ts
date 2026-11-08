@@ -15,6 +15,8 @@ export type VmMeta = {
   from: string | null
   lineage: LineageEntry[]
   notes: string
+  /** « mon environnement » choisi au deploiement : enregistre dans la fiche, pas encore applique dans la machine */
+  env?: unknown
 }
 export type HubVm = {
   name: string

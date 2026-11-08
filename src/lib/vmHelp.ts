@@ -65,17 +65,44 @@ export const HELP: Record<string, HelpEntry> = {
     'Il décide quel processeur la machine croit avoir. Un modèle précis donne la vitesse, un modèle générique donne la portabilité.',
     'Pour tes VM locales : host-passthrough. Pour une VM d\'examen exportée vers d\'autres PC : x86-64-v2, voire qemu64 si tu vises de vieilles machines.'],
     table: { head: ['modèle', 'vitesse', 'déplaçable', 'logiciels'], rows: CPU_MODELS.map((c) => [c.id, LEVEL[c.speed], LEVEL[c.move], LEVEL[c.compat]]) } },
-  'hw-fw': { t: 'Firmware : BIOS ou UEFI', p: ['Le programme de démarrage de la machine virtuelle. UEFI est le standard actuel : requis pour Secure Boot et recommandé pour tout système récent. BIOS (héritage) ne sert que pour de très vieux systèmes.', 'Changer après l\'installation peut empêcher le démarrage.'] },
-  'hw-sb': { t: 'Secure Boot', p: ['Vérifie que le chargeur et le noyau sont signés avant de démarrer. Fedora, Ubuntu et Debian le gèrent ; un noyau ou des modules maison non signés seront refusés. Nécessite UEFI. Windows 11 le demande, avec le TPM.'] },
-  'hw-tpm': { t: 'TPM 2.0 émulé', p: ['Puce de sécurité virtuelle. Windows 11 en a besoin ; sous Linux elle sert à chiffrer le disque avec déverrouillage automatique. Son état est un fichier à part : à ne pas oublier quand on déplace la machine.'] },
-  'hw-boot': { t: 'Ordre de démarrage', p: ['La machine essaie le premier périphérique, puis le suivant. « disque » en premier une fois le système installé, « cdrom » pour lancer une ISO d\'installation, « réseau » pour un démarrage PXE.'] },
+  'hw-fw': { t: 'Firmware : BIOS ou UEFI', p: [
+    'Le programme qui démarre la machine virtuelle avant le système. BIOS est l\'ancien modèle (héritage) ; UEFI est le standard actuel, avec une partition de démarrage dédiée et le Secure Boot possible.',
+    'Choisis UEFI pour tout système récent, et obligatoirement pour Windows 11 (qui exige UEFI, TPM et Secure Boot ensemble). BIOS ne sert plus que pour de très vieux systèmes ou des images qui n\'ont pas de partition EFI.',
+    'Changer le firmware après l\'installation empêche en général le démarrage : le disque a été préparé pour l\'un ou l\'autre. À régler avant d\'installer.'] },
+  'hw-sb': { t: 'Secure Boot', p: [
+    'Au démarrage, le firmware vérifie que le chargeur et le noyau portent une signature connue ; sinon il refuse de démarrer. Cela protège contre un démarrage trafiqué, pas contre un virus une fois le système lancé.',
+    'Fedora, Ubuntu et Debian sont signés et démarrent sans rien faire ; un noyau compilé maison ou des modules non signés (certains pilotes) seront bloqués. Nécessite le firmware UEFI.',
+    'Windows 11 l\'exige, avec le TPM.'] },
+  'hw-tpm': { t: 'TPM 2.0 émulé', p: [
+    'Une puce de sécurité virtuelle (swtpm) qui garde des clés et mesure le démarrage. Windows 11 refuse de s\'installer sans elle ; sous Linux elle permet de chiffrer le disque avec déverrouillage automatique au démarrage.',
+    'Son état vit dans un fichier à part du disque : si tu déplaces la machine sans lui, les clés sont perdues et un disque chiffré devient illisible.'] },
+  'hw-boot': { t: 'Ordre de démarrage', p: [
+    'La machine essaie le premier périphérique de la liste, puis le suivant si rien n\'est amorçable. « disque » en premier une fois le système installé ; « cdrom » en premier pour lancer une ISO d\'installation ou de secours ; « réseau » pour un démarrage PXE depuis un serveur.',
+    'Un ordre qui laisse le cdrom en premier relance l\'installateur à chaque démarrage tant que l\'ISO est attachée.'] },
+  'hw-grow': { t: 'Agrandir le disque', p: [
+    'Ajoute de la place au fichier disque de la machine (qcow2). On agrandit, on ne réduit jamais : rétrécir couperait des données.',
+    'Seule l\'image grandit. À l\'intérieur de la machine, la partition et le système de fichiers gardent leur taille : il faut les étendre ensuite (growpart puis resize2fs ou xfs_growfs ; sous Windows, le gestionnaire de disques).',
+    'La machine doit être arrêtée pendant l\'opération.'] },
+  pause: { t: 'Pause ou arrêt ?', p: [
+    'La pause fige le processeur : la mémoire reste occupée sur l\'hôte, rien n\'est écrit, et la reprise est instantanée, exactement où tu en étais. Utile pour libérer du processeur quelques minutes sans fermer ce qui est ouvert.',
+    'L\'arrêt demande au système de s\'éteindre proprement : tout est libéré (mémoire comprise), et le redémarrage repart de zéro. « Redémarrer » enchaîne un arrêt propre et un démarrage.',
+    'Une machine en pause ne répond plus au réseau : ses connexions peuvent expirer si la pause dure.'] },
+  'needs-stop': { t: 'Machine arrêtée requise', p: [
+    'Ce réglage fait partie de la définition de départ de la machine (processeur, firmware, TPM, mémoire, taille du disque) : le système invité ne peut pas le voir changer en cours de route.',
+    'Arrête la machine, applique, puis redémarre. Les réglages sans cette pastille (ordre de démarrage, USB, affichage, réseau) se changent à chaud.'] },
   'hw-net': { t: 'Réseau', p: [
     'nat : la VM sort sur Internet via l\'hôte et reçoit une adresse privée, invisible depuis le reste du réseau local.',
     'pont : la VM prend une adresse du réseau local comme un vrai PC, visible par les autres appareils.',
     'isolé : aucune sortie vers Internet ni vers le réseau local. Idéal pour un examen ou pour étudier un programme suspect.'] },
   'hw-mac': { t: 'Adresse MAC', p: ['Identifiant de la carte réseau virtuelle. Deux machines avec la même MAC sur un même réseau se perturbent : elle est régénérée à chaque clone et import.'] },
-  'hw-display': { t: 'Affichage : spice ou vnc', p: ['SPICE est conçu pour les VM : presse-papiers partagé, redimensionnement automatique, audio, redirection USB.', 'VNC est plus simple et universel, utilisable avec n\'importe quel client, mais sans ces conforts.'] },
-  'hw-usb': { t: 'Périphériques USB', p: ['Un périphérique de l\'hôte peut être donné à la VM : elle le voit comme branché dessus, et l\'hôte ne l\'a plus tant qu\'il est attribué.'] },
+  'hw-display': { t: 'Affichage : spice ou vnc', p: [
+    'SPICE est conçu pour les machines virtuelles : presse-papiers partagé, fenêtre qui se redimensionne avec l\'écran, son, redirection USB depuis le client. C\'est le bon choix pour une machine de bureau utilisée depuis virt-manager ou virt-viewer.',
+    'VNC est plus simple et universel : n\'importe quel client VNC s\'y connecte, y compris depuis un autre système, mais sans ces conforts. Préfère-le pour un serveur ou un accès occasionnel.',
+    'Le changement prend effet à la prochaine connexion à la console.'] },
+  'hw-usb': { t: 'Périphériques USB', p: [
+    'Un périphérique branché sur l\'hôte (clé, lecteur de carte, token, dongle) peut être donné à la machine : elle le voit comme branché directement sur elle.',
+    'Pendant ce temps l\'hôte ne l\'a plus : une clé USB attribuée disparaît de ton bureau jusqu\'à ce que tu la débranches de la machine. L\'identifiant vvvv:pppp (vendeur:produit) se lit avec lsusb.',
+    'Se fait à chaud, machine en marche.'] },
   'snap-what': { t: 'Snapshots et arbre', p: [
     'Un snapshot est un point de retour : tu peux revenir à l\'état du disque (et de la mémoire si tu l\'as demandé) à cet instant.',
     'Ils forment un arbre : si tu reviens en arrière puis crées un nouveau snapshot, il ouvre une nouvelle branche sans écraser l\'ancienne. Chaque couleur est une branche.',
