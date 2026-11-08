@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { creerOrbites, positionA, positions, trace } from './orbites'
-import { lireAvionsApi, lireEonet, lireFaillesApi, lireInfosApi, lireMarchesApi, lireNaviresApi, lireTle, URL_EONET } from './sources'
+import { fusionnerEvenements, lireAvionsApi, lireEonet, lireFaillesApi, lireGdacs, lireInfosApi, lireMarchesApi, lireNaviresApi, lireTle, URL_EONET, urlsGdacs } from './sources'
 
 const TLE_ISS = `ISS (ZARYA)
 1 25544U 98067A   08264.51782528 -.00002182  00000-0 -11606-4 0  2927
@@ -30,6 +30,52 @@ describe('lireEonet', () => {
   it('borne la durée demandée', () => {
     expect(URL_EONET(9999)).toContain('days=90')
     expect(URL_EONET(0)).toContain('days=1')
+  })
+})
+
+describe('GDACS', () => {
+  const feat = (p: Record<string, unknown> = {}, coordinates: unknown = [141.6, 20.6]) => ({
+    geometry: { type: 'Point', coordinates },
+    properties: {
+      eventtype: 'TC', eventid: 1001347, name: 'Tropical Cyclone CEMPAKA-26', alertlevel: 'Orange', country: 'Japan',
+      fromdate: '2026-11-06T06:00:00', datemodified: '2026-11-07T14:05:55', url: { report: 'https://www.gdacs.org/report.aspx?eventid=1' }, ...p,
+    },
+  })
+  it('traduit type, niveau d\'alerte, pays et lien en événement', () => {
+    const [e] = lireGdacs({ features: [feat()] })
+    expect(e).toMatchObject({ id: 'gdacs:TC:1001347', categorie: 'severeStorms', lon: 141.6, lat: 20.6, alerte: 'orange', source: 'gdacs' })
+    expect(e.titre).toContain('CEMPAKA')
+    expect(e.t).toBe(Date.parse('2026-11-07T14:05:55Z'))   // dates sans fuseau = UTC
+    expect(e.lien).toBe('https://www.gdacs.org/report.aspx?eventid=1')
+  })
+  it.each([['FL', 'floods'], ['VO', 'volcanoes'], ['DR', 'drought'], ['WF', 'wildfires']])('type %s -> %s', (type, cat) => {
+    expect(lireGdacs({ features: [feat({ eventtype: type })] })[0].categorie).toBe(cat)
+  })
+  it('écarte séismes (déjà couverts par l\'USGS), types inconnus, positions fausses, liens non https, réponses illisibles', () => {
+    expect(lireGdacs({ features: [feat({ eventtype: 'EQ' }), feat({ eventtype: 'ZZ' }), feat({}, [999, 0]), feat({}, 'x')] })).toEqual([])
+    expect(lireGdacs({ features: [feat({ url: { report: 'javascript:alert(1)' } })] })[0].lien).toBe('')
+    for (const brut of [null, {}, { features: 3 }, { features: [null, 1, {}] }]) expect(lireGdacs(brut)).toEqual([])
+  })
+  it('niveau inconnu = verte', () => {
+    expect(lireGdacs({ features: [feat({ alertlevel: 'Bleu' })] })[0].alerte).toBe('verte')
+  })
+  it('deux requêtes : tout sauf incendies à tous niveaux, incendies orange et rouge seulement', () => {
+    const [a, b] = urlsGdacs(Date.parse('2026-11-07T12:00:00Z'), 30)
+    expect(a).toContain('eventlist=TC;FL;VO;DR')
+    expect(a).toContain('Green;Orange;Red')
+    expect(b).toContain('eventlist=WF')
+    expect(b).toContain('alertlevel=Orange;Red')
+    expect(a).toContain('fromdate=2026-10-08')
+    expect(a).toContain('todate=2026-11-07')
+    expect(urlsGdacs(0, 9999)[0]).toContain('fromdate=') // borne la durée sans planter
+  })
+  it('fusion : un événement EONET proche et de même catégorie cède la place à son équivalent GDACS (qui porte l\'alerte)', () => {
+    const eo = { id: 'E1', titre: 'Cyclone X', categorie: 'severeStorms', lon: 141.8, lat: 20.7, t: Date.parse('2026-11-06T00:00:00Z'), lien: '' }
+    const loin = { ...eo, id: 'E2', lon: -60, lat: 15 }
+    const autre = { ...eo, id: 'E3', categorie: 'floods' }
+    const gd = lireGdacs({ features: [feat()] })
+    const fusion = fusionnerEvenements([eo, loin, autre], gd)
+    expect(fusion.map((e) => e.id).sort()).toEqual(['E2', 'E3', 'gdacs:TC:1001347'])
   })
 })
 

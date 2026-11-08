@@ -6,21 +6,37 @@ import { niveauCyber, VUE_DEPART, type Vue } from '../lib/vueMonde'
 import type { ListeCyber } from '../lib/cyber'
 import { CLE_AFFICHAGE, candidatsEtiquettes, lireAffichage, maxEtiquettes, rotationEffective } from '../lib/godeye/affichage'
 import { COULEURS_COUCHE, COULEURS_THEME } from '../lib/godeye/couleurs'
+import { CLE_ELEMENTS, lireElements, type Elements } from '../lib/godeye/elements'
 import { appliquer, FILTRES_DEFAUT, infosFiltrees, lireFiltres, type Filtres, type VueEnregistree } from '../lib/godeye/filtres'
 import type { Boite, Info, Objet } from '../lib/godeye/modele'
 import { trace as traceSat } from '../lib/godeye/orbites'
 import { alaUne, compter } from '../lib/godeye/une'
 import { CLE_FILTRES_COURANTS, corpsVue, filtresCourants, lireVues } from '../lib/godeye/vues'
-import { partDuMonde } from '../lib/godeye/zone'
 import { Bandeau } from '../components/godeye/Bandeau'
 import { CarteGodEye } from '../components/godeye/CarteGodEye'
 import { BarreStage, RailCouches, type Affichage, type Onglet } from '../components/godeye/ControlesStage'
 import { Detail } from '../components/godeye/Detail'
+import { Fiche } from '../components/godeye/Fiche'
+import { Recherche } from '../components/godeye/Recherche'
+import { Suivis } from '../components/godeye/Suivis'
+import { useExploration } from '../components/godeye/useExploration'
+import { basculerCouche } from '../lib/godeye/filtres'
+import { objetIdDeSuivi, suiviDe, type Suivi } from '../lib/godeye/suivi'
+import type { Resultat } from '../lib/godeye/recherche'
+import { Picto } from '../components/godeye/Picto'
+import type { DemandeProfil } from '../components/godeye/PanneauVues'
 import { SurLaTele } from '../components/godeye/SurLaTele'
 import { Synthese } from '../components/godeye/Synthese'
 import { Failles, Marches } from '../components/godeye/Tableaux'
 import { Tiroir } from '../components/godeye/Tiroir'
+import { useZonesSurveillees } from '../components/godeye/useZones'
+import { ZoneEditeur } from '../components/godeye/ZoneEditeur'
+import { Zones } from '../components/godeye/Zones'
 import { useDonnees } from '../components/godeye/useDonnees'
+import { FournisseurAvance, useAvance, useReglagesServeur } from '../components/godeye/useAvance'
+import { lireZones } from '../lib/godeye/rotation'
+import { useFiabilite } from '../components/godeye/useFiabilite'
+import { useRotationAuto } from '../components/godeye/useRotationAuto'
 import type { VueHandle } from '../components/godeye/vues'
 import '../components/ctl.css'
 import '../components/vuemonde/vuemonde.css'
@@ -39,6 +55,7 @@ const calme = (): boolean => { try { return window.matchMedia('(prefers-reduced-
 export function Worldmonitor() {
   const [f, setF] = useState<Filtres>(() => filtresCourants(lire(CLE_FILTRES_COURANTS)))
   const [aff, setAff] = useState<Affichage>(() => (EN_TELE ? { mode: 'globe', rotation: true, jourNuit: true, tiroir: null } : lireAffichage(lire(CLE_AFFICHAGE), calme())))
+  const [elements, setElements] = useState<Elements>(() => lireElements(lire(CLE_ELEMENTS)))
   const [plein, setPlein] = useState(EN_TELE)
   const [choisi, setChoisi] = useState<string | null>(null)
   const [boite, setBoite] = useState<Boite | null>(null)
@@ -60,9 +77,23 @@ export function Worldmonitor() {
     try { localStorage.setItem(CLE_AFFICHAGE, JSON.stringify(a)) } catch { /* idem */ }
   }, [])
 
+  const changerElements = useCallback((e: Elements) => {
+    setElements(e)
+    try { localStorage.setItem(CLE_ELEMENTS, JSON.stringify(e)) } catch { /* idem */ }
+  }, [])
+
   const cyber = usePoll(() => apiGet<ListeCyber>('/cyber?limit=8'), 60_000, f.couches.cyber)
   const niveau = niveauCyber(cyber.data?.niveau)
-  const { donnees, maintenant, etats, couvreAvions, orbites, sourcesInfos } = useDonnees(f, boite)
+  const { donnees: brutes, maintenant, etats, couvreAvions, partielAvions, orbites, sourcesInfos } = useDonnees(f, boite)
+  // fiabilité : copie gardée au démarrage, historique du serveur, pastilles ; réglages synchronisés avec le serveur ; rotation auto
+  const [avance, changerAvance] = useAvance()
+  const zonesEtat = useZonesSurveillees()   // une seule lecture de /godeye/zones, partagée avec la rotation
+  const zonesRotation = useMemo(() => lireZones(zonesEtat.zones), [zonesEtat.zones])
+  const fiab = useFiabilite(brutes, etats, f, maintenant, avance.historique_heures)
+  const donnees = fiab.donnees
+  useReglagesServeur({ filtres: f, elements, avance, appliquerServeur: (r) => { if (r.filtres) changer(r.filtres); if (r.elements) changerElements(r.elements); if (r.avance) changerAvance(r.avance) } })
+  useRotationAuto(avance.rotation, zonesRotation, scene, vue, choisi !== null)
+  const ctxAvance = useMemo(() => ({ avance, onAvance: changerAvance, zones: zonesRotation, pastilles: fiab.pastilles }), [avance, changerAvance, zonesRotation, fiab.pastilles])
   const ctx = useMemo(() => ({ maintenant, boite, niveauCyber: niveau }), [maintenant, boite, niveau])
   const objets = useMemo(() => appliquer(donnees, f, ctx), [donnees, f, ctx])
   const nombres = useMemo(() => compter(objets), [objets])
@@ -74,6 +105,9 @@ export function Worldmonitor() {
   // trace au sol du satellite touché (100 prochaines minutes), recalculée à la sélection seulement
   const orbiteChoisie = objet?.couche === 'satellites' ? orbites.find((o) => `sat:${o.id}` === objet.id) ?? null : null
   const traceSelection = useMemo(() => (orbiteChoisie ? traceSat(orbiteChoisie, new Date(), 100) : null), [orbiteChoisie])
+
+  // exploration : âge de position, objets marqués, centrage sur un objet en mouvement
+  const expl = useExploration({ objets, objet, orbites, maintenant, vue, scene })
 
   const rechargerVues = useCallback(async () => {
     try { setPerso(lireVues(await apiGet('/godeye/vues'))); setErreurVues('') } catch (e) { setErreurVues(e instanceof Error ? `vues indisponibles (${e.message})` : 'vues indisponibles') }
@@ -98,6 +132,20 @@ export function Worldmonitor() {
       toast(`vue « ${nom.trim()} » enregistrée`, 'ok')
     } catch (e) { toast(e instanceof Error ? e.message : 'enregistrement impossible', 'crit') } finally { setOccupe(false) }
   }
+  /** Enregistre un profil personnel : l'état de l'écran (filtres + cadrage), ou seulement un nouveau nom / une nouvelle icône. */
+  const enregistrerProfil = async (d: DemandeProfil) => {
+    const existant = perso.find((v) => v.slot === d.slot) ?? null
+    const garder = !d.avecEtat && existant
+    setOccupe(true)
+    try {
+      const corps = corpsVue(d.nom, garder ? existant.filtres : f, garder ? existant.camera : vue.current?.lireVue() ?? null, existant?.id, { slot: d.slot, icone: d.icone })
+      const r = await apiPut<{ vues: unknown; id: string }>('/godeye/vues', corps)
+      const vues = lireVues(r)
+      setPerso(vues); setErreurVues('')
+      if (d.avecEtat) setActive(vues.find((v) => v.id === r.id) ?? null)
+      toast(`profil « ${d.nom} » enregistré`, 'ok')
+    } catch (e) { toast(e instanceof Error ? e.message : 'enregistrement impossible', 'crit') } finally { setOccupe(false) }
+  }
   const supprimer = async (v: VueEnregistree) => {
     setOccupe(true)
     try {
@@ -113,6 +161,25 @@ export function Worldmonitor() {
   const choisirObjet = (o: Objet) => { setChoisi(o.id); centrer(o.lon, o.lat) }
   const choisirInfo = (a: Info) => { setChoisi(`inf:${a.id}`); if (a.lat !== null && a.lon !== null) centrer(a.lon, a.lat) }
   const ouvrir = (tiroir: Onglet | null) => changerAff({ ...aff, tiroir })
+  /** Résultat de recherche : allume sa couche si besoin, centre la vue, ouvre la fiche (sur téléphone le panneau se ferme pour la montrer). */
+  const choisirResultat = (r: Resultat) => {
+    if (r.couche && !f.couches[r.couche]) changer(basculerCouche(f, r.couche))
+    const o = r.objetId ? objets.find((x) => x.id === r.objetId) : undefined
+    if (r.objetId) setChoisi(r.objetId)
+    centrer(o?.lon ?? r.lon, o?.lat ?? r.lat)
+    try { if (window.matchMedia('(max-width:700px)').matches) ouvrir(null) } catch { /* sans matchMedia : le panneau reste ouvert */ }
+  }
+  const voirSuivi = (s: Suivi) => {
+    const dernier = s.points[s.points.length - 1]
+    const id = objetIdDeSuivi(s)
+    const o = objets.find((x) => x.id === id)
+    if (o) setChoisi(id)
+    if (o || dernier) centrer(o?.lon ?? dernier.lon, o?.lat ?? dernier.lat)
+  }
+  const centreVue = useCallback(() => { const v = vue.current?.lireVue(); return v ? { lat: v.cy, lon: v.cx } : null }, [])
+  const edition = zonesEtat.brouillon !== null
+  // sur téléphone, le panneau laisse la carte visible pendant qu'on dessine une zone (la feuille d'édition prend le bas)
+  useEffect(() => { if (edition) setAff((a) => (a.tiroir ? { ...a, tiroir: null } : a)) }, [edition])
 
   const basculerPlein = () => {
     const v = !plein
@@ -142,10 +209,11 @@ export function Worldmonitor() {
   const montre = objet ?? (EN_TELE ? une[0] ?? null : null)
   const largeur = scene.current?.clientWidth ?? 1200
   const props = {
-    objets, choisi, onChoisir: setChoisi, trace: traceSelection, onVue: surVue, etiquettes, maxEtiquettes: maxEtiquettes(zoom, largeur), bloques,
+    objets, choisi, onChoisir: setChoisi, trace: traceSelection, polylignes: expl.polylignes, onVue: surVue, etiquettes, maxEtiquettes: elements.etiquettes ? maxEtiquettes(zoom, largeur) : 0, elements, bloques, zones: zonesEtat.dessinees,
   }
   const globe = aff.mode === 'globe'
   return (
+    <FournisseurAvance valeur={ctxAvance}>
     <div className="nc-scope ge-page">
       {!plein && TITRE}
       <div ref={scene} className={`ge-stage${plein ? ' plein' : ''}${EN_TELE ? ' tele' : ''}${aff.tiroir ? ' tiroir' : ''}`}>
@@ -157,48 +225,63 @@ export function Worldmonitor() {
         ) : <CarteGodEye ref={vue} {...props} />}
         {!EN_TELE && <RailCouches f={f} onChange={changer} nombres={nombres} etats={etats} onRegler={() => ouvrir('filtres')} />}
         {!EN_TELE && <BarreStage aff={aff} onAff={changerAff} plein={plein} onPlein={basculerPlein} onRecentrer={() => vue.current?.appliquerVue(VUE_DEPART)} enrouler={choisi !== null} />}
-        {f.couches.avions && f.avions.mode === 'zone' && boite && partDuMonde(boite) > 0.15 && (
-          <div className="ge-conseil">avions : zoomer sur une région, ou choisir « militaires du monde entier » dans les filtres</div>
+        {f.couches.avions && f.avions.mode === 'zone' && partielAvions && (
+          <div className="ge-conseil">avions : vue trop large pour tout afficher, on montre les grands couloirs aériens et les militaires du monde. Zoomer pour tout voir.</div>
         )}
         {aff.tiroir && !EN_TELE && (
           <Tiroir onglet={aff.tiroir} onOnglet={(o) => ouvrir(o)} onFermer={() => ouvrir(null)} f={f} onChange={changer} nombres={nombres} etats={etats}
             couvreAvions={couvreAvions} sourcesInfos={sourcesInfos} fil={fil} choisi={choisi} onChoisirInfo={choisirInfo} une={une} onChoisirObjet={choisirObjet}
-            vues={{ perso, active, filtres: f, occupe, erreur: erreurVues, onAppliquer: appliquerVue, onEnregistrer: (n, id) => void enregistrer(n, id), onSupprimer: (v) => void supprimer(v), onReinitialiser: () => { changer(lireFiltres(FILTRES_DEFAUT)); setActive(null) } }}
-            onAppliquerVue={appliquerVue} />
+            vues={{ perso, active, filtres: f, occupe, erreur: erreurVues, onAppliquer: appliquerVue, onEnregistrer: (n, id) => void enregistrer(n, id), onProfil: (d) => void enregistrerProfil(d), onSupprimer: (v) => void supprimer(v), onReinitialiser: () => { changer(lireFiltres(FILTRES_DEFAUT)); setActive(null) } }}
+            onAppliquerVue={appliquerVue} elements={elements} onElements={changerElements}
+            zonesNode={<Zones etat={zonesEtat} centreVue={centreVue} />}
+            rechercheNode={<Recherche donnees={donnees} onChoisir={choisirResultat} />}
+            suivisNode={<Suivis suivis={expl.suivis} maintenant={maintenant} onVoir={voirSuivi} onRetirer={(s) => void expl.retirer(s)} />} />
         )}
-        {montre && <Detail objet={montre} onFermer={() => setChoisi(null)} onCentrer={(o) => centrer(o.lon, o.lat)} />}
-        <Bandeau items={une} onChoisir={choisirObjet} />
+        {!EN_TELE && <ZoneEditeur etat={zonesEtat} centreVue={centreVue} />}
+        {objet && !EN_TELE
+          ? <Fiche objet={objet} donnees={donnees} maintenant={maintenant} suivi={suiviDe(expl.suivis, objet)} centre={expl.centreSur === objet.id}
+              onMarquer={(o) => void expl.marquer(o)} onRetirer={(s) => void expl.retirer(s)} onCentrer={(o) => centrer(o.lon, o.lat)}
+              onGarderAuCentre={expl.basculerCentrage} onFermer={() => setChoisi(null)} />
+          : montre && <Detail objet={montre} onFermer={() => setChoisi(null)} onCentrer={(o) => centrer(o.lon, o.lat)} />}
+        {(elements.bandeau || EN_TELE) && <Bandeau items={une} onChoisir={choisirObjet} />}
       </div>
       {!plein && (
         <div className="nc-stack" style={{ marginTop: 14 }}>
           {f.couches.infos && <Synthese infos={fil} f={f} onChange={changer} />}
-          <Legende />
+          {elements.legende && <Legende />}
           <div className="ge-grille"><Marches /><Failles /></div>
           <SurLaTele />
         </div>
       )}
     </div>
+    </FournisseurAvance>
   )
 }
 
 export default Worldmonitor
 
 function Legende() {
-  const pt = (c: string, forme = '') => <i className={`ge-sw-c ${forme}`} style={{ background: c }} />
+  const pt = (id: string, c: string) => <i className="ge-sw-p"><Picto id={id} taille={15} couleur={c} /></i>
   return (
     <div className="ge-legende" aria-label="légende">
-      <span>{pt(COULEURS_THEME.guerre)}guerre</span>
-      <span>{pt(COULEURS_THEME.diplomatie)}diplomatie</span>
-      <span>{pt(COULEURS_THEME.economie)}économie</span>
-      <span>{pt(COULEURS_THEME.cyber)}cyber</span>
-      <span>{pt(COULEURS_THEME.securite)}sécurité</span>
-      <span>{pt(COULEURS_THEME.catastrophe)}catastrophes</span>
-      <span>{pt('#ff7a3d')}séisme (taille = magnitude)</span>
-      <span>{pt(COULEURS_COUCHE.avions, 'fl')}avion</span>
-      <span>{pt('#ffb454', 'fl')}militaire</span>
-      <span>{pt(COULEURS_COUCHE.satellites, 'lo')}satellite</span>
-      <span>{pt(COULEURS_COUCHE.navires, 'fl')}navire</span>
-      <span className="ge-legende-note">la lettre d'une pastille donne le thème, son halo l'importance</span>
+      <span>{pt('guerre', COULEURS_THEME.guerre)}guerre</span>
+      <span>{pt('diplomatie', COULEURS_THEME.diplomatie)}diplomatie</span>
+      <span>{pt('economie', COULEURS_THEME.economie)}économie</span>
+      <span>{pt('cyber', COULEURS_THEME.cyber)}cyber</span>
+      <span>{pt('securite', COULEURS_THEME.securite)}sécurité</span>
+      <span>{pt('catastrophe', COULEURS_THEME.catastrophe)}catastrophes</span>
+      <span>{pt('seisme', '#ff7a3d')}séisme (taille = magnitude)</span>
+      <span>{pt('avion', COULEURS_COUCHE.avions)}avion</span>
+      <span>{pt('helico', COULEURS_COUCHE.avions)}hélicoptère</span>
+      <span>{pt('avion-mil', '#ffb454')}militaire</span>
+      <span>{pt('satellite', COULEURS_COUCHE.satellites)}satellite</span>
+      <span>{pt('station', COULEURS_COUCHE.satellites)}station</span>
+      <span>{pt('navire', COULEURS_COUCHE.navires)}navire</span>
+      <span>{pt('incendie', '#ff6a2b')}incendie</span>
+      <span>{pt('volcan', '#ff3d3d')}volcan</span>
+      <span>{pt('tempete', '#6aa8ff')}tempête</span>
+      <span>{pt('inondation', '#3a9bff')}inondation</span>
+      <span className="ge-legende-note">le pictogramme donne le sujet, sa couleur le thème, le halo qui bat l'importance (alertes GDACS : orange = attention, rouge = critique)</span>
     </div>
   )
 }

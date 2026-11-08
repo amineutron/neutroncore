@@ -17,10 +17,19 @@ export type Ton = 'ok' | 'warn' | 'crit' | 'info'
 export type Avion = {
   id: string; indicatif: string; immat: string; type: string; alt: number; sol: boolean
   vitesse: number; cap: number; lat: number; lon: number; squawk: string; urgence: boolean; militaire: boolean
+  /** Hélicoptère (catégorie ADS-B A7) ; absent des anciennes réponses de l'API. */
+  helico: boolean
 }
 export type Navire = { id: string; vitesse: number; cap: number; lat: number; lon: number; statut: number | null; t: number | null }
 export type Satellite = { id: string; nom: string; groupe: GroupeSat; lon: number; lat: number; altKm: number; vitesseKms: number }
-export type Evenement = { id: string; titre: string; categorie: string; lon: number; lat: number; t: number; lien: string }
+export type AlerteGdacs = 'verte' | 'orange' | 'rouge'
+export type Evenement = {
+  id: string; titre: string; categorie: string; lon: number; lat: number; t: number; lien: string
+  /** Niveau d'alerte officiel (GDACS) ; absent pour les événements de la NASA. */
+  alerte?: AlerteGdacs
+  source?: 'eonet' | 'gdacs'
+  pays?: string
+}
 
 export type Theme = 'guerre' | 'diplomatie' | 'economie' | 'cyber' | 'securite' | 'catastrophe' | 'monde'
 export const THEMES: { id: Theme; nom: string; lettre: string }[] = [
@@ -41,13 +50,20 @@ export type SourceInfo = { id: string; nom: string; ok: boolean; n: number }
 export type Marche = { symbole: string; nom: string; prix: number; variation_pct: number; devise: string }
 export type Faille = { cve: string; editeur: string; produit: string; nom: string; ajoutee: string; rancongiciel: boolean; lien: string }
 
-export type GroupeSat = 'stations' | 'visual' | 'weather' | 'gps-ops' | 'galileo' | 'geo' | 'starlink'
+export type GroupeSat = 'stations' | 'visual' | 'weather' | 'gps-ops' | 'galileo' | 'beidou' | 'glo-ops' | 'military' | 'science' | 'planet' | 'iridium-NEXT' | 'oneweb' | 'geo' | 'starlink'
 export const GROUPES_SAT: { id: GroupeSat; nom: string }[] = [
   { id: 'stations', nom: 'stations (ISS, Tiangong)' },
   { id: 'visual', nom: '100 plus brillants' },
   { id: 'weather', nom: 'météo' },
+  { id: 'military', nom: 'militaires' },
+  { id: 'science', nom: 'science' },
   { id: 'gps-ops', nom: 'GPS' },
   { id: 'galileo', nom: 'Galileo' },
+  { id: 'beidou', nom: 'BeiDou' },
+  { id: 'glo-ops', nom: 'GLONASS' },
+  { id: 'planet', nom: 'imagerie (Planet)' },
+  { id: 'iridium-NEXT', nom: 'Iridium NEXT' },
+  { id: 'oneweb', nom: 'OneWeb (400 premiers)' },
   { id: 'geo', nom: 'géostationnaires' },
   { id: 'starlink', nom: 'Starlink (600 premiers)' },
 ]

@@ -1,3 +1,4 @@
+import { composerPlanisphere } from '../components/godeye/dessinTuiles'
 // God Eye : scène three.js du globe (terre éclairée par le vrai soleil, atmosphère, étoiles). Chargée à l'ouverture
 // du mode 3D seulement. Aucune décision ici : la logique pure est dans lib/godeye/globe.ts.
 import {
@@ -5,40 +6,61 @@ import {
   MeshStandardMaterial, PerspectiveCamera, Points, PointsMaterial, Scene, ShaderMaterial, SphereGeometry, SRGBColorSpace, Vector3, WebGLRenderer,
 } from 'three'
 import { pointSphere, positionSoleil, visible } from './godeye/globe'
-import { TERRE_DIXIEMES } from './vueMondeTerre'
+import { terresLegeres, type FondDetaille } from './godeye/fond'
+import { lignesGrille, palette } from './godeye/apparence'
+import { toileRelief } from './godeye/relief'
 
 export const FOV = 35
 
-/** Planisphère équirectangulaire dessiné à partir des contours des terres : océan profond, terres éclairées sur la côte, graticule discret. */
-export function fabriquerTexture(largeur = 2048): CanvasTexture {
+export type ApparenceTexture = { quadrillage: boolean; pas: number; equateur: boolean; tropiques: boolean; texture: boolean; satellite: boolean }
+export const APPARENCE_DEFAUT: ApparenceTexture = { quadrillage: true, pas: 15, equateur: false, tropiques: false, texture: true, satellite: false }
+
+/** Planisphère équirectangulaire dessiné à partir des contours des terres : océan, terres, graticule discret ; fond uni sans texture, relief teinté en vue satellite. */
+export function fabriquerTexture(largeur = 2048, fond: FondDetaille | null = null, o: ApparenceTexture = APPARENCE_DEFAUT): CanvasTexture {
   const w = largeur, h = largeur / 2
   const c = document.createElement('canvas')
   c.width = w; c.height = h
   const ctx = c.getContext('2d')!
+  const pal = palette(o.texture, o.satellite)
   const mer = ctx.createLinearGradient(0, 0, 0, h)
-  mer.addColorStop(0, '#0b1d38'); mer.addColorStop(0.5, '#0a2342'); mer.addColorStop(1, '#0b1d38')
+  mer.addColorStop(0, pal.mer[0]); mer.addColorStop(0.5, pal.mer[1]); mer.addColorStop(1, pal.mer[2])
   ctx.fillStyle = mer
   ctx.fillRect(0, 0, w, h)
   const x = (lon: number) => ((lon + 180) / 360) * w
   const y = (lat: number) => ((90 - lat) / 180) * h
-  ctx.strokeStyle = 'rgba(120,180,255,0.10)'
-  ctx.lineWidth = 1
+  if (o.quadrillage) {
+    const g = lignesGrille(o.pas, o)
+    ctx.strokeStyle = 'rgba(120,180,255,0.10)'
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    for (const lon of g.meridiens) { ctx.moveTo(x(lon), 0); ctx.lineTo(x(lon), h) }
+    for (const lat of g.paralleles) { ctx.moveTo(0, y(lat)); ctx.lineTo(w, y(lat)) }
+    ctx.stroke()
+    if (g.speciales.length) {
+      ctx.strokeStyle = 'rgba(246,193,119,0.4)'
+      ctx.lineWidth = 1.5
+      ctx.setLineDash([14, 10])
+      ctx.beginPath()
+      for (const sp of g.speciales) { ctx.moveTo(0, y(sp.lat)); ctx.lineTo(w, y(sp.lat)) }
+      ctx.stroke()
+      ctx.setLineDash([])
+    }
+  }
   ctx.beginPath()
-  for (let lon = -180; lon <= 180; lon += 15) { ctx.moveTo(x(lon), 0); ctx.lineTo(x(lon), h) }
-  for (let lat = -75; lat <= 75; lat += 15) { ctx.moveTo(0, y(lat)); ctx.lineTo(w, y(lat)) }
-  ctx.stroke()
-  const terre = ctx.createLinearGradient(0, 0, 0, h)
-  terre.addColorStop(0, '#2d5a52'); terre.addColorStop(0.45, '#3b6a55'); terre.addColorStop(0.7, '#4a6b4d'); terre.addColorStop(1, '#8fa3ad')
-  ctx.beginPath()
-  for (const r of TERRE_DIXIEMES) {
-    for (let i = 0; i < r.length; i += 2) {
-      const px = x(r[i] / 10), py = y(r[i + 1] / 10)
+  for (const l of fond ? fond.terres : terresLegeres()) {
+    for (let i = 0; i < l.pts.length; i += 2) {
+      const px = x(l.pts[i]), py = y(l.pts[i + 1])
       if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py)
     }
     ctx.closePath()
   }
-  ctx.fillStyle = terre
-  ctx.fill()
+  if (pal.remplir) {
+    const terre = ctx.createLinearGradient(0, 0, 0, h)
+    terre.addColorStop(0, pal.terre[0]); terre.addColorStop(0.45, pal.terre[1]); terre.addColorStop(0.7, pal.terre[2]); terre.addColorStop(1, pal.terre[3])
+    ctx.fillStyle = terre
+    ctx.fill()
+    if (pal.relief) { ctx.save(); ctx.clip(); ctx.imageSmoothingEnabled = true; ctx.drawImage(toileRelief(), 0, 0, w, h); ctx.restore() }
+  }
   ctx.shadowColor = 'rgba(111,231,255,0.55)'
   ctx.shadowBlur = 5
   ctx.strokeStyle = 'rgba(150,215,235,0.75)'
@@ -53,13 +75,22 @@ export function fabriquerTexture(largeur = 2048): CanvasTexture {
 const VERT_ATMOSPHERE = 'varying vec3 vN; void main(){ vN = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }'
 const FRAG_ATMOSPHERE = 'varying vec3 vN; void main(){ float i = pow(max(0.0, 0.74 - dot(vN, vec3(0.0, 0.0, 1.0))), 3.2); gl_FragColor = vec4(0.30, 0.62, 1.0, 1.0) * i * 0.7; }'
 
+const VERT_NUIT = 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }'
+const FRAG_NUIT = 'varying vec3 vP; uniform vec3 uSoleil; void main(){ float d = dot(normalize(vP), normalize(uSoleil)); float a = smoothstep(0.08, -0.2, d) * 0.5; gl_FragColor = vec4(0.01, 0.03, 0.09, a); }'
+
 export class GlobeScene {
   readonly camera = new PerspectiveCamera(FOV, 1, 0.1, 100)
   private readonly scene = new Scene()
   private readonly renderer: WebGLRenderer
   private readonly soleil = new DirectionalLight(0xffffff, 2.6)
   private readonly ambiante = new AmbientLight(0x6f8fc0, 0.55)
-  private readonly texture: CanvasTexture
+  private texture: CanvasTexture
+  private readonly matiereTerre: MeshStandardMaterial
+  private readonly largeurTexture: number
+  private fondCourant: FondDetaille | null = null
+  private apparence: ApparenceTexture = APPARENCE_DEFAUT
+  private readonly voileNuit: Mesh
+  private readonly matNuit: ShaderMaterial
   private readonly v = new Vector3()
   private jourNuit = true
   camPos: [number, number, number] = [3, 0, 0]
@@ -70,11 +101,12 @@ export class GlobeScene {
     this.renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' })
     this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1))
     this.renderer.setClearColor(new Color(0x000000), 0)
-    this.texture = fabriquerTexture()
-    const globe = new Mesh(
-      new SphereGeometry(1, 96, 64),
-      new MeshStandardMaterial({ map: this.texture, emissiveMap: this.texture, emissive: new Color(0xffffff), emissiveIntensity: 0.16, roughness: 0.92, metalness: 0 }),
-    )
+    // 4096 px de large (11 px par degré) quand la carte graphique le permet : 2048 se voyait en gros pixels dès qu'on zoomait
+    this.largeurTexture = this.renderer.capabilities.maxTextureSize >= 4096 ? 4096 : 2048
+    this.texture = fabriquerTexture(this.largeurTexture, null, this.apparence)
+    this.matiereTerre = new MeshStandardMaterial({ map: this.texture, emissiveMap: this.texture, emissive: new Color(0xffffff), emissiveIntensity: 0.16, roughness: 0.92, metalness: 0 })
+    this.texture.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy())
+    const globe = new Mesh(new SphereGeometry(1, 96, 64), this.matiereTerre)
     const atmosphere = new Mesh(
       new SphereGeometry(1.12, 64, 48),
       new ShaderMaterial({ vertexShader: VERT_ATMOSPHERE, fragmentShader: FRAG_ATMOSPHERE, side: BackSide, blending: AdditiveBlending, transparent: true, depthWrite: false }),
@@ -87,13 +119,56 @@ export class GlobeScene {
       pos.set([r * Math.cos(a) * 40, u * 40, r * Math.sin(a) * 40], i * 3)
     }
     etoiles.setAttribute('position', new BufferAttribute(pos, 3))
-    this.scene.add(globe, atmosphere, new Points(etoiles, new PointsMaterial({ color: 0xcfe0ff, size: 0.11, sizeAttenuation: true, transparent: true, opacity: 0.75, depthWrite: false })))
+    this.matNuit = new ShaderMaterial({
+      vertexShader: VERT_NUIT, fragmentShader: FRAG_NUIT, transparent: true, depthWrite: false, uniforms: { uSoleil: { value: new Vector3(1, 0, 0) } },
+    })
+    this.voileNuit = new Mesh(new SphereGeometry(1.004, 96, 64), this.matNuit)
+    this.scene.add(globe, this.voileNuit, atmosphere, new Points(etoiles, new PointsMaterial({ color: 0xcfe0ff, size: 0.11, sizeAttenuation: true, transparent: true, opacity: 0.75, depthWrite: false })))
     this.scene.add(this.ambiante, this.soleil)
     this.majSoleil(new Date())
   }
 
+  /** Remplace la texture par une refaite avec les contours détaillés (côtes à 50 m), une fois ceux-ci chargés. */
+  majFond(fond: FondDetaille): void {
+    this.fondCourant = fond
+    this.refaireTexture()
+  }
+  /** Quadrillage, texture et vue satellite : tout est dans la texture, refaite seulement si un réglage change. */
+  reglerApparence(o: ApparenceTexture): void {
+    const a = this.apparence
+    if (a.quadrillage === o.quadrillage && a.pas === o.pas && a.equateur === o.equateur && a.tropiques === o.tropiques && a.texture === o.texture && a.satellite === o.satellite) return
+    this.apparence = o
+    this.refaireTexture()
+  }
+  /** Voile sombre sur la face nuit de la Terre (soleil réel, indépendant de l'éclairage). */
+  reglerNuit(actif: boolean): void { this.voileNuit.visible = actif }
+  private refaireTexture(): void {
+    const ancienne = this.texture
+    this.texture = fabriquerTexture(this.largeurTexture, this.fondCourant, this.apparence)
+    this.texture.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy())
+    this.matiereTerre.map = this.texture
+    this.matiereTerre.emissiveMap = this.texture
+    this.matiereTerre.needsUpdate = true
+    ancienne.dispose()
+    this.poserImagerie()
+  }
+
+  /** Vue satellite : les tuiles du niveau 3 sont posées sur la texture au fil de leur arrivée ; le fond fabriqué reste dessous. */
+  private poserImagerie(): void {
+    const a = this.apparence
+    if (!a.satellite || !a.texture) return
+    const t = this.texture
+    const c = t.image as HTMLCanvasElement
+    const ctx = c.getContext('2d')
+    if (!ctx) return
+    composerPlanisphere(ctx, c.width, c.height, 3, () => { if (this.texture === t) t.needsUpdate = true }).catch(() => { /* fond fabriqué conservé */ })
+  }
+
   /** Éclaire la Terre depuis le soleil réel de `date` ; sans jour et nuit, une lumière fixe côté caméra. */
   majSoleil(date: Date): void {
+    const sr = positionSoleil(date)
+    const pr = pointSphere(sr.lat, sr.lon)
+    this.matNuit.uniforms.uSoleil.value.set(pr[0], pr[1], pr[2])
     if (this.jourNuit) {
       const s = positionSoleil(date)
       const p = pointSphere(s.lat, s.lon)

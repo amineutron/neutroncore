@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { apiGet, DEMO } from '../../lib/api'
 import { lireUsgs, FLUX_USGS } from '../../lib/vueMonde'
-import { DONNEES_VIDES, type Boite, type CoucheId, type Donnees, type GroupeSat, type SourceInfo } from '../../lib/godeye/modele'
+import { DONNEES_VIDES, type Boite, type CoucheId, type Donnees, type Evenement, type GroupeSat, type SourceInfo } from '../../lib/godeye/modele'
 import type { Filtres } from '../../lib/godeye/filtres'
 import { creerOrbites, positions, type Orbite } from '../../lib/godeye/orbites'
-import { lireAvionsApi, lireEonet, lireInfosApi, lireNaviresApi, lireTle, MAX_PAR_GROUPE, URL_CELESTRAK, URL_EONET } from '../../lib/godeye/sources'
+import { fluxSeismes } from '../../lib/godeye/periode'
+import { fusionnerEvenements, lireAvionsApi, lireEonet, lireGdacs, lireInfosApi, lireNaviresApi, lireTle, MAX_PAR_GROUPE, URL_CELESTRAK, URL_EONET, urlsGdacs } from '../../lib/godeye/sources'
 import { arrondir, cleBoite, MONDE, requeteBoite } from '../../lib/godeye/zone'
 import { evenementsDemo, infosDemo, tleDemo } from '../../mock/data/godeye'
 import { seismesDemo } from '../../mock/data/vueMonde'
@@ -32,6 +33,8 @@ export type Sortie = {
   etats: Record<CoucheId, EtatFlux>
   /** Texte de couverture de la source d'avions ("250 mn autour de..."), vide si inconnu. */
   couvreAvions: string
+  /** Vrai quand la vue est trop large pour tous les avions : couloirs principaux + militaires du monde seulement. */
+  partielAvions: boolean
   /** État de chaque flux d'actualités (pour les puces de sources et les pannes). */
   sourcesInfos: SourceInfo[]
   orbites: readonly Orbite[]
@@ -42,7 +45,7 @@ export function useDonnees(f: Filtres, boite: Boite | null): Sortie {
   const [infos, setInfos] = useState<{ liste: Donnees['infos']; sources: SourceInfo[] }>({ liste: [], sources: [] })
   const [seismes, setSeismes] = useState(DONNEES_VIDES.seismes)
   const [evenements, setEvenements] = useState(DONNEES_VIDES.evenements)
-  const [avions, setAvions] = useState({ liste: DONNEES_VIDES.avions, releve: 0, couvre: '' })
+  const [avions, setAvions] = useState({ liste: DONNEES_VIDES.avions, releve: 0, couvre: '', partiel: false })
   const [navires, setNavires] = useState({ liste: DONNEES_VIDES.navires, releve: 0 })
   const [orbites, setOrbites] = useState<Orbite[]>([])
   const [maintenant, setMaintenant] = useState(() => Date.now())
@@ -53,8 +56,9 @@ export function useDonnees(f: Filtres, boite: Boite | null): Sortie {
   zoneRef.current = zone
   const groupesCle = f.satellites.groupes.join(',')
 
-  const etatSeismes = useFlux(f.couches.seismes, f.seismes.periode, 5 * MINUTE, async (signal) => {
-    const liste = DEMO ? seismesDemo() : lireUsgs(await json(FLUX_USGS[f.seismes.periode], signal))
+  const fluxSeisme = fluxSeismes(f.seismes.heures)   // le flux le plus court qui couvre la durée ; l'âge exact est filtré à l'affichage
+  const etatSeismes = useFlux(f.couches.seismes, fluxSeisme, 5 * MINUTE, async (signal) => {
+    const liste = DEMO ? seismesDemo() : lireUsgs(await json(FLUX_USGS[fluxSeisme], signal))
     if (!signal.aborted) setSeismes(liste)
   })
   const etatInfos = useFlux(f.couches.infos, 'infos', 5 * MINUTE, async (signal) => {
@@ -62,14 +66,25 @@ export function useDonnees(f: Filtres, boite: Boite | null): Sortie {
     if (!signal.aborted) { const l = lireInfosApi(r); setInfos({ liste: l.infos, sources: l.sources }) }
   })
   const etatEvenements = useFlux(f.couches.evenements, String(f.evenements.jours), 15 * MINUTE, async (signal) => {
-    const liste = DEMO ? evenementsDemo() : lireEonet(await json(URL_EONET(f.evenements.jours), signal))
+    let liste: Evenement[]
+    if (DEMO) liste = evenementsDemo()
+    else {
+      // NASA + GDACS : une source qui tombe ne vide pas l'autre ; les deux en panne = couche en erreur
+      const [nasa, ...gd] = await Promise.allSettled([
+        json(URL_EONET(f.evenements.jours), signal), ...urlsGdacs(Date.now(), f.evenements.jours).map((u) => json(u, signal)),
+      ])
+      const eo = nasa.status === 'fulfilled' ? lireEonet(nasa.value) : []
+      const gdacs = gd.flatMap((r) => (r.status === 'fulfilled' ? lireGdacs(r.value) : []))
+      if (nasa.status === 'rejected' && gd.every((r) => r.status === 'rejected')) throw nasa.reason
+      liste = fusionnerEvenements(eo, gdacs)
+    }
     if (!signal.aborted) setEvenements(liste)
   })
   const modeAvions = f.avions.mode
   const etatAvions = useFlux(f.couches.avions, `${modeAvions}|${modeAvions === 'zone' ? cleZone : ''}`, 10_000, async (signal) => {
     const chemin = modeAvions === 'militaires' ? '/godeye/avions?mode=militaires' : `/godeye/avions?mode=zone&${requeteBoite(zoneRef.current)}`
-    const r = await apiGet<{ couvre?: string }>(chemin)
-    if (!signal.aborted) setAvions({ liste: lireAvionsApi(r), releve: Date.now(), couvre: typeof r.couvre === 'string' ? r.couvre : '' })
+    const r = await apiGet<{ couvre?: string; partiel?: boolean }>(chemin)
+    if (!signal.aborted) setAvions({ liste: lireAvionsApi(r), releve: Date.now(), couvre: typeof r.couvre === 'string' ? r.couvre : '', partiel: r.partiel === true })
   })
   const etatNavires = useFlux(f.couches.navires, cleZone, MINUTE, async (signal) => {
     const r = await apiGet(`/godeye/navires?${requeteBoite(zoneRef.current)}`)
@@ -112,5 +127,5 @@ export function useDonnees(f: Filtres, boite: Boite | null): Sortie {
   const etats: Record<CoucheId, EtatFlux> = {
     seismes: etatSeismes, infos: etatInfos, evenements: etatEvenements, avions: etatAvions, navires: etatNavires, satellites: etatSat, cyber: FLUX_REPOS,
   }
-  return { donnees, maintenant, etats, couvreAvions: avions.couvre, orbites, sourcesInfos: infos.sources }
+  return { donnees, maintenant, etats, couvreAvions: avions.couvre, partielAvions: avions.partiel, orbites, sourcesInfos: infos.sources }
 }

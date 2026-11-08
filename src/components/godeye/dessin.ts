@@ -1,41 +1,130 @@
 // God Eye : dessin des couches sur une toile 2D, pour la carte à plat comme pour le globe (superposition).
 // Aucune décision ici : tout vient des Objet déjà filtrés et déjà projetés en pixels.
 import { projeter, type Vue } from '../../lib/vueMonde'
-import { TERRE_DIXIEMES } from '../../lib/vueMondeTerre'
+import { palette, REGLAGES_CARTE_DEFAUT, type ReglagesCarte } from '../../lib/godeye/apparence'
+import { dessinerQuadrillagePlat, dessinerRelief } from './dessinCarte'
+import { dessinerAttribution, dessinerTuilesPlat } from './dessinTuiles'
 import { avecAlpha, couleurObjet } from '../../lib/godeye/couleurs'
-import { THEMES, type CoucheId, type Objet } from '../../lib/godeye/modele'
+import { terresLegeres, type FondDetaille, type Ligne } from '../../lib/godeye/fond'
+import { THEMES, type Boite, type CoucheId, type Objet } from '../../lib/godeye/modele'
+import { niveauDetail, pictoDe, PICTOS, tailleDemi, type PictoId } from '../../lib/godeye/pictos'
+
+export { niveauDetail }
 
 /** Ordre de dessin : le fond d'abord, ce qui bouge et se lit au premier plan en dernier. */
 export const ORDRE_COUCHES: CoucheId[] = ['seismes', 'evenements', 'cyber', 'infos', 'navires', 'satellites', 'avions']
 
 export type Pt = { o: Objet; x: number; y: number; cap?: number }
 
-/** Carte à plat : espace profond, océan, terres éclairées à la côte, graticule discret. */
-export function dessinerFond(ctx: CanvasRenderingContext2D, vue: Vue, w: number, h: number): void {
+const fondLeger = terresLegeres
+
+/**
+ * Côtes et frontières nettes par-dessus le globe : la texture de la Terre est une image, floue de près ; ces traits sont
+ * recalculés à chaque image à la résolution de l'écran. Seuls les sommets dans la zone vue sont projetés (`boite`, marge
+ * comprise) : un trait est interrompu quand il sort de la zone ou passe derrière l'horizon (`projeter` rend null).
+ */
+export function dessinerLignesGlobe(
+  ctx: CanvasRenderingContext2D, fond: FondDetaille, projeterPt: (lon: number, lat: number) => { x: number; y: number } | null,
+  boite: Boite, zoom: number, frontieres = true,
+): void {
+  const m = 3
+  const [sud, nord, ouest, est] = [boite.sud - m, boite.nord + m, boite.ouest - m, boite.est + m]
+  const trace = (lignes: readonly Ligne[]): void => {
+    for (const l of lignes) {
+      if (l.est < ouest || l.ouest > est || l.nord < sud || l.sud > nord) continue
+      const p = l.pts
+      let ouvert = false
+      let px = 0, py = 0
+      for (let i = 0; i < p.length; i += 2) {
+        const lon = p[i], lat = p[i + 1]
+        const q = lon >= ouest && lon <= est && lat >= sud && lat <= nord ? projeterPt(lon, lat) : null
+        if (!q) { ouvert = false; continue }
+        if (!ouvert) { ctx.moveTo(q.x, q.y); ouvert = true; px = q.x; py = q.y; continue }
+        if (Math.abs(q.x - px) + Math.abs(q.y - py) < 0.8) continue
+        ctx.quadraticCurveTo(px, py, (px + q.x) / 2, (py + q.y) / 2)
+        px = q.x; py = q.y
+      }
+    }
+  }
+  ctx.lineJoin = 'round'
+  if (frontieres) {
+    ctx.beginPath()
+    trace(fond.frontieres)
+    ctx.strokeStyle = `rgba(190,225,240,${Math.min(0.5, 0.18 + zoom * 0.03)})`
+    ctx.lineWidth = 0.9
+    ctx.stroke()
+  }
+  ctx.beginPath()
+  trace(fond.terres)
+  ctx.strokeStyle = 'rgba(150,215,235,0.85)'
+  ctx.lineWidth = 1.3
+  ctx.stroke()
+}
+
+/**
+ * Ajoute des lignes au tracé courant : hors écran = ignorée, sommets à moins d'un pixel du précédent = écartés (rien à voir
+ * de plus), et les angles sont arrondis par des courbes passant par les milieux de segments : à fort zoom une côte n'a plus
+ * l'air d'une suite de segments droits.
+ */
+function tracerLignes(ctx: CanvasRenderingContext2D, lignes: readonly Ligne[], vue: Vue, w: number, h: number, fermees: boolean): void {
+  for (const l of lignes) {
+    const [x0, y1] = projeter(l.ouest, l.sud, vue, w, h)
+    const [x1, y0] = projeter(l.est, l.nord, vue, w, h)
+    if (Math.max(x0, x1) < -24 || Math.min(x0, x1) > w + 24 || Math.max(y0, y1) < -24 || Math.min(y0, y1) > h + 24) continue
+    const p = l.pts
+    let px = 0, py = 0, n = 0
+    for (let i = 0; i < p.length; i += 2) {
+      const [x, y] = projeter(p[i], p[i + 1], vue, w, h)
+      if (n > 0 && Math.abs(x - px) + Math.abs(y - py) < 0.8 && i < p.length - 2) continue
+      if (n === 0) ctx.moveTo(x, y)
+      else if (n === 1) ctx.lineTo((px + x) / 2, (py + y) / 2)
+      else ctx.quadraticCurveTo(px, py, (px + x) / 2, (py + y) / 2)
+      px = x; py = y; n++
+    }
+    if (n > 1) ctx.lineTo(px, py)
+    if (fermees && n > 2) ctx.closePath()
+  }
+}
+
+/** Carte à plat : espace profond, océan, terres éclairées à la côte, frontières, graticule discret. */
+export function dessinerFond(
+  ctx: CanvasRenderingContext2D, vue: Vue, w: number, h: number, fond: FondDetaille | null = null,
+  opt: { frontieres: boolean; quadrillage: boolean; texture?: boolean; satellite?: boolean; grille?: ReglagesCarte; tuiles?: { dpr: number; aChange: () => void } } = { frontieres: true, quadrillage: true },
+): void {
+  const pal = palette(opt.texture !== false, opt.satellite === true)
   const mer = ctx.createLinearGradient(0, 0, 0, h)
-  mer.addColorStop(0, '#0a1a33'); mer.addColorStop(0.55, '#09223f'); mer.addColorStop(1, '#0a1a33')
+  mer.addColorStop(0, pal.mer[0]); mer.addColorStop(0.55, pal.mer[1]); mer.addColorStop(1, pal.mer[2])
   ctx.fillStyle = mer
   ctx.fillRect(0, 0, w, h)
-  ctx.strokeStyle = 'rgba(120,180,255,0.12)'
-  ctx.lineWidth = 1
-  ctx.beginPath()
-  for (let lon = -180; lon <= 180; lon += 30) { const [x] = projeter(lon, 0, vue, w, h); ctx.moveTo(x, 0); ctx.lineTo(x, h) }
-  for (let lat = -60; lat <= 60; lat += 30) { const [, y] = projeter(0, lat, vue, w, h); ctx.moveTo(0, y); ctx.lineTo(w, y) }
-  ctx.stroke()
-  const terre = ctx.createLinearGradient(0, 0, 0, h)
-  terre.addColorStop(0, '#2d5a52'); terre.addColorStop(0.5, '#3b6a55'); terre.addColorStop(1, '#6d8794')
-  ctx.beginPath()
-  for (const r of TERRE_DIXIEMES) {
-    for (let i = 0; i < r.length; i += 2) {
-      const [x, y] = projeter(r[i] / 10, r[i + 1] / 10, vue, w, h)
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y)
-    }
-    ctx.closePath()
+  if (opt.quadrillage) dessinerQuadrillagePlat(ctx, vue, w, h, opt.grille ?? REGLAGES_CARTE_DEFAUT)
+  if (pal.remplir) {
+    const terre = ctx.createLinearGradient(0, 0, 0, h)
+    terre.addColorStop(0, pal.terre[0]); terre.addColorStop(0.5, pal.terre[1]); terre.addColorStop(0.85, pal.terre[2]); terre.addColorStop(1, pal.terre[3])
+    ctx.beginPath()
+    tracerLignes(ctx, fond ? fond.terres : fondLeger(), vue, w, h, true)
+    ctx.fillStyle = terre
+    ctx.fill()
+    if (pal.relief) { ctx.save(); ctx.clip(); dessinerRelief(ctx, vue, w, h); ctx.restore() }
   }
-  ctx.fillStyle = terre
-  ctx.fill()
+  // vue satellite : vraie imagerie par-dessus le fond fabriqué (qui reste visible hors ligne ou en attendant les tuiles)
+  if (opt.satellite && opt.texture !== false && opt.tuiles) {
+    dessinerTuilesPlat(ctx, vue, w, h, opt.tuiles.dpr, opt.tuiles.aChange)
+    if (opt.quadrillage) dessinerQuadrillagePlat(ctx, vue, w, h, opt.grille ?? REGLAGES_CARTE_DEFAUT)
+    dessinerAttribution(ctx, w, h)
+  }
+  if (fond && opt.frontieres && vue.zoom >= 1.4) {
+    ctx.beginPath()
+    tracerLignes(ctx, fond.frontieres, vue, w, h, false)
+    ctx.strokeStyle = `rgba(190,225,240,${Math.min(0.4, 0.12 + vue.zoom * 0.04)})`
+    ctx.lineWidth = 0.8
+    ctx.lineJoin = 'round'
+    ctx.stroke()
+  }
+  ctx.beginPath()
+  tracerLignes(ctx, fond ? fond.terres : fondLeger(), vue, w, h, true)
   ctx.strokeStyle = 'rgba(150,215,235,0.7)'
-  ctx.lineWidth = 1
+  ctx.lineWidth = vue.zoom > 6 ? 1.4 : 1
+  ctx.lineJoin = 'round'
   ctx.stroke()
 }
 
@@ -61,17 +150,81 @@ function fleche(ctx: CanvasRenderingContext2D, x: number, y: number, capDeg: num
 
 const pastille = (ctx: CanvasRenderingContext2D, x: number, y: number, r: number): void => { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2) }
 
-/** Dessine un objet à (x, y) en pixels. `phase` (0..1) anime les repères qui respirent ; `capEcran` = cap déjà corrigé pour le globe. */
-export function dessinerObjet(ctx: CanvasRenderingContext2D, o: Objet, x: number, y: number, choisi: boolean, phase: number, capEcran?: number): void {
+const tracesPictos = new Map<PictoId, Path2D>()
+const traceDe = (id: PictoId): Path2D => {
+  let p = tracesPictos.get(id)
+  if (!p) { p = new Path2D(PICTOS[id].d); tracesPictos.set(id, p) }
+  return p
+}
+
+/** Pictogramme de l'objet, centré en (x, y) : `lod` 2 = sur une pastille sombre cerclée de sa couleur, 1 = seul avec un liseré sombre. */
+function dessinerPicto(ctx: CanvasRenderingContext2D, o: Objet, x: number, y: number, col: string, capDeg: number, lod: 1 | 2): void {
+  const id = pictoDe(o), picto = PICTOS[id], demi = tailleDemi(o, lod)
+  if (lod === 2) {
+    ctx.globalAlpha = 0.9
+    ctx.fillStyle = '#0b1424'
+    pastille(ctx, x, y, demi + 3); ctx.fill()
+    ctx.globalAlpha = 1
+    ctx.strokeStyle = col
+    ctx.lineWidth = o.ton === 'crit' ? 2.2 : 1.5
+    pastille(ctx, x, y, demi + 3); ctx.stroke()
+  }
+  ctx.save()
+  ctx.translate(x, y)
+  if (picto.oriente) ctx.rotate((capDeg * Math.PI) / 180)
+  const k = (lod === 2 ? demi * 0.92 : demi) / 12
+  ctx.scale(k, k)
+  ctx.translate(-12, -12)
+  const trace = traceDe(id)
+  if (lod === 1) {   // liseré sombre : le pictogramme reste lisible sur la terre comme sur la mer
+    ctx.lineJoin = 'round'
+    ctx.strokeStyle = 'rgba(8,16,30,0.85)'
+    ctx.lineWidth = 2.6 / k
+    ctx.stroke(trace)
+  }
+  ctx.fillStyle = col
+  ctx.strokeStyle = col
+  if (picto.trait) { ctx.lineWidth = picto.trait; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke(trace) } else ctx.fill(trace, 'evenodd')
+  ctx.restore()
+}
+
+/**
+ * Dessine un objet à (x, y) en pixels. `phase` (0..1) anime les repères qui respirent ; `capEcran` = cap déjà corrigé pour le globe ;
+ * `lod` = niveau de détail (voir `niveauDetail`) : en foule, retour aux formes simples pour garder la fluidité.
+ * `halos` faux : aucun cercle animé (réglage « halos animés » de la scène).
+ */
+export function dessinerObjet(ctx: CanvasRenderingContext2D, o: Objet, x: number, y: number, choisi: boolean, phase: number, capEcran?: number, lod: 0 | 1 | 2 = 2, halos = true): void {
   const col = couleurObjet(o)
   ctx.fillStyle = col
   ctx.strokeStyle = col
   ctx.lineWidth = 1.5
   ctx.shadowColor = avecAlpha(col, 0.9)
   ctx.shadowBlur = 0
+  if (lod !== 0) {
+    // repères animés conservés autour du pictogramme : onde d'un séisme, halo d'une actualité grave, alerte d'un avion en urgence
+    if (!halos) {
+      // aucun repère animé
+    } else if (o.couche === 'seismes') {
+      for (const k of [0, 0.5]) { const p = (phase + k) % 1; ctx.globalAlpha = (1 - p) * 0.55; ctx.lineWidth = 1.5; pastille(ctx, x, y, o.rayon * (0.6 + p * 1.5) + 8); ctx.stroke() }
+    } else if ((o.couche === 'infos' && (o.ton === 'crit' || o.ton === 'warn')) || o.ton === 'crit') {
+      const crit = o.ton === 'crit'
+      ctx.globalAlpha = (1 - phase) * (crit ? 0.75 : 0.45)
+      ctx.lineWidth = crit ? 2 : 1.5
+      pastille(ctx, x, y, tailleDemi(o, lod) + 4 + phase * (crit ? 16 : 10)); ctx.stroke()
+    } else if (o.couche === 'cyber') {
+      ctx.globalAlpha = 1 - phase; ctx.lineWidth = 2; pastille(ctx, x, y, 12 + phase * 18); ctx.stroke()
+    }
+    ctx.globalAlpha = 1
+    ctx.shadowBlur = o.couche === 'avions' && o.sorte !== 'civil' ? 6 : 0
+    dessinerPicto(ctx, o, x, y, col, capEcran ?? o.cap ?? 0, lod)
+    ctx.shadowBlur = 0
+    ctx.globalAlpha = 1
+    if (choisi) { ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; pastille(ctx, x, y, tailleDemi(o, lod) + 8); ctx.stroke() }
+    return
+  }
   switch (o.couche) {
     case 'seismes': {
-      for (const k of [0, 0.5]) {   // deux ondes qui s'élargissent : un séisme, ça se propage
+      for (const k of halos ? [0, 0.5] : []) {   // deux ondes qui s'élargissent : un séisme, ça se propage
         const p = (phase + k) % 1
         ctx.globalAlpha = (1 - p) * 0.55
         ctx.lineWidth = 1.5
@@ -98,7 +251,7 @@ export function dessinerObjet(ctx: CanvasRenderingContext2D, o: Objet, x: number
     }
     case 'infos': {
       const crit = o.ton === 'crit', warn = o.ton === 'warn'
-      if (crit || warn) {   // halo qui respire : plus c'est grave, plus ça se voit
+      if (halos && (crit || warn)) {   // halo qui respire : plus c'est grave, plus ça se voit
         ctx.globalAlpha = (1 - phase) * (crit ? 0.75 : 0.45)
         ctx.lineWidth = crit ? 2 : 1.5
         pastille(ctx, x, y, o.rayon + 2 + phase * (crit ? 16 : 10)); ctx.stroke()
@@ -115,14 +268,16 @@ export function dessinerObjet(ctx: CanvasRenderingContext2D, o: Objet, x: number
       break
     }
     case 'cyber':
-      ctx.lineWidth = 2
-      ctx.globalAlpha = 1 - phase
-      pastille(ctx, x, y, 6 + phase * 18); ctx.stroke()
+      if (halos) {
+        ctx.lineWidth = 2
+        ctx.globalAlpha = 1 - phase
+        pastille(ctx, x, y, 6 + phase * 18); ctx.stroke()
+      }
       ctx.globalAlpha = 1
       pastille(ctx, x, y, 4); ctx.fill()
       break
     case 'avions':
-      if (o.ton === 'crit') { ctx.globalAlpha = 1 - phase; ctx.lineWidth = 2; pastille(ctx, x, y, 8 + phase * 16); ctx.stroke() }
+      if (halos && o.ton === 'crit') { ctx.globalAlpha = 1 - phase; ctx.lineWidth = 2; pastille(ctx, x, y, 8 + phase * 16); ctx.stroke() }
       ctx.globalAlpha = o.sorte === 'militaire' || o.ton === 'crit' ? 1 : 0.85
       ctx.shadowBlur = o.sorte === 'militaire' ? 8 : 0
       fleche(ctx, x, y, capEcran ?? o.cap ?? 0, o.rayon, 0.8, 11)

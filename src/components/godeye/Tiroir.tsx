@@ -4,7 +4,11 @@ import type { CoucheId, Info, Objet, SourceInfo } from '../../lib/godeye/modele'
 import { ageTexte } from '../../lib/vueMonde'
 import { FilInfos } from './FilInfos'
 import { PanneauCouches } from './PanneauCouches'
+import { PanneauReglages } from './PanneauReglages'
 import { PanneauVues } from './PanneauVues'
+import { Fraicheur } from './Fraicheur'
+import { Resume } from './Resume'
+import type { Elements } from '../../lib/godeye/elements'
 import { ONGLETS, type Onglet } from './ControlesStage'
 import type { EtatFlux } from './useFlux'
 
@@ -27,6 +31,13 @@ type Props = {
   onChoisirObjet: (o: Objet) => void
   vues: VuesProps
   onAppliquerVue: (v: VueEnregistree) => void
+  elements: Elements
+  onElements: (e: Elements) => void
+  /** Contenu de l'onglet « zones » (fourni par l'écran, qui tient l'état des zones). */
+  zonesNode?: React.ReactNode
+  /** Contenus des onglets « chercher » et « suivis » (fournis par l'écran). */
+  rechercheNode?: React.ReactNode
+  suivisNode?: React.ReactNode
 }
 
 /** Panneau latéral de la scène : fil d'actualités, à la une, filtres, vues enregistrées. */
@@ -42,6 +53,8 @@ export function Tiroir(p: Props) {
         <button type="button" className="ge-x" onClick={p.onFermer} aria-label="fermer le panneau">fermer</button>
       </div>
       <div className="ge-tiroir-corps">
+        {(p.onglet === 'une' || p.onglet === 'filtres') && <Fraicheur />}
+        {p.onglet === 'une' && <Resume />}
         {p.onglet === 'fil' && (p.f.couches.infos
           ? <FilInfos infos={p.fil} max={40} choisi={p.choisi?.startsWith('inf:') ? p.choisi.slice(4) : null} onChoisir={p.onChoisirInfo} />
           : <p className="nc-empty">La couche « actualités » est coupée : l'allumer pour voir le fil.</p>)}
@@ -60,6 +73,10 @@ export function Tiroir(p: Props) {
         ))}
         {p.onglet === 'filtres' && <PanneauCouches f={p.f} onChange={p.onChange} nombres={p.nombres} etats={p.etats} couvreAvions={p.couvreAvions} sourcesInfos={p.sourcesInfos} />}
         {p.onglet === 'vues' && <PanneauVues {...p.vues} onAppliquer={p.onAppliquerVue} />}
+        {p.onglet === 'zones' && p.zonesNode}
+        {p.onglet === 'chercher' && p.rechercheNode}
+        {p.onglet === 'suivis' && p.suivisNode}
+        {p.onglet === 'reglages' && <PanneauReglages f={p.f} onChange={p.onChange} elements={p.elements} onElements={p.onElements} />}
       </div>
     </aside>
   )

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { lazy, Suspense, useRef, useState } from 'react'
 import { apiGet } from '../lib/api'
 import { usePoll, fmtBytes } from '../lib/poll'
 import { getSettings } from '../lib/settings'
@@ -6,6 +6,7 @@ import { MascotChain } from '../components/Mascot'
 import { Reactor, type SubSystem } from '../components/Reactor'
 import { HomeSessions } from '../components/HomeSessions'
 import { HomeAtelier } from '../components/HomeAtelier'
+const GodEyeTele = lazy(() => import('../components/godeye/GodEyeTele'))
 import { VueTele } from '../components/lumiere/VueTele'
 import { HomeResume } from '../components/resume/HomeResume'
 import { Bar, Card, Chip, Dot } from '../components/ui'
@@ -49,7 +50,7 @@ export function TvDashboard() {
 
 
   // ---- personnalisation : sections activables et ordonnables ----
-  type SectionId = 'reactor' | 'alertes' | 'systeme' | 'mascottes' | 'sessions' | 'atelier' | 'lumiere' | 'encours' | 'automatisations' | 'sorties' | 'films' | 'quota' | 'semaine' | 'demandes' | 'soustitres' | 'lumieres' | 'resume' | 'agenda' | 'sauvegardes' | 'branches' | 'tests' | 'lumiere3d' | 'camera' | 'maj' | 'tele' | 'debit' | 'roadmap' | 'manquants'
+  type SectionId = 'reactor' | 'alertes' | 'systeme' | 'mascottes' | 'sessions' | 'atelier' | 'lumiere' | 'encours' | 'automatisations' | 'sorties' | 'films' | 'quota' | 'semaine' | 'demandes' | 'soustitres' | 'lumieres' | 'resume' | 'agenda' | 'sauvegardes' | 'branches' | 'tests' | 'lumiere3d' | 'camera' | 'maj' | 'tele' | 'debit' | 'roadmap' | 'manquants' | 'godeye'
   const ALL: { id: SectionId; label: string }[] = [
     { id: 'reactor', label: 'état du cœur' },
     { id: 'alertes', label: 'alertes' },
@@ -68,6 +69,7 @@ export function TvDashboard() {
     { id: 'soustitres', label: 'sous-titres ia' },
     { id: 'lumieres', label: 'lumières' },
     { id: 'resume', label: 'résumé du matin' },
+    { id: 'godeye', label: 'god eye' },
     { id: 'agenda', label: 'agenda du jour' },
     { id: 'sauvegardes', label: 'sauvegardes' },
     { id: 'branches', label: 'branches & pr' },
@@ -80,7 +82,7 @@ export function TvDashboard() {
     { id: 'roadmap', label: 'roadmap' },
     { id: 'manquants', label: 'manquants' },
   ]
-  const DEFAULT_LAYOUT = { order: ALL.map((a) => a.id), enabled: Object.fromEntries(ALL.map((a) => [a.id, true])) as Record<SectionId, boolean>, sizes: Object.fromEntries(ALL.map((a) => [a.id, 2])) as Record<SectionId, number> }
+  const DEFAULT_LAYOUT = { order: ALL.map((a) => a.id), enabled: { ...Object.fromEntries(ALL.map((a) => [a.id, true])), godeye: false } as Record<SectionId, boolean>, sizes: Object.fromEntries(ALL.map((a) => [a.id, 2])) as Record<SectionId, number> }
   const [layout, setLayout] = useState<typeof DEFAULT_LAYOUT>(() => {
     // migration : les sources ajoutées après la sauvegarde du layout doivent
     // apparaître (fusion profonde de enabled + ajout en fin d'ordre)
@@ -139,6 +141,7 @@ export function TvDashboard() {
     // comme les sessions : s/m/l = glyphes seuls, détail, détail avec la dernière phrase
     atelier: () => <HomeAtelier tv format={(layout.sizes.atelier ?? 2) === 1 ? 'short' : (layout.sizes.atelier ?? 2) === 3 ? 'long' : 'medium'} />,
     lumiere: () => <VueTele />,
+    godeye: () => <Suspense fallback={<Card title="god eye"><p className="muted">chargement...</p></Card>}><GodEyeTele /></Suspense>,
     reactor: () => <Reactor systems={systems} alertCount={(alerts.data?.alerts ?? []).length} />,
     alertes: () => (
       <Card title="alertes">
@@ -354,7 +357,7 @@ export function TvDashboard() {
             onDragEnd={() => { dragFrom.current = null; setDragging(null) }}
             onDrop={(e) => { e.preventDefault(); dragFrom.current = null; setDragging(null) }}
             style={{
-              zoom: id === 'sessions' || id === 'atelier' || id === 'lumiere' ? 1 : (layout.sizes[id] ?? 2) === 1 ? 0.82 : (layout.sizes[id] ?? 2) === 3 ? 1.28 : 1,
+              zoom: id === 'sessions' || id === 'atelier' || id === 'lumiere' || id === 'godeye' ? 1 : (layout.sizes[id] ?? 2) === 1 ? 0.82 : (layout.sizes[id] ?? 2) === 3 ? 1.28 : 1,
               ...(editing ? {
                 outline: dragging === id ? '2px solid var(--rose)' : '2px dashed var(--gold)',
                 outlineOffset: 3, borderRadius: 12, cursor: 'grab', position: 'relative',

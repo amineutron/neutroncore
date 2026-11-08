@@ -1,5 +1,6 @@
 import { ALT_MAX_FT, basculerDans, modifier, type Filtres } from '../../lib/godeye/filtres'
 import { CATEGORIES_EVENEMENT, COUCHES, GROUPES_SAT, THEMES, type CoucheId, type SourceInfo } from '../../lib/godeye/modele'
+import { HEURES_SEISMES, libelleHeures } from '../../lib/godeye/periode'
 import { Bloc, Case, Curseur, Puces } from './Champs'
 
 type Props = { f: Filtres; onChange: (f: Filtres) => void; couvreAvions: string; sourcesInfos: SourceInfo[] }
@@ -36,9 +37,9 @@ export function FiltresCouche({ id, f, onChange, couvreAvions, sourcesInfos }: P
         <Bloc>
           <Curseur label="magnitude min." valeur={f.seismes.magMin} min={2.5} max={8} pas={0.5} format={(v) => `M${v}+`} onChange={(magMin) => set('seismes', { magMin })} />
           <Curseur label="profondeur max." valeur={f.seismes.profMax} min={10} max={700} pas={10} format={(v) => (v >= 700 ? 'toutes' : `${v} km`)} onChange={(profMax) => set('seismes', { profMax })} />
-          <label className="ge-curseur"><span className="ge-curseur-t">période</span>
-            <select value={f.seismes.periode} onChange={(e) => set('seismes', { periode: e.target.value === 'semaine' ? 'semaine' : 'jour' })}>
-              <option value="jour">24 h</option><option value="semaine">7 jours</option>
+          <label className="ge-curseur"><span className="ge-curseur-t">depuis</span>
+            <select value={f.seismes.heures} onChange={(e) => set('seismes', { heures: Number(e.target.value) })}>
+              {HEURES_SEISMES.map((h) => <option key={h} value={h}>{libelleHeures(h)}</option>)}
             </select>
           </label>
         </Bloc>

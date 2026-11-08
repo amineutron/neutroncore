@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { FILTRES_DEFAUT, VUES_INTEGREES } from './filtres'
-import { corpsVue, filtresCourants, lireVues, NOM_VUE_MAX, toutesLesVues } from './vues'
+import { PICTOS } from './pictos'
+import { corpsVue, filtresCourants, ICONES_PROFIL, lireVues, NB_PROFILS, NOM_VUE_MAX, profilsPersonnels, toutesLesVues, vuesLibres } from './vues'
 
 describe('vues enregistrées', () => {
   it('relit les filtres et écarte les lignes sans nom ni id', () => {
@@ -31,6 +32,35 @@ describe('vues enregistrées', () => {
     expect(tout.slice(0, VUES_INTEGREES.length)).toEqual(VUES_INTEGREES)
     expect(tout.slice(VUES_INTEGREES.length).map((v) => v.nom)).toEqual(['abeille', 'Zèbre'])
     expect(perso).toEqual(copie)
+  })
+  it('relit l\'emplacement et l\'icône, ignore ce qui est invalide', () => {
+    const [a, b, c] = lireVues({ vues: [
+      { id: 'a', nom: 'A', filtres: {}, slot: 2, icone: 'satellite' },
+      { id: 'b', nom: 'B', filtres: {}, slot: 9, icone: '<x>' },
+      { id: 'c', nom: 'C', filtres: {}, slot: '1' },
+    ] })
+    expect([a.slot, a.icone]).toEqual([2, 'satellite'])
+    expect([b.slot, b.icone]).toEqual([null, null])
+    expect(c.slot).toBeNull()
+  })
+  it('profilsPersonnels : trois emplacements, vides ou remplis, la vue libre est écartée', () => {
+    const vues = lireVues({ vues: [
+      { id: 'a', nom: 'Nuit', filtres: {}, slot: 3 }, { id: 'b', nom: 'Libre', filtres: {} }, { id: 'c', nom: 'Doublon', filtres: {}, slot: 3 },
+    ] })
+    const p = profilsPersonnels(vues)
+    expect(p).toHaveLength(NB_PROFILS)
+    expect(p[0]).toBeNull()
+    expect(p[2]?.nom).toBe('Nuit')
+    expect(vuesLibres(vues).map((v) => v.nom)).toEqual(['Libre'])
+  })
+  it('corpsVue porte l\'emplacement et l\'icône, et ignore une icône inconnue', () => {
+    const c = corpsVue('Ma veille', FILTRES_DEFAUT, null, 'abc', { slot: 1, icone: 'cyber' })
+    expect([c.slot, c.icone, c.id]).toEqual([1, 'cyber', 'abc'])
+    expect(corpsVue('x', FILTRES_DEFAUT, null, undefined, { slot: 1, icone: 'nimporte' }).icone).toBeUndefined()
+    expect('slot' in corpsVue('x', FILTRES_DEFAUT, null)).toBe(false)
+  })
+  it('chaque icône proposée a un tracé', () => {
+    for (const i of ICONES_PROFIL) expect(PICTOS[i]).toBeDefined()
   })
   it('filtresCourants tolère un stockage vide ou cassé', () => {
     expect(filtresCourants(null)).toEqual(FILTRES_DEFAUT)

@@ -1,0 +1,44 @@
+/* God Eye : zones surveillees (onglet + editeur). Cibles tactiles >= 44px sur ecran tactile. */
+.gz-liste{display:flex;flex-direction:column;gap:10px}
+.gz-compte{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12.5px;color:var(--muted)}
+.gz-items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.gz-items li{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;opacity:.75}
+.gz-items li.on{opacity:1;border-color:color-mix(in srgb,#5fd0ff 45%,var(--line))}
+.gz-nomligne{display:flex;justify-content:space-between;gap:8px;align-items:baseline;font-size:13px}
+.gz-meta{font-size:11.5px;color:var(--faint)}
+.gz-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.gz-bouton,.gz-inter,.gz-lien{all:unset;box-sizing:border-box;cursor:pointer;font-size:12.5px;display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:34px;padding:0 12px;border-radius:10px;border:1px solid var(--line2);color:var(--text)}
+.gz-lien{border:0;padding:0 6px;color:var(--muted);text-decoration:underline;text-underline-offset:3px}
+.gz-danger{color:var(--rose)}
+.gz-ok{border-color:var(--gold);color:var(--gold)}
+.gz-bouton:disabled,.gz-lien:disabled{opacity:.4;cursor:default}
+.gz-inter i{width:26px;height:14px;border-radius:999px;background:var(--line2);position:relative;transition:background .15s}
+.gz-inter i::after{content:"";position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:var(--text);transition:transform .15s}
+.gz-inter.on i{background:#5fd0ff}
+.gz-inter.on i::after{transform:translateX(12px)}
+.gz-bouton:focus-visible,.gz-inter:focus-visible,.gz-lien:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+
+.gz-feuille{position:absolute;z-index:9;right:14px;top:66px;bottom:62px;width:min(400px,calc(100% - 28px));display:flex;flex-direction:column;border-radius:16px;
+  background:rgba(8,14,28,.9);backdrop-filter:blur(12px);border:1px solid var(--ge-bord);color:var(--text)}
+.gz-tete{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:10px 14px;border-bottom:1px solid var(--ge-bord);font-size:13px}
+.gz-resume{font-size:11.5px;color:var(--faint)}
+.gz-corps{flex:1;overflow:auto;padding:10px 14px;display:flex;flex-direction:column;gap:10px}
+.gz-champ{display:grid;grid-template-columns:78px 1fr auto;gap:8px;align-items:center;font-size:12.5px;color:var(--muted)}
+.gz-champ i{font-style:normal;font-size:12px;color:var(--gold);min-width:32px}
+.gz-champ input[type=range]{min-width:0}
+.gz-nom{grid-template-columns:78px 1fr}
+.gz-grille{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.gz-grille .gz-champ{grid-template-columns:auto 1fr auto;gap:6px}
+.gz-erreurs{margin:0;padding-left:18px;font-size:12px;color:var(--rose)}
+.gz-pied{display:flex;justify-content:flex-end;gap:10px;padding:10px 14px;border-top:1px solid var(--ge-bord)}
+.gz-champ .nc-ctl{min-width:0;width:100%}
+
+@media (max-width:700px){
+  .gz-feuille{left:0;right:0;top:auto;bottom:0;width:auto;max-height:64%;border-radius:16px 16px 0 0;padding-bottom:env(safe-area-inset-bottom,0px)}
+}
+@media (pointer:coarse){
+  .gz-bouton,.gz-inter{min-height:44px}
+  .gz-lien{min-height:44px;min-width:44px}
+  .gz-champ .nc-ctl{min-height:44px}
+}
+@media (prefers-reduced-motion:reduce){.gz-inter i,.gz-inter i::after{transition:none}}

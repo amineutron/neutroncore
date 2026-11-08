@@ -1,6 +1,7 @@
 // God Eye : filtres activables et enregistrables, et passage des données brutes aux objets de la carte.
 // Logique pure, testée dans filtres.test.ts : aucun accès réseau, aucune horloge (l'heure est un paramètre).
 import { FRANCE, rayonSeisme, tonSeisme } from '../vueMonde'
+import { libelleHeures } from './periode'
 import {
   CATEGORIES_EVENEMENT, COUCHES, GROUPES_SAT,
   THEMES, type Avion, type Boite, type CoucheId, type Donnees, type GroupeSat, type Info, type NiveauInfo, type Objet, type Theme, type Ton,
@@ -11,7 +12,8 @@ export type Filtres = {
   texte: string
   /** Ne garder que ce qui est dans la zone visible de la carte. */
   vueSeule: boolean
-  seismes: { magMin: number; profMax: number; periode: 'jour' | 'semaine' }
+  /** `heures` : âge maximal d'un séisme par rapport à maintenant (1 h à 30 jours). */
+  seismes: { magMin: number; profMax: number; heures: number }
   avions: { mode: 'zone' | 'militaires'; altMin: number; altMax: number; vitesseMin: number; sol: boolean; militairesSeuls: boolean; urgencesSeules: boolean }
   satellites: { groupes: GroupeSat[]; altMaxKm: number }
   navires: { vitesseMin: number }
@@ -29,7 +31,7 @@ export function choisirCouches(...ids: CoucheId[]): Record<CoucheId, boolean> {
 export const FILTRES_DEFAUT: Filtres = {
   couches: choisirCouches('infos', 'seismes', 'cyber'),
   texte: '', vueSeule: false,
-  seismes: { magMin: 2.5, profMax: 700, periode: 'jour' },
+  seismes: { magMin: 2.5, profMax: 700, heures: 24 },
   avions: { mode: 'zone', altMin: 0, altMax: ALT_MAX_FT, vitesseMin: 0, sol: false, militairesSeuls: false, urgencesSeules: false },
   satellites: { groupes: ['stations'], altMaxKm: 40_000 },
   navires: { vitesseMin: 0 },
@@ -58,7 +60,8 @@ export function lireFiltres(brut: unknown): Filtres {
     couches,
     texte: typeof o.texte === 'string' ? o.texte.slice(0, 60) : '',
     vueSeule: o.vueSeule === true,
-    seismes: { magMin: borne(se.magMin, 2.5, 8, 2.5), profMax: borne(se.profMax, 10, 700, 700), periode: se.periode === 'semaine' ? 'semaine' : 'jour' },
+    // les vues enregistrées avant les durées libres portent `periode` (« jour » ou « semaine ») : on la traduit en heures
+    seismes: { magMin: borne(se.magMin, 2.5, 8, 2.5), profMax: borne(se.profMax, 10, 700, 700), heures: Math.round(borne(se.heures, 1, 720, se.periode === 'semaine' ? 168 : 24)) },
     avions: {
       mode: av.mode === 'militaires' ? 'militaires' : 'zone',
       altMin, altMax: Math.max(altMin, borne(av.altMax, 0, ALT_MAX_FT, ALT_MAX_FT)),
@@ -104,7 +107,7 @@ export function resumeFiltres(f: Filtres): string[] {
   if (f.couches.seismes) {
     if (f.seismes.magMin > d.seismes.magMin) r.push(`séismes M${f.seismes.magMin}+`)
     if (f.seismes.profMax < d.seismes.profMax) r.push(`séismes moins de ${f.seismes.profMax} km de profondeur`)
-    if (f.seismes.periode === 'semaine') r.push('séismes sur 7 jours')
+    if (f.seismes.heures !== d.seismes.heures) r.push(`séismes sur ${libelleHeures(f.seismes.heures)}`)
   }
   if (f.couches.avions) {
     const a = f.avions
@@ -195,8 +198,9 @@ export function appliquer(d: Donnees, f: Filtres, ctx: Contexte): Objet[] {
   const garde = (titre: string, detail: string): boolean => !q || norm(`${titre} ${detail}`).includes(q)
 
   if (f.couches.seismes) {
+    const limiteSeismes = ctx.maintenant - f.seismes.heures * 3_600_000
     for (const s of d.seismes) {
-      if (s.mag < f.seismes.magMin || s.prof > f.seismes.profMax || !dansBoite(zone, s.lon, s.lat)) continue
+      if (s.t < limiteSeismes || s.mag < f.seismes.magMin || s.prof > f.seismes.profMax || !dansBoite(zone, s.lon, s.lat)) continue
       const titre = `M ${s.mag.toFixed(1)}`
       const detail = `${s.lieu || 'position en mer'} - profondeur ${Math.round(s.prof)} km`
       if (!garde(titre, detail)) continue
@@ -216,7 +220,7 @@ export function appliquer(d: Donnees, f: Filtres, ctx: Contexte): Objet[] {
       const detail = `${v.type || 'type inconnu'} - ${flAlt(v.alt)} - ${Math.round(v.vitesse)} kt - cap ${Math.round(v.cap)}${v.immat && v.indicatif ? ` - ${v.immat}` : ''}${v.urgence ? ` - URGENCE ${v.squawk}` : ''}`
       if (!garde(titre, detail)) continue
       const ton: Ton = v.urgence ? 'crit' : v.militaire ? 'warn' : 'info'
-      sortie.push({ id: `avi:${v.id}`, couche: 'avions', lon, lat, cap: v.cap, ton, rayon: v.urgence ? 7 : 5, titre, detail, sorte: v.militaire ? 'militaire' : 'civil' })
+      sortie.push({ id: `avi:${v.id}`, couche: 'avions', lon, lat, cap: v.cap, ton, rayon: v.urgence ? 7 : 5, titre, detail, sorte: v.militaire ? 'militaire' : v.helico ? 'helico' : 'civil' })
     }
   }
   if (f.couches.satellites) {
@@ -244,9 +248,11 @@ export function appliquer(d: Donnees, f: Filtres, ctx: Contexte): Objet[] {
     for (const e of d.evenements) {
       if (!f.evenements.categories.includes(e.categorie) || e.t < limite || !dansBoite(zone, e.lon, e.lat)) continue
       const cat = CATEGORIES_EVENEMENT.find((c) => c.id === e.categorie)
-      const detail = cat?.nom ?? e.categorie
+      const detail = `${cat?.nom ?? e.categorie}${e.alerte ? ` - alerte ${e.alerte} (GDACS)` : ''}${e.pays ? ` - ${e.pays}` : ''}`
       if (!garde(e.titre, detail)) continue
-      sortie.push({ id: `eve:${e.id}`, couche: 'evenements', lon: e.lon, lat: e.lat, ton: cat?.ton ?? 'info', rayon: 6, titre: e.titre, detail, t: e.t, lien: e.lien, sorte: e.categorie })
+      // une alerte officielle prime sur le ton de la catégorie : rouge = critique, orange = attention
+      const ton: Ton = e.alerte === 'rouge' ? 'crit' : e.alerte === 'orange' ? 'warn' : e.alerte === 'verte' ? 'info' : cat?.ton ?? 'info'
+      sortie.push({ id: `eve:${e.id}`, couche: 'evenements', lon: e.lon, lat: e.lat, ton, rayon: e.alerte === 'rouge' ? 8 : 6, titre: e.titre, detail, t: e.t, lien: e.lien, sorte: e.categorie })
     }
   }
   if (f.couches.infos) {
@@ -267,42 +273,50 @@ export function appliquer(d: Donnees, f: Filtres, ctx: Contexte): Objet[] {
 
 // ----------------------------------------------------------------------------- vues de départ
 
-export type VueEnregistree = { id: string; nom: string; filtres: Filtres; camera: { cx: number; cy: number; zoom: number } | null; integree?: boolean }
+export type VueEnregistree = {
+  id: string; nom: string; filtres: Filtres; camera: { cx: number; cy: number; zoom: number } | null; integree?: boolean
+  /** Pictogramme du profil (clé de PICTOS) ; absent = pictogramme neutre. */
+  icone?: string | null
+  /** Emplacement de profil personnel (1 à 3) ; absent = vue libre ou profil intégré. */
+  slot?: number | null
+}
 
-const base = (nom: string, id: string, surcharge: Partial<Filtres>, camera: VueEnregistree['camera'] = null): VueEnregistree => ({
-  id, nom, integree: true, camera, filtres: lireFiltres({ ...FILTRES_DEFAUT, ...surcharge }),
+const base = (nom: string, id: string, icone: string, surcharge: Partial<Filtres>, camera: VueEnregistree['camera'] = null): VueEnregistree => ({
+  id, nom, icone, integree: true, camera, filtres: lireFiltres({ ...FILTRES_DEFAUT, ...surcharge }),
 })
 
 /** Vues toutes faites, non supprimables : un point de départ pour comprendre les filtres. */
 export const VUES_INTEGREES: VueEnregistree[] = [
-  base('tout', 'int-tout', { couches: choisirCouches('infos', 'seismes', 'avions', 'satellites', 'navires', 'evenements', 'cyber') }),
-  base('guerre et diplomatie', 'int-guerre', {
+  base('tout', 'int-tout', 'monde', { couches: choisirCouches('infos', 'seismes', 'avions', 'satellites', 'navires', 'evenements', 'cyber') }),
+  base('guerre et diplomatie', 'int-guerre', 'guerre', {
     couches: choisirCouches('infos', 'avions'),
     infos: { ...FILTRES_DEFAUT.infos, themes: ['guerre', 'diplomatie'], heures: 48 },
     avions: { ...FILTRES_DEFAUT.avions, mode: 'militaires', militairesSeuls: true },
   }),
-  base('économie', 'int-eco', { couches: choisirCouches('infos'), infos: { ...FILTRES_DEFAUT.infos, themes: ['economie'], heures: 48 } }),
-  base('cybersécurité', 'int-cyber', {
+  base('économie', 'int-eco', 'economie', { couches: choisirCouches('infos'), infos: { ...FILTRES_DEFAUT.infos, themes: ['economie'], heures: 48 } }),
+  base('cybersécurité', 'int-cyber', 'cyber', {
     couches: choisirCouches('infos', 'cyber'),
     infos: { ...FILTRES_DEFAUT.infos, themes: ['cyber'], heures: 72 },
   }),
-  base('sécurité et crises', 'int-secu', { couches: choisirCouches('infos'), infos: { ...FILTRES_DEFAUT.infos, themes: ['securite', 'catastrophe'], niveauMin: 'warn' } }),
-  base('catastrophes', 'int-cata', {
+  base('sécurité et crises', 'int-secu', 'securite', { couches: choisirCouches('infos'), infos: { ...FILTRES_DEFAUT.infos, themes: ['securite', 'catastrophe'], niveauMin: 'warn' } }),
+  base('catastrophes', 'int-cata', 'volcan', {
     couches: choisirCouches('seismes', 'evenements'),
     seismes: { ...FILTRES_DEFAUT.seismes, magMin: 5 },
     evenements: { categories: ['wildfires', 'volcanoes', 'severeStorms', 'floods'], jours: 14 },
   }),
-  base('ciel militaire', 'int-mil', {
+  base('ciel militaire', 'int-mil', 'avion-mil', {
     couches: choisirCouches('avions'),
     avions: { ...FILTRES_DEFAUT.avions, mode: 'militaires', militairesSeuls: true },
   }),
-  base('orbite', 'int-orbite', {
+  base('orbite', 'int-orbite', 'satellite', {
     couches: choisirCouches('satellites'),
     satellites: { groupes: ['stations', 'visual', 'gps-ops'], altMaxKm: 40_000 },
   }),
-  base('avions en croisière', 'int-croisiere', {
+  base('avions en croisière', 'int-croisiere', 'avion', {
     couches: choisirCouches('avions'),
     avions: { ...FILTRES_DEFAUT.avions, altMin: 30_000, vitesseMin: 350 },
     vueSeule: true,
   }),
+  base('ciel d\'Europe', 'int-europe', 'avion', { couches: choisirCouches('avions', 'infos'), avions: { ...FILTRES_DEFAUT.avions } }, { cx: 10, cy: 49, zoom: 4 }),
+  base('mer et ports', 'int-mer', 'navire', { couches: choisirCouches('navires', 'evenements'), evenements: { categories: ['severeStorms', 'floods', 'seaLakeIce'], jours: 14 } }, { cx: 22, cy: 60, zoom: 5 }),
 ]

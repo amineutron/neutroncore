@@ -28,7 +28,7 @@ describe('projection', () => {
   })
   it('borne le zoom et le centre', () => {
     const v = borner({ cx: 999, cy: -999, zoom: 1e9 }, W, H)
-    expect(v.zoom).toBe(40)
+    expect(v.zoom).toBe(160)
     expect(Math.abs(v.cx)).toBeLessThanOrEqual(180)
     expect(borner({ cx: 50, cy: 50, zoom: 1 }, W, H)).toEqual({ cx: 0, cy: 0, zoom: 1 })
     expect(borner({ cx: NaN, cy: NaN, zoom: NaN }, W, H)).toEqual({ cx: 0, cy: 0, zoom: 1 })

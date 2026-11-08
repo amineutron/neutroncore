@@ -3,14 +3,16 @@
 export type Vue = { cx: number; cy: number; zoom: number }
 export type Seisme = { id: string; mag: number; lieu: string; lon: number; lat: number; prof: number; t: number }
 export type NiveauCyber = 'ok' | 'info' | 'warn' | 'crit'
-export type Periode = 'jour' | 'semaine'
+export type Periode = 'heure' | 'jour' | 'semaine' | 'mois'
 
 export const VUE_DEPART: Vue = { cx: 10, cy: 15, zoom: 1 }
 export const ZOOM_MIN = 1
-export const ZOOM_MAX = 40
+export const ZOOM_MAX = 160
 // CERT-FR est un service français : les avis n'ont pas de position, on les pose sur la France.
 export const FRANCE = { lon: 2.4, lat: 46.6 }
 export const FLUX_USGS: Record<Periode, string> = {
+  heure: 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_hour.geojson',
+  mois: 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_month.geojson',
   jour: 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson',
   semaine: 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_week.geojson',
 }
