@@ -15,11 +15,14 @@ export type ScreenSession = {
   disconnect: () => void
   sendCtrlAltDel: () => void
   paste: (text: string) => void
-  focus: () => void
+  /** une touche (keysym X11, code DOM) : appui puis relachement si `down` est omis */
+  key: (keysym: number, code: string | null, down?: boolean) => void
   /** mise a l'echelle dans le cadre (noVNC scaleViewport) */
   setScale: (on: boolean) => void
 }
-export type ScreenSource = (target: HTMLElement, vm: string, h: ScreenHandlers) => Promise<ScreenSession>
+/** `signal` : annulation pendant l'ouverture (on a quitte l'onglet avant le jeton ou le chargement du client) :
+ *  la source n'ouvre pas le flux et leve une erreur ; rien ne reste ouvert sur un noeud detache. */
+export type ScreenSource = (target: HTMLElement, vm: string, h: ScreenHandlers, signal?: AbortSignal) => Promise<ScreenSession>
 
 export type SerialHandlers = {
   onOpen: () => void
@@ -27,11 +30,14 @@ export type SerialHandlers = {
   onClose: (reason: string, clean: boolean) => void
 }
 export type SerialSession = {
-  send: (data: string | Uint8Array) => void
+  send: (data: string | Uint8Array<ArrayBuffer>) => void
   resize: (cols: number, rows: number) => void
   close: () => void
 }
-export type SerialSource = (vm: string, h: SerialHandlers) => Promise<SerialSession>
+export type SerialSource = (vm: string, h: SerialHandlers, signal?: AbortSignal) => Promise<SerialSession>
+
+export class AbortedError extends Error { constructor() { super('connexion annulée') } }
+export const throwIfAborted = (signal?: AbortSignal): void => { if (signal?.aborted) throw new AbortedError() }
 
 export async function screenSource(): Promise<ScreenSource> {
   if (DEMO) return (await import('../mock/vmViewDemo')).demoScreenSource

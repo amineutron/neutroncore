@@ -69,6 +69,27 @@ Contrat (lyra-control-api, livre) :
 Piege : l'animation d'entree `.vh-enter>*{animation:vhUp ... both}` (transform) fait de chaque bloc un contenant pour `position:fixed`,
 meme finie : le plein ecran se calait sur la carte. `.vh-enter>*:has(.vh-plein){animation:none}` la retire aux ancetres du calque.
 
+Corrections de la revue (commit `fix(vms): touch keyboard…`) :
+
+- **Clavier tactile** : « clavier » focalise un `<textarea class="vh-kbd">` cache (hors ecran, `autocapitalize/autocorrect` off) ; ses
+  `keydown` speciaux et raccourcis (`lib/vmKeys.ts`, pur et teste : Entree, Retour arriere, Tab, Echap, fleches, F1-F12,
+  Ctrl/Alt/Meta + caractere) et son texte (`input` hors composition, `compositionend`) deviennent `rfb.sendKey(keysym, code, down)` ;
+  keysym = point de code pour Latin-1, `0x01000000 | u` au-dela (memes valeurs que noVNC, dont le paquet n'exporte pas les tables).
+  Le champ est vide apres chaque envoi. Le faux ecran de la demo affiche ce qu'il recoit (`data-typed`) : l'e2e verifie le chemin
+  champ -> touche -> machine (texte, retour arriere, Entree).
+- **Aucune session fuyante** : compteur de generation + `AbortSignal` passe aux sources ; quitter (ou « annuler ») pendant le jeton
+  ou le chargement du client n'ouvre rien (`AbortedError`), une session arrivee trop tard est fermee aussitot ; `onDisconnect` ne
+  vide `sess` que pour sa propre session.
+- `credentialsrequired` -> deconnexion + « mot de passe VNC requis (non pris en charge) ». `ws: true` sur le proxy Vite (dev).
+- **Bouton retour / Echap / fond** (`lib/useFullscreenOverlay.ts`) : le calque s'inscrit dans la garde de navigation
+  (`lib/navGuard`) : au retour, App l'interroge, le calque se ferme et refuse la sortie, App rend l'entree d'historique consommee.
+  Pas de `pushState` a nous : deux ecouteurs du meme `popstate` se disputeraient l'evenement. Echap ferme si le clavier n'est pas tenu
+  par la machine ou le terminal ; `role="dialog" aria-modal`, `body{overflow:hidden}` pendant le plein ecran, `full` remis a faux quand
+  la machine s'eteint.
+- Terminal : `.catch` sur le chargement d'xterm (message + « recharger »), aucune ecriture apres `dispose`.
+- Messages : fermeture par nous = « déconnecté » ; jamais ouvert = « connexion impossible : jeton refusé ou expiré (30 s), ou API
+  injoignable ». Tests des sources avec un WebSocket factice (`__fixtures__/fakeWs.ts`, `vmViewVnc.test.ts`, `vmViewSerial.test.ts`).
+
 Non verifie en reel (pas de vraie API lancee) : poignee de main noVNC contre le pont, `securityfailure`, `desktopname`, coller via
 `clipboardPasteFrom`, clavier tactile (focus du champ cache de noVNC / textarea d'xterm), fermeture 4409 pendant une vue ouverte.
 noVNC ecrit `noVNC requires a secure context` dans la console quand la page est en http hors localhost (tailnet) : c'est un avertissement,

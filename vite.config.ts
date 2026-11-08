@@ -12,6 +12,8 @@ export default defineConfig({
       '^/(agenda|arr|audit|auth|automations|branches|camera|ci-deps|cyber|dette|dv|fan|godeye|health|hue|ironman|journal|launcher|lyra|maj|manga|media|minuteurs|modelisation|notes|notifications|plan|projects|qbit|rampes|recherche|recos|reglages|requests|reseau|ressources|resume|reveil|roadmap|sauvegardes|screens|securite|services|sorties|spatial|subtitles|system|tests|tracking|tv|vms-console|zones-audio)': {
         target: 'http://127.0.0.1:9876',
         changeOrigin: true,
+        ws: true,   // flux VNC et serie des VMs (/vms-console/{vm}/vnc|serial) en dev
+
       },
     },
   },

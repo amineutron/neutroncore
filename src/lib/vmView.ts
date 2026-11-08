@@ -15,9 +15,6 @@ export type Verdict = {
 }
 export type StreamKind = 'vnc' | 'serial'
 
-/** Mode demo (build VITE_MOCK_API=1) : aucun WebSocket, flux simules ; seul point ou le composant choisit sa source. */
-export const demoMode: boolean = import.meta.env.VITE_MOCK_API === '1'
-
 /** Codes de fermeture du pont WebSocket (lyra-control-api), traduits. */
 export const CLOSE_CODES: Record<number, string> = {
   4401: 'jeton refusé ou expiré (30 s) : réessaie',
@@ -30,7 +27,7 @@ export const CLOSE_CODES: Record<number, string> = {
 }
 /** Jeton absent, faux, consomme ou nom invalide : le pont ferme AVANT d'accepter, le navigateur ne voit qu'une poignee
  *  de main echouee (error puis close 1006, jamais ouvert). */
-export const REFUSED_AT_OPEN = 'connexion refusée à l\'ouverture : jeton refusé ou expiré (30 s), réessaie'
+export const REFUSED_AT_OPEN = 'connexion impossible : jeton refusé ou expiré (30 s), ou API injoignable'
 
 /** Phrase pour une fermeture : un flux jamais ouvert = refus a l'ouverture ; sinon code du pont ; sinon propre / brutale. */
 export function closeReason(code: number | null | undefined, clean = true, opened = true): string {

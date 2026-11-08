@@ -1349,5 +1349,11 @@ Non commite. Detail et commandes de verification : `docs/vms-hub.md`.
   d'entree `.vh-enter>*` (transform, fill-mode both) fait de chaque bloc un contenant pour `position:fixed`, meme finie ;
   `.vh-enter>*:has(.vh-plein){animation:none}` la retire. Codes de fermeture du pont traduits (`closeReason`) : 4401
   arrive comme une poignee de main echouee (jamais ouvert -> « jeton refusé ou expiré »), 4404, 4409, 4503, 1009, 1000.
-  Aide : `screen-vnc`, `serial`, `cad`, `fullscreen-kbd`, `hw-display` complete. 22 scenarios e2e. Non verifie contre
-  la vraie API (voir docs/vms-hub.md).
+  Aide : `screen-vnc`, `serial`, `cad`, `fullscreen-kbd`, `hw-display` complete. 22 scenarios e2e. Essai reel passe
+  (console du noyau en noVNC, `cirros login:` en serie).
+  Apres revue : clavier tactile = `<textarea class="vh-kbd">` cache + `lib/vmKeys.ts` (keysyms X11, pur, teste) ->
+  `rfb.sendKey` ; `rfb.focus()` sur le canvas ne fait PAS monter le clavier Android. Sources avec `AbortSignal` +
+  compteur de generation : quitter pendant l'ouverture ne laisse aucun flux (la vue VNC est exclusive, 4409 pendant 10
+  min sinon). Plein ecran et bouton retour : `lib/useFullscreenOverlay.ts` passe par la garde `lib/navGuard` (fermer
+  et refuser la sortie, App rend l'entree d'historique) — ne pas ajouter de `pushState` a soi, il se disputerait le
+  `popstate` avec App. `credentialsrequired` -> refus explicite ; proxy Vite `ws: true` pour les flux en dev.

@@ -253,8 +253,12 @@ button.vh-pn:hover{border-color:var(--kc)}
 .vh-term{display:block;padding:6px;height:min(52vh,440px)}
 .vh-term .xterm{height:100%}
 .vh-view-hint{margin:0;font-size:12px}
-.vh-coarse-only{display:none}
-@media (pointer:coarse){.vh-coarse-only{display:inline-flex}.vh-viewbar .btn{min-height:44px}.vh-sub button{min-height:44px}}
+.vh-viewbar .vh-coarse-only{display:none}
+@media (pointer:coarse){.vh-viewbar .vh-coarse-only{display:inline-flex}.vh-viewbar .btn{min-height:44px}.vh-sub button{min-height:44px}}
+/* champ cache du clavier tactile : hors ecran mais focalisable (le clavier Android ne monte que sur un champ) */
+.vh-kbd{position:absolute;left:-9999px;top:0;width:1px;height:1px;opacity:0;resize:none;border:0;padding:0}
+.vh-view{position:relative}
+.vh-view-err{margin:0;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 
 /* plein ecran : meme regle que god eye (components/godeye/stage.css, bloc « plein ecran ») — tout ce qui touche le bord
    haut est decale de env(safe-area-inset-top), avec un minimum de 30 px sur ecran tactile (en mode immersif env() vaut

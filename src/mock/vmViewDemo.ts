@@ -1,11 +1,11 @@
 // Demo de l'ecran et de la console serie : aucun WebSocket. L'ecran est une toile animee (« démo : flux simulé »,
 // horloge qui bouge) ; le terminal rend une invite `demo login:` et fait l'echo de ce qu'on tape.
-import type { ScreenSource, SerialSource } from '../lib/vmViewSources'
+import { throwIfAborted, type ScreenSource, type SerialSource } from '../lib/vmViewSources'
 
 const W = 1024
 const H = 640
 
-function drawFrame(ctx: CanvasRenderingContext2D, t0: number, vm: string, now: number): void {
+function drawFrame(ctx: CanvasRenderingContext2D, t0: number, vm: string, now: number, typed: string): void {
   const t = (now - t0) / 1000
   ctx.fillStyle = '#10141c'
   ctx.fillRect(0, 0, W, H)
@@ -34,7 +34,7 @@ function drawFrame(ctx: CanvasRenderingContext2D, t0: number, vm: string, now: n
   const lines = Math.floor(t * 2) % 14
   for (let i = 0; i < lines; i++) ctx.fillText(`[${(i * 7.3 + t).toFixed(3).padStart(10)}] service ${i % 3 === 0 ? 'démarré' : 'ok'} · unité demo-${i}.service`, 96, 116 + i * 24)
   ctx.fillStyle = '#f6c177'
-  ctx.fillText(`demo@${vm}:~$ ${'_'.repeat(0)}${Math.floor(t * 2) % 2 ? '█' : ' '}`, 96, 116 + lines * 24)
+  ctx.fillText(`demo@${vm}:~$ ${typed}${Math.floor(t * 2) % 2 ? '█' : ' '}`, 96, 116 + lines * 24)   // ce que le clavier virtuel a tape
   // grande horloge
   ctx.fillStyle = 'rgba(246,193,119,.9)'
   ctx.font = '700 64px JBM, monospace'
@@ -46,7 +46,9 @@ function drawFrame(ctx: CanvasRenderingContext2D, t0: number, vm: string, now: n
   ctx.fillText('mode démonstration : aucune machine réelle derrière cet écran', 80, H - 40)
 }
 
-export const demoScreenSource: ScreenSource = async (target, vm, h) => {
+export const demoScreenSource: ScreenSource = async (target, vm, h, signal) => {
+  await new Promise((r) => setTimeout(r, 120))   // latence d'un jeton
+  throwIfAborted(signal)
   const canvas = document.createElement('canvas')
   canvas.width = W; canvas.height = H
   canvas.className = 'vh-demo-canvas'
@@ -61,7 +63,8 @@ export const demoScreenSource: ScreenSource = async (target, vm, h) => {
   const t0 = performance.now()
   let raf = 0
   let on = true
-  const tick = (now: number) => { if (!on) return; if (ctx) drawFrame(ctx, t0, vm, now); raf = requestAnimationFrame(tick) }
+  let typed = ''   // touches recues par `key` : montrees sur l'ecran et exposees (data-typed) pour verifier le chemin du clavier
+  const tick = (now: number) => { if (!on) return; if (ctx) drawFrame(ctx, t0, vm, now, typed); raf = requestAnimationFrame(tick) }
   const stop = (clean: boolean, why: string) => {
     if (!on) return
     on = false
@@ -74,7 +77,14 @@ export const demoScreenSource: ScreenSource = async (target, vm, h) => {
     disconnect: () => stop(true, 'déconnecté'),
     sendCtrlAltDel: () => { /* rien a redemarrer en demo */ },
     paste: () => { /* pas de presse-papiers distant en demo */ },
-    focus: () => canvas.focus({ preventScroll: true }),
+    key: (keysym, _code, down) => {
+      if (down === false) return
+      if (keysym === 0xff0d) typed = ''                                   // Entree : la « commande » part
+      else if (keysym === 0xff08) typed = typed.slice(0, -1)             // Retour arriere
+      else if (keysym >= 0x20 && keysym <= 0xff) typed += String.fromCodePoint(keysym)
+      else if ((keysym & 0x01000000) !== 0) typed += String.fromCodePoint(keysym & 0x00ffffff)
+      canvas.dataset.typed = typed
+    },
     setScale: (scale) => { canvas.style.maxWidth = scale ? '100%' : 'none'; canvas.style.maxHeight = scale ? '100%' : 'none' },
   }
 }
@@ -82,7 +92,9 @@ export const demoScreenSource: ScreenSource = async (target, vm, h) => {
 const enc = new TextEncoder()
 const PROMPT = '\r\ndemo login: '
 
-export const demoSerialSource: SerialSource = async (vm, h) => {
+export const demoSerialSource: SerialSource = async (vm, h, signal) => {
+  await new Promise((r) => setTimeout(r, 120))
+  throwIfAborted(signal)
   let line = ''
   let on = true
   const say = (s: string) => { if (on) h.onData(enc.encode(s)) }
