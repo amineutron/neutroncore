@@ -1,5 +1,4 @@
-// Vue 3D du plan de pièce : projection orthographique simple (comme le Plan3D
-// de HALO) — rotation autour de l'axe vertical (yaw) puis inclinaison (tilt).
+// Vue 3D du plan de pièce : projection orthographique simple — rotation autour de l'axe vertical (yaw) puis inclinaison (tilt).
 // Logique pure : le dessin est dans components/RoomPlan3D.tsx.
 //
 // Repère « monde », en cm : x = gauche/droite et y = avant/arrière centrés sur

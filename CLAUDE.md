@@ -788,7 +788,7 @@ Non commite. Cote API : `lib/automations.py`, `routers/automations.py`,
   bouge. Une alerte par arret (`stuck_sessions`). Une commande longue et silencieuse
   (tests de 30 min) y ressemble : regler le seuil au-dessus.
 - **Condition `presence`** (je suis la / absent) : la = au moins un ecran du PC allume
-  (DPMS, lu par le script de HALO) ; etat illisible = inconnu, aucune branche.
+  (DPMS Hyprland, `lib/ecrans_hypr.py`) ; etat illisible = inconnu, aucune branche.
 - **`service.start` avec `trigger`** : relance le service que le declencheur vient de
   voir tomber (lu en tete du titre de l'evenement, verifie contre `SERVICES`).
 - **Action `tests.run`** : batterie d'un projet, liste FERMEE `test_suites.SUITES` (la
@@ -881,33 +881,29 @@ Non commite. Pas encore essayee avec la vraie webcam.
 Non commite.
 - Le ruban Hue (gradient lightstrip) a 7 segments pilotables, de tailles inegales (1, 1, 3,
   3, 3, 1, 1 pixels sur 13) : GET /plan/ruban-hue le lit sur le pont (API v2, ressource
-  `entertainment` ; `lib/hue_strip.py` pur, teste). Le plan de HALO n'en avait que 3.
-- PUT /plan accepte maintenant, par segment : position, angle, LONGUEUR et HAUTEUR (`z`,
-  metres dans le fichier, cm cote app ; `None` = jamais reglee), et un NOMBRE different
-  (1 a 40). Meme nombre : chaque segment reste a sa place dans le fichier et garde ses
-  cles inconnues ; nombre different : la liste est reconstruite. `segments` et `length_m`
-  suivent. HALO conserve la cle `z` (il fusionne par Object.assign) mais dessine encore
-  le ruban a 1,80 m dans sa propre vue 3D.
+  `entertainment` ; `lib/hue_strip.py` pur, teste).
+- PUT /plan accepte, par segment : position, angle, LONGUEUR et HAUTEUR (`z`, cm ; `None` =
+  jamais reglee), et un NOMBRE de segments de 1 a 40 (voir `lib/plan_store.py`).
 - Ecran : `lib/plan.ts` (`segHeight`, `setSegHeight`, `setSegLength`, `addSeg`,
   `removeSeg`, `resampleStrip`, testes). `resampleStrip` redecoupe en gardant le trace.
   Vue 3d : glisser un segment regle sa hauteur (tout le ruban si la case est cochee).
-- Applique le 2026-10-13 sur le plan reel : 7 segments ; copie d'avant dans
-  `~/.config/halo_plan.json.avant-ruban-7`.
-- (Historique : le format de fichier decrit ci-dessus est celui de l'ancienne application
-  HALO. Depuis le 2026-11-08 le plan est stocke par l'API au format de l'app, voir plus bas.)
+- Applique le 2026-10-13 sur le plan reel : 7 segments. Le plan est aujourd'hui stocke par
+  l'API (voir la section suivante).
 
 ## Plan de piece : propriete de neutroncore (2026-11-08)
 - HALO n'est plus une application a part : l'ambiance, le plan et la lumiere vivent dans
   neutroncore. Le plan est enregistre par l'API dans `$NEUTRONCORE_STATE/plan.json`, au format
   de GET /plan (cm, centre de la piece, identifiants Hue reels, `lib/plan_store.py`), sans
-  adaptateur de format. `~/.config/halo_plan.json` n'est plus lu ; il reste tel quel en sauvegarde.
-- Migration unique : `python3 scripts/migrate_halo_plan.py` (depot de l'API ; le demon Lyra doit
-  tourner, il relie les lampes a leur identifiant Hue par le nom). Sans plan enregistre, GET /plan
-  renvoie une piece vide.
+  adaptateur de format. Sans plan enregistre, GET /plan renvoie une piece vide. L'ancien fichier
+  `~/.config/halo_plan.json` n'est lu par rien (la migration, faite le 2026-11-08, a ete retiree
+  du depot de l'API : elle reste dans l'historique git) ; il peut etre archive ou supprime.
 - La TV se deplace dans la vue de dessus (`moveTv`, `TV_ID`) et est envoyee par PUT /plan
   (`tv: { pos }`) ; sa hauteur reste celle du plan.
-- Reste a retirer cote API (lots suivants) : `/launcher/halo` et le jeton `launcher_halo`, et le
-  script `halo_control.py` qui pilote encore les ecrans (`routers/screens.py`).
+- Fait cote API (2026-11-09) : plus de `/launcher/halo` ni de jeton `launcher_halo`. La TV, le
+  pont Hue (Ambilight, Ambilight+Hue, couleurs LED) et les ecrans du PC sont pilotes par
+  `lib/tv_ambilight.py` et `lib/ecrans_hypr.py` (routes `/screens`), plus par un script externe.
+  La barre Quickshell appelle le meme code par `lib/tv_cli.py` (adaptateur dans le depot `ricing`).
+  Le MCP `halo-light` (Hue, installeur de Lyra) est independant de tout cela.
 
 ## Lumiere 3d (2026-10-13) — effets dans l'espace, pad, sets, vraies lampes par huebeat
 Non commite. Ecran dedie `lumiere` (groupe maison) ; le plan de piece y renvoie par un bouton.

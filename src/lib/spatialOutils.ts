@@ -20,7 +20,7 @@ export const MAX_OCTETS_IMPORT = 400_000      // même plafond que l'API (lib/sp
 
 // ---- calibrage ----
 
-/** Les lampes que le plan connaît (on peut les recaler) et celles qu'il ignore (HALO doit d'abord les ajouter). */
+/** Les lampes que le plan connaît (on peut les recaler) et celles qu'il ignore (le plan de pièce doit d'abord les ajouter). */
 export function lampesDuPlan(lampes: LampeInfo[], plan: Plan): { placables: LampeInfo[]; absentes: LampeInfo[] } {
   const placables = lampes.filter((l) => l.id in plan.configs)
   return { placables, absentes: lampes.filter((l) => !(l.id in plan.configs)) }
