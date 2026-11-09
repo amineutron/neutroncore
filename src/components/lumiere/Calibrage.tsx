@@ -115,7 +115,7 @@ export function Calibrage({ onEnregistre }: { onEnregistre?: () => void }) {
       </div>
       {rang !== null && <p className="lite">{MESSAGE_ATTENTE}</p>}
       {bougees.length > 0 && <ul className="lu-outil-liste">{bougees.map((d) => <li key={d.id}>{d.nom} : déplacée de {d.ecart} cm</li>)}</ul>}
-      {absentes.length > 0 && <p className="lite">Pas dans le plan, donc impossibles à recaler ici ({absentes.map((l) => l.nom + (l.canaux.length ? ` — ${nomCanaux(l.canaux)}` : '')).join(', ')}) : ajoute-les d’abord dans HALO.</p>}
+      {absentes.length > 0 && <p className="lite">Pas dans le plan, donc impossibles à recaler ici ({absentes.map((l) => l.nom + (l.canaux.length ? ` — ${nomCanaux(l.canaux)}` : '')).join(', ')}) : ajoute-les d’abord dans le plan de pièce.</p>}
     </div>
   )
 }
