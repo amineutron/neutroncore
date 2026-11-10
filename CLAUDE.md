@@ -986,8 +986,9 @@ Non commite.
 - **Pad** : « renommer » (nom du champ), fleches pour deplacer la touche (PUT /spatial/scenes/ordre
   {ordre}, `sp.ranger` : memes scenes exactement), palette `libre` = 1 a 6 couleurs `#rrggbb` portees
   par la scene (`couleurs`, `couleursDe` / `couleurs_de`). huebeat recevait deja des couleurs, pas un nom.
-- Test fragile vu au passage (lyra-control-api) : `test_plafond_par_jour_applique` echoue dans les dix
-  minutes apres minuit (son historique « il y a 10 min » tombe la veille). Non corrige.
+- Test fragile vu au passage (lyra-control-api) : `test_plafond_par_jour_applique` echouait juste apres
+  minuit (son passage « il y a 10 min » tombait la veille, puis le delai minimal bloquait en silence).
+  Corrige (API #20) : l'horloge du routeur est figee a midi, le test ne depend plus de l'heure.
 
 ## Lumiere 3d : mode 2d, blocs repliables, reglages communs fiables (2026-10-14, suite)
 Non commite.
