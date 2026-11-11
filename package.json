@@ -27,7 +27,7 @@
     "@xterm/xterm": "6.0.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "satellite.js": "5.0.0",
+    "satellite.js": "7.1.0",
     "three": "^0.187.0"
   },
   "devDependencies": {
